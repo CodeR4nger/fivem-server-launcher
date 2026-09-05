@@ -2,17 +2,24 @@ namespace FiveMServerLauncher.Configuration;
 
 public class ConfigurationRepository
 {
-    private LauncherSettings? _settings;
+    private readonly ISettingsStorage _storage;
+
+    public ConfigurationRepository(ISettingsStorage storage)
+    {
+        ArgumentNullException.ThrowIfNull(storage);
+
+        _storage = storage;
+    }
 
     public void Save(LauncherSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
 
-        _settings = settings;
+        _storage.Save(settings);
     }
 
     public LauncherSettings Load()
     {
-        return _settings ?? new LauncherSettings();
+        return _storage.Load() ?? new LauncherSettings();
     }
 }

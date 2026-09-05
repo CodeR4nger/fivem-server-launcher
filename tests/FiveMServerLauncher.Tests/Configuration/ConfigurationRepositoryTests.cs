@@ -10,6 +10,9 @@ public class ConfigurationRepositoryTests
     public void SaveAndLoad_ShouldPreserveSettings()
     {
         // Arrange
+        var storage = new InMemorySettingsStorage();
+        var repository = new ConfigurationRepository(storage);
+
         var original = new LauncherSettings
         {
             Platform = GamePlatform.Epic,
@@ -19,8 +22,6 @@ public class ConfigurationRepositoryTests
         };
 
         // Act
-        var repository = new ConfigurationRepository();
-
         repository.Save(original);
 
         var loaded = repository.Load();
@@ -36,7 +37,8 @@ public class ConfigurationRepositoryTests
     public void Load_WhenNoSettingsExist_ShouldReturnDefaultSettings()
     {
         // Arrange
-        var repository = new ConfigurationRepository();
+        var storage = new InMemorySettingsStorage();
+        var repository = new ConfigurationRepository(storage);
 
         // Act
         var settings = repository.Load();
@@ -51,7 +53,9 @@ public class ConfigurationRepositoryTests
     public void Save_WhenSettingsAreNull_ShouldThrowArgumentNullException()
     {
         // Arrange
-        var repository = new ConfigurationRepository();
+        var storage = new InMemorySettingsStorage();
+        var repository = new ConfigurationRepository(storage);
+
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => repository.Save(null!));
