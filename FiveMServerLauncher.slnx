@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FiveMServerLauncher/FiveMServerLauncher.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FiveMServerLauncher.Tests/FiveMServerLauncher.Tests.csproj" />
+  </Folder>
+</Solution>
