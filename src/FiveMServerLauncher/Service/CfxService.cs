@@ -34,7 +34,7 @@ public class CfxService(HttpClient httpClient)
         return new CfxServerInfo
         {
             CfxId = cfxResponse.EndPoint,
-            Hostname = cfxResponse?.Data?.Hostname ?? string.Empty
+            ProjectName = cfxResponse?.Data?.Sv_projectName ?? string.Empty
         };
     }
 
@@ -46,6 +46,6 @@ public class CfxService(HttpClient httpClient)
 
     private sealed class CfxServerData
     {
-        public string? Hostname { get; set; }
+        public string? Sv_projectName { get; set; }
     }
 }

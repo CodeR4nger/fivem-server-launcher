@@ -17,7 +17,7 @@ public class CfxServiceTests
             {
                 "EndPoint": "y4lg95",
                 "Data": {
-                    "hostname": "Test Server"
+                    "sv_projectName": "Test Server"
                 }
             }
             """);
@@ -43,7 +43,7 @@ public class CfxServiceTests
             {
                 "EndPoint": "https://example.com",
                 "Data": {
-                    "hostname": "Test Server"
+                    "sv_projectName": "Test Server"
                 }
             }
             """);
@@ -79,11 +79,11 @@ public class CfxServiceTests
         Assert.Null(result);
     }
     [Fact]
-    public async Task GetServer_ShouldReturnHostname()
+    public async Task GetServer_ShouldReturnProjectName()
     {
         // Given
         const string cfxId = "y4lg95";
-        const string hostname = "Test Server";
+        const string ProjectName = "Test Server";
 
         var handler = new FakeHttpMessageHandler(
             HttpStatusCode.OK,
@@ -91,7 +91,7 @@ public class CfxServiceTests
             {
                 "EndPoint": "https://example.com",
                 "Data": {
-                    "hostname": "{{hostname}}"
+                    "sv_projectName": "{{ProjectName}}"
                 }
             }
             """);
@@ -104,7 +104,7 @@ public class CfxServiceTests
 
         // Then
         Assert.NotNull(result);
-        Assert.Equal(hostname, result.Hostname);
+        Assert.Equal(ProjectName, result.ProjectName);
     }
     [Fact]
     public async Task GetServer_ShouldReturnNullWhenResponseHasNoData()

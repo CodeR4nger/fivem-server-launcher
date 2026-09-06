@@ -18,7 +18,7 @@ public class ServerResolverTests
             {
                 "EndPoint": "y4lg95",
                 "Data": {
-                    "hostname": "Test Server"
+                    "sv_projectName": "Test Server"
                 }
             }
             """);
@@ -63,7 +63,7 @@ public class ServerResolverTests
             {
                 "EndPoint": "y4lg95",
                 "Data": {
-                    "hostname": "Test Server"
+                    "sv_projectName": "Test Server"
                 }
             }
             """);
@@ -88,7 +88,7 @@ public class ServerResolverTests
             {
                 "EndPoint": "y4lg95",
                 "Data": {
-                    "hostname": "Test Server"
+                    "sv_projectName": "Test Server"
                 }
             }
             """);
@@ -118,7 +118,7 @@ public class ServerResolverTests
             {
                 "EndPoint": "y4lg95",
                 "Data": {
-                    "hostname": "Test Server"
+                    "sv_projectName": "Test Server"
                 }
             }
             """);
@@ -145,7 +145,7 @@ public class ServerResolverTests
             {
                 "EndPoint": "y4lg95",
                 "Data": {
-                    "hostname": "Test Server"
+                    "sv_projectName": "Test Server"
                 }
             }
             """);
