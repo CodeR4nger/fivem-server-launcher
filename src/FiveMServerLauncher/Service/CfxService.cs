@@ -11,6 +11,21 @@ public class CfxService(HttpClient httpClient)
     {
        PropertyNameCaseInsensitive = true
     };
+    private static int? GetIntVariable(
+        Dictionary<string, string>? variables,
+        string name)
+    {
+        if (variables is null ||
+            !variables.TryGetValue(name, out var value))
+        {
+            return null;
+        }
+
+        return int.TryParse(value, out var result)
+            ? result
+            : null;
+    }
+
     public async Task<CfxServerInfo?> GetServerAsync(string cfxId)
     {
         var response = await _httpClient.GetAsync($"https://frontend.cfx-services.net/api/servers/single/{cfxId}");
@@ -34,7 +49,10 @@ public class CfxService(HttpClient httpClient)
         return new CfxServerInfo
         {
             CfxId = cfxResponse.EndPoint,
-            ProjectName = cfxResponse?.Data?.Sv_projectName ?? string.Empty
+            ProjectName = cfxResponse.Data.Sv_projectName ?? string.Empty,
+            EnforceGameBuild = GetIntVariable(cfxResponse.Data.Vars, "sv_enforceGameBuild"),
+            PureLevel = GetIntVariable(cfxResponse.Data.Vars, "sv_pureLevel"),
+            RequestSteamTicket = cfxResponse.Data.RequestSteamTicket == "on" ? true : null
         };
     }
 
@@ -47,5 +65,8 @@ public class CfxService(HttpClient httpClient)
     private sealed class CfxServerData
     {
         public string? Sv_projectName { get; set; }
+        public string? RequestSteamTicket { get; set; }
+        public Dictionary<string, string>? Vars { get; set; }
+
     }
 }

@@ -130,20 +130,73 @@ public class CfxServiceTests
         Assert.Null(result);
     }
     [Fact]
-    public async Task GetServer_ShouldThrowWhenCfxReturnsServerError()
+    public async Task GetServer_ShouldReturnTypedServerVariables()
     {
         // Given
         const string cfxId = "y4lg95";
 
         var handler = new FakeHttpMessageHandler(
-            HttpStatusCode.InternalServerError,
-            string.Empty);
+            HttpStatusCode.OK,
+            """
+            {
+                "EndPoint": "https://example.com",
+                "Data": {
+                    "sv_projectName": "Test Server",
+                    "vars": {
+                        "sv_enforceGameBuild": "3258",
+                        "sv_pureLevel": "1"
+                    },
+                    "requestSteamTicket":"on"
+                }
+            }
+            """);
 
         using var httpClient = new HttpClient(handler);
         var cfxService = new CfxService(httpClient);
 
-        // When / Then
-        await Assert.ThrowsAsync<HttpRequestException>(
-            () => cfxService.GetServerAsync(cfxId));
+        // When
+        var result = await cfxService.GetServerAsync(cfxId);
+
+        // Then
+        Assert.NotNull(result);
+        Assert.Equal(3258, result.EnforceGameBuild);
+        Assert.Equal(1, result.PureLevel);
+        Assert.True(result.RequestSteamTicket);
     }
+
+    [Fact]
+    public async Task GetServer_ShouldReturnNullForInvalidTypedVariables()
+    {
+        // Given
+        const string cfxId = "y4lg95";
+
+        var handler = new FakeHttpMessageHandler(
+            HttpStatusCode.OK,
+            """
+            {
+                "EndPoint": "https://example.com",
+                "Data": {
+                    "sv_projectName": "Test Server",
+                    "vars": {
+                        "sv_enforceGameBuild": "banana",
+                        "sv_pureLevel": "invalid"
+                    },
+                    "requestSteamTicket":"dfer"
+                }
+            }
+            """);
+
+        using var httpClient = new HttpClient(handler);
+        var cfxService = new CfxService(httpClient);
+
+        // When
+        var result = await cfxService.GetServerAsync(cfxId);
+
+        // Then
+        Assert.NotNull(result);
+        Assert.Null(result.EnforceGameBuild);
+        Assert.Null(result.PureLevel);
+        Assert.Null(result.RequestSteamTicket);
+    }
+
 }
