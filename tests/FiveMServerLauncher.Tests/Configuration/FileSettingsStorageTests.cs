@@ -20,10 +20,8 @@ public class FileSettingsStorageTests
 
         var settings = new LauncherSettings
         {
-            Platform = GamePlatform.Epic,
             PreferredClient = GameClient.FiveMEnhanced,
             AutoLaunch = true,
-            ServerPort = 30121
         };
 
         try
@@ -56,10 +54,8 @@ public class FileSettingsStorageTests
 
         var settings = new LauncherSettings
         {
-            Platform = GamePlatform.Epic,
             PreferredClient = GameClient.FiveMEnhanced,
             AutoLaunch = true,
-            ServerPort = 30121
         };
         try
         {
@@ -69,10 +65,8 @@ public class FileSettingsStorageTests
             var json = File.ReadAllText(filePath);
 
             // Assert
-            Assert.Contains("\"Platform\":\"Epic\"", json);
             Assert.Contains("\"PreferredClient\":\"FiveMEnhanced\"", json);
             Assert.Contains("\"AutoLaunch\":true", json);
-            Assert.Contains("\"ServerPort\":30121", json);
         }
         finally
         {
@@ -96,10 +90,8 @@ public class FileSettingsStorageTests
 
         var original = new LauncherSettings
         {
-            Platform = GamePlatform.Epic,
             PreferredClient = GameClient.FiveMEnhanced,
             AutoLaunch = true,
-            ServerPort = 30121
         };
         try
         {
@@ -110,10 +102,8 @@ public class FileSettingsStorageTests
 
             // Assert
             Assert.NotNull(loaded);
-            Assert.Equal(original.Platform, loaded.Platform);
             Assert.Equal(original.PreferredClient, loaded.PreferredClient);
             Assert.Equal(original.AutoLaunch, loaded.AutoLaunch);
-            Assert.Equal(original.ServerPort, loaded.ServerPort);
         }
         finally
         {
@@ -187,10 +177,8 @@ public class FileSettingsStorageTests
 
         var json = """
                 {
-                    "Platform": "InvalidPlatform",
-                    "PreferredClient": "FiveMEnhanced",
+                    "PreferredClient": "RedMEnhanced",
                     "AutoLaunch": true,
-                    "ServerPort": 30121
                 }
                 """;
 
@@ -258,7 +246,6 @@ public class FileSettingsStorageTests
 
         var settings = new LauncherSettings
         {
-            Platform = GamePlatform.Epic,
             PreferredClient = GameClient.FiveM,
             AutoLaunch = true
         };
@@ -293,14 +280,12 @@ public class FileSettingsStorageTests
 
         var firstSettings = new LauncherSettings
         {
-            Platform = GamePlatform.Steam,
             PreferredClient = GameClient.FiveM,
             AutoLaunch = false
         };
 
         var secondSettings = new LauncherSettings
         {
-            Platform = GamePlatform.Epic,
             PreferredClient = GameClient.FiveMEnhanced,
             AutoLaunch = true
         };
@@ -317,7 +302,6 @@ public class FileSettingsStorageTests
             var result = storage.Load();
 
             Assert.NotNull(result);
-            Assert.Equal(GamePlatform.Epic, result.Platform);
             Assert.Equal(GameClient.FiveMEnhanced, result.PreferredClient);
             Assert.True(result.AutoLaunch);
         }
@@ -341,10 +325,8 @@ public class FileSettingsStorageTests
 
         var settings = new LauncherSettings
         {
-            Platform = GamePlatform.Epic,
             PreferredClient = GameClient.FiveMEnhanced,
             AutoLaunch = true,
-            ServerPort = 30121
         };
 
         var storage = new FileSettingsStorage(filePath);
@@ -357,10 +339,8 @@ public class FileSettingsStorageTests
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(settings.Platform, result.Platform);
             Assert.Equal(settings.PreferredClient, result.PreferredClient);
             Assert.Equal(settings.AutoLaunch, result.AutoLaunch);
-            Assert.Equal(settings.ServerPort, result.ServerPort);
         }
         finally
         {

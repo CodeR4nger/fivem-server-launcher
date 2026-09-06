@@ -11,9 +11,7 @@ public class LauncherSettingsTests
     {
         var settings = new LauncherSettings();
 
-        Assert.Equal(GamePlatform.Steam, settings.Platform);
         Assert.Equal(GameClient.FiveM, settings.PreferredClient);
         Assert.False(settings.AutoLaunch);
-        Assert.Equal(30120, settings.ServerPort);
     }
 }
