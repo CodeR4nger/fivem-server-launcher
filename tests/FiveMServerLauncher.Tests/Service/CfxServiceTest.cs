@@ -1,4 +1,5 @@
 using System.Net;
+using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Service;
 
 namespace FiveMServerLauncher.Tests.Service;
@@ -144,7 +145,8 @@ public class CfxServiceTests
                     "sv_projectName": "Test Server",
                     "vars": {
                         "sv_enforceGameBuild": "3258",
-                        "sv_pureLevel": "1"
+                        "sv_pureLevel": "1",
+                        "gamename": "gta5enhanced"
                     },
                     "requestSteamTicket":"on"
                 }
@@ -161,6 +163,7 @@ public class CfxServiceTests
         Assert.NotNull(result);
         Assert.Equal(3258, result.EnforceGameBuild);
         Assert.Equal(1, result.PureLevel);
+        Assert.Equal(GameClient.FiveMEnhanced, result.GameClient);
         Assert.True(result.RequestSteamTicket);
     }
 
@@ -179,7 +182,8 @@ public class CfxServiceTests
                     "sv_projectName": "Test Server",
                     "vars": {
                         "sv_enforceGameBuild": "banana",
-                        "sv_pureLevel": "invalid"
+                        "sv_pureLevel": "invalid",
+                        "gamename": "gta4"
                     },
                     "requestSteamTicket":"dfer"
                 }
@@ -197,6 +201,7 @@ public class CfxServiceTests
         Assert.Null(result.EnforceGameBuild);
         Assert.Null(result.PureLevel);
         Assert.Null(result.RequestSteamTicket);
+        Assert.Null(result.GameClient);
     }
 
 }

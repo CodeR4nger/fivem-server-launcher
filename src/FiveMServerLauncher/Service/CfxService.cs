@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
+using FiveMServerLauncher.Core.Enums;
 
 namespace FiveMServerLauncher.Service;
 
@@ -24,6 +25,23 @@ public class CfxService(HttpClient httpClient)
         return int.TryParse(value, out var result)
             ? result
             : null;
+    }
+
+    private static GameClient? GetGameClientVariable(Dictionary<string, string>? variables)
+    {
+        if (variables is null ||
+            !variables.TryGetValue("gamename", out var game))
+        {
+            return null;
+        }
+
+        return game switch
+        {
+            "gta5" => GameClient.FiveM,
+            "gta5enhanced" => GameClient.FiveMEnhanced,
+            "rdr3" => GameClient.RedM,
+            _ => null
+        };
     }
 
     public async Task<CfxServerInfo?> GetServerAsync(string cfxId)
@@ -51,6 +69,7 @@ public class CfxService(HttpClient httpClient)
             CfxId = cfxResponse.EndPoint,
             ProjectName = cfxResponse.Data.Sv_projectName ?? string.Empty,
             EnforceGameBuild = GetIntVariable(cfxResponse.Data.Vars, "sv_enforceGameBuild"),
+            GameClient = GetGameClientVariable(cfxResponse.Data.Vars),
             PureLevel = GetIntVariable(cfxResponse.Data.Vars, "sv_pureLevel"),
             RequestSteamTicket = cfxResponse.Data.RequestSteamTicket == "on" ? true : null
         };
