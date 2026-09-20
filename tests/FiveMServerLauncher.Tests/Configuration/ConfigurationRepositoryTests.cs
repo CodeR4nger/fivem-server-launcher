@@ -9,7 +9,7 @@ public class ConfigurationRepositoryTests
     [Fact]
     public void SaveAndLoad_ShouldPreserveSettings()
     {
-        // Arrange
+        // Given
         var storage = new InMemorySettingsStorage();
         var repository = new ConfigurationRepository(storage);
 
@@ -19,12 +19,12 @@ public class ConfigurationRepositoryTests
             AutoLaunch = true,
         };
 
-        // Act
+        // When
         repository.Save(original);
 
         var loaded = repository.Load();
 
-        // Assert
+        // Then
         Assert.Equal(original.PreferredClient, loaded.PreferredClient);
         Assert.Equal(original.AutoLaunch, loaded.AutoLaunch);
     }
@@ -32,26 +32,26 @@ public class ConfigurationRepositoryTests
     [Fact]
     public void Load_WhenNoSettingsExist_ShouldReturnDefaultSettings()
     {
-        // Arrange
+        // Given
         var storage = new InMemorySettingsStorage();
         var repository = new ConfigurationRepository(storage);
 
-        // Act
+        // When
         var settings = repository.Load();
 
-        // Assert
+        // Then
         Assert.Equal(GameClient.FiveM, settings.PreferredClient);
         Assert.False(settings.AutoLaunch);
     }
     [Fact]
     public void Save_WhenSettingsAreNull_ShouldThrowArgumentNullException()
     {
-        // Arrange
+        // Given
         var storage = new InMemorySettingsStorage();
         var repository = new ConfigurationRepository(storage);
 
 
-        // Act & Assert
+        // When / Then
         Assert.Throws<ArgumentNullException>(() => repository.Save(null!));
     }
 }

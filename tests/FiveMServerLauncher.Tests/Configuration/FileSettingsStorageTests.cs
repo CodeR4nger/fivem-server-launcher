@@ -9,7 +9,7 @@ public class FileSettingsStorageTests
     [Fact]
     public void Save_ShouldCreateSettingsFile()
     {
-        // Arrange
+        // Given
         var directory = Path.Combine(
             Path.GetTempPath(),
             Guid.NewGuid().ToString());
@@ -26,10 +26,10 @@ public class FileSettingsStorageTests
 
         try
         {
-            // Act
+            // When
             storage.Save(settings);
 
-            // Assert
+            // Then
             Assert.True(File.Exists(filePath));
         }
         finally
@@ -43,7 +43,7 @@ public class FileSettingsStorageTests
     [Fact]
     public void Save_ShouldPersistSettingsAsJson()
     {
-        // Arrange
+        // Given
         var directory = Path.Combine(
             Path.GetTempPath(),
             Guid.NewGuid().ToString());
@@ -59,12 +59,12 @@ public class FileSettingsStorageTests
         };
         try
         {
-            // Act
+            // When
             storage.Save(settings);
 
             var json = File.ReadAllText(filePath);
 
-            // Assert
+            // Then
             Assert.Contains("\"PreferredClient\":\"FiveMEnhanced\"", json);
             Assert.Contains("\"AutoLaunch\":true", json);
         }
@@ -79,7 +79,7 @@ public class FileSettingsStorageTests
     [Fact]
     public void Load_ShouldRestoreSavedSettings()
     {
-        // Arrange
+        // Given
         var directory = Path.Combine(
             Path.GetTempPath(),
             Guid.NewGuid().ToString());
@@ -95,12 +95,12 @@ public class FileSettingsStorageTests
         };
         try
         {
-            // Act
+            // When
             storage.Save(original);
 
             var loaded = storage.Load();
 
-            // Assert
+            // Then
             Assert.NotNull(loaded);
             Assert.Equal(original.PreferredClient, loaded.PreferredClient);
             Assert.Equal(original.AutoLaunch, loaded.AutoLaunch);
@@ -116,7 +116,7 @@ public class FileSettingsStorageTests
     [Fact]
     public void Load_WhenFileDoesNotExist_ShouldReturnNull()
     {
-        // Arrange
+        // Given
         var directory = Path.Combine(
             Path.GetTempPath(),
             Guid.NewGuid().ToString());
@@ -125,16 +125,16 @@ public class FileSettingsStorageTests
 
         var storage = new FileSettingsStorage(filePath);
 
-        // Act
+        // When
         var result = storage.Load();
 
-        // Assert
+        // Then
         Assert.Null(result);
     }
     [Fact]
     public void Load_WhenFileContainsInvalidJson_ShouldReturnNull()
     {
-        // Arrange
+        // Given
         var directory = Path.Combine(
             Path.GetTempPath(),
             Guid.NewGuid().ToString());
@@ -149,10 +149,10 @@ public class FileSettingsStorageTests
 
         try
         {
-            // Act
+            // When
             var result = storage.Load();
 
-            // Assert
+            // Then
             Assert.Null(result);
         }
         finally
@@ -166,7 +166,7 @@ public class FileSettingsStorageTests
     [Fact]
     public void Load_WhenJsonCannotBeDeserialized_ShouldReturnNull()
     {
-        // Arrange
+        // Given
         var directory = Path.Combine(
             Path.GetTempPath(),
             Guid.NewGuid().ToString());
@@ -188,10 +188,10 @@ public class FileSettingsStorageTests
 
         try
         {
-            // Act
+            // When
             var result = storage.Load();
 
-            // Assert
+            // Then
             Assert.Null(result);
         }
         finally
@@ -205,7 +205,7 @@ public class FileSettingsStorageTests
     [Fact]
     public void Load_WhenFileIsEmpty_ShouldReturnNull()
     {
-        // Arrange
+        // Given
         var directory = Path.Combine(
             Path.GetTempPath(),
             Guid.NewGuid().ToString());
@@ -220,10 +220,10 @@ public class FileSettingsStorageTests
 
         try
         {
-            // Act
+            // When
             var result = storage.Load();
 
-            // Assert
+            // Then
             Assert.Null(result);
         }
         finally
@@ -237,7 +237,7 @@ public class FileSettingsStorageTests
     [Fact]
     public void Save_WhenDirectoryDoesNotExist_ShouldCreateDirectoryAndPersistSettings()
     {
-        // Arrange
+        // Given
         var directory = Path.Combine(
             Path.GetTempPath(),
             Guid.NewGuid().ToString());
@@ -254,10 +254,10 @@ public class FileSettingsStorageTests
 
         try
         {
-            // Act
+            // When
             storage.Save(settings);
 
-            // Assert
+            // Then
             Assert.True(File.Exists(filePath));
         }
         finally
@@ -271,7 +271,7 @@ public class FileSettingsStorageTests
     [Fact]
     public void Save_WhenFileAlreadyExists_ShouldOverwriteExistingSettings()
     {
-        // Arrange
+        // Given
         var directory = Path.Combine(
             Path.GetTempPath(),
             Guid.NewGuid().ToString());
@@ -294,11 +294,11 @@ public class FileSettingsStorageTests
 
         try
         {
-            // Act
+            // When
             storage.Save(firstSettings);
             storage.Save(secondSettings);
 
-            // Assert
+            // Then
             var result = storage.Load();
 
             Assert.NotNull(result);
@@ -316,7 +316,7 @@ public class FileSettingsStorageTests
     [Fact]
     public void SaveAndLoad_ShouldPreserveAllSettings()
     {
-        // Arrange
+        // Given
         var directory = Path.Combine(
             Path.GetTempPath(),
             Guid.NewGuid().ToString());
@@ -333,11 +333,11 @@ public class FileSettingsStorageTests
 
         try
         {
-            // Act
+            // When
             storage.Save(settings);
             var result = storage.Load();
 
-            // Assert
+            // Then
             Assert.NotNull(result);
             Assert.Equal(settings.PreferredClient, result.PreferredClient);
             Assert.Equal(settings.AutoLaunch, result.AutoLaunch);

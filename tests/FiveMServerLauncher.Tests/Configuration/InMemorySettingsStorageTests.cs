@@ -9,7 +9,7 @@ public class InMemorySettingsStorageTests
     [Fact]
     public void SaveAndLoad_ShouldPreserveSettings()
     {
-        // Arrange
+        // Given
         var storage = new InMemorySettingsStorage();
 
         var settings = new LauncherSettings
@@ -18,12 +18,12 @@ public class InMemorySettingsStorageTests
             AutoLaunch = true,
         };
 
-        // Act
+        // When
         storage.Save(settings);
 
         var loaded = storage.Load();
 
-        // Assert
+        // Then
         Assert.Equal(settings.PreferredClient, loaded!.PreferredClient);
         Assert.Equal(settings.AutoLaunch, loaded.AutoLaunch);
     }
