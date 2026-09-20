@@ -5,15 +5,27 @@ namespace FiveMServerLauncher.Service;
 
 public sealed class ClientInstallLocator : IClientInstallLocator
 {
+    private readonly Func<string, bool> _exists;
+
+    public ClientInstallLocator() : this(File.Exists)
+    {
+    }
+
+    public ClientInstallLocator(Func<string, bool> exists)
+    {
+        _exists = exists;
+    }
+
     public Task<bool> IsInstalledAsync(GameClient client)
     {
         var path = GetPath(client);
-        return Task.FromResult(path is not null && Path.Exists(path));
+        return Task.FromResult(path is not null && _exists(path));
     }
 
     public Task<string?> GetExecutablePathAsync(GameClient client)
     {
-        return Task.FromResult(GetPath(client));
+        var path = GetPath(client);
+        return Task.FromResult(path is not null && _exists(path) ? path : null);
     }
 
     private static string? GetPath(GameClient client)
@@ -24,7 +36,6 @@ public sealed class ClientInstallLocator : IClientInstallLocator
         {
             GameClient.FiveM => Path.Combine(localAppData, "FiveM", "FiveM.app", "FiveM.exe"),
             GameClient.FiveMEnhanced => Path.Combine(localAppData, "FiveM for GTAV Enhanced", "FiveM.app", "FiveM.exe"),
-            GameClient.RedM => Path.Combine(localAppData, "RedM", "RedM.app", "RedM.exe"),
             _ => null,
         };
     }

@@ -79,4 +79,52 @@ public class ClientInstallLocatorTests
         // Then
         Assert.Null(result);
     }
+
+    [Fact]
+    public async Task GetExecutablePath_MissingEnhanced_ShouldReturnNullViaRealImpl()
+    {
+        // Given
+        var exists = (string _) => false; // fake file system check: nothing on disk
+        var locator = new ClientInstallLocator(exists);
+
+        // When
+        var result = await locator.GetExecutablePathAsync(GameClient.FiveMEnhanced);
+
+        // Then
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task IsInstalled_LegacyNotOnDisk_ShouldReturnFalseViaRealImpl()
+    {
+        // Given
+        var exists = (string _) => false;
+        var locator = new ClientInstallLocator(exists);
+
+        // When
+        var result = await locator.IsInstalledAsync(GameClient.FiveM);
+
+        // Then
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task GetExecutablePath_LegacyOnDisk_ShouldReturnPathViaRealImpl()
+    {
+        // Given
+        string capturedPath = string.Empty;
+        var exists = (string path) =>
+        {
+            capturedPath = path;
+            return true;
+        };
+        var locator = new ClientInstallLocator(exists);
+
+        // When
+        var result = await locator.GetExecutablePathAsync(GameClient.FiveM);
+
+        // Then
+        Assert.EndsWith(Path.Combine("FiveM", "FiveM.app", "FiveM.exe"), capturedPath, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(capturedPath, result);
+    }
 }
