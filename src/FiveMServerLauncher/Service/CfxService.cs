@@ -76,7 +76,7 @@ public class CfxService(HttpClient httpClient)
 
         return new CfxServerInfo
         {
-            CfxId = cfxResponse.EndPoint,
+            CfxId = cfxId,
             ProjectName = cfxResponse.Data.Sv_projectName ?? string.Empty,
             EnforceGameBuild = GetIntVariable(cfxResponse.Data.Vars, "sv_enforceGameBuild"),
             GameClient = GetGameClientVariable(cfxResponse.Data.Vars),
@@ -88,7 +88,6 @@ public class CfxService(HttpClient httpClient)
     private sealed class CfxServerResponse
     {
         public CfxServerData? Data { get; set; }
-        public required string EndPoint { get; set; }
     }
 
     private sealed class CfxServerData

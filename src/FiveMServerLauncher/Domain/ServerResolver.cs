@@ -13,7 +13,7 @@ public class ServerResolver(CfxService cfxService, ServerRequirementsResolver re
             throw new InvalidAddressException(address);
         }
 
-        address = ExtractCfxIdIfValidUrl(address);
+        address = ExtractCfxId(address);
 
         var server = await cfxService.GetServerAsync(address);
 
@@ -31,7 +31,7 @@ public class ServerResolver(CfxService cfxService, ServerRequirementsResolver re
         };
     }
 
-   private static string ExtractCfxIdIfValidUrl(string address)
+   private static string ExtractCfxId(string address)
     {
         const string prefix = "cfx.re/join/";
         var index = address.IndexOf(prefix, StringComparison.OrdinalIgnoreCase);
