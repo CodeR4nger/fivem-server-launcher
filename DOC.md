@@ -183,38 +183,43 @@ No queremos duplicar manualmente en ServerProfile información que el servidor y
 # FiveMLaunchOptions
 El concepto ``FiveMLaunchOptions`` debe representar las opciones necesarias para preparar/lanzar FiveM.
 
-Entre las opciones investigadas están:
+## Investigación verificada (fuentes: docs oficiales y código ciudadano citizenfx/fivem)
+
+Argumentos de línea de comandos documentados oficialmente (FiveM Shortcut):
 ```
-Game Build
-Pure Mode
-PoolSizesIncrease
+-b<build>        → lanzar directamente en un game build (ej: -b1604)
+-pure_<nivel>    → lanzar directamente en un pure mode 0-2 (ej: -pure_1)
+-cl2             → segunda instancia
 ```
-Además:
-``-cl2``
 
-para la segunda instancia.
-
-Y la conexión directa:
-
-``fivem://connect/<server>``
-
-o:
-
-``fivem://connect/<server>?<params>``
-
-Argumentos de FiveM que hemos identificado:
+Conexión directa:
 ```
--b<build>
--pure_<nivel>
--cl2
 fivem://connect/<servidor>
 fivem://connect/<servidor>?<params>
 ```
 
+### Cómo los lee FiveM (código fuente)
+- ``PureModeState.h``: `GetPureLevel()` parsea la línea de comandos (`pure_`) vía `CommandLineToArgvW` sobre `CfxState::initCommandLine`. **El pure mode nunca se lee de CitizenFX.ini.**
+- ``CrossBuildSwitch.cpp``: al conectar a un servidor, el cliente orquesta el switch él mismo: `RestartGameToOtherBuild(build, pureLevel, poolSizesIncreaseSetting, defaultBuild)`.
+
+### El problema del cross-build
+El flujo de switch a tiempo de conexión es: el cliente ya está abierto (build X) → pide `connect` a un servidor con build distinto → diálogo de confirmación → **`RestartGameToOtherBuild` cierra y vuelve a abrir el juego** para cargar el build requerido.
+
+Es un ciclo lento y molesto. La doc oficial de `-b`/`-pure_` lo resume: lanzan FiveM *directamente* al build/pure pedido para **evitar la transición**.
+
+### Rol de ServerRequirements al lanzar
+Como FiveM ya aplica por sí solo los requisitos del servidor al conectar, el deber del launcher no es forzarlos sino **pre-cargarlos**: si lanzamos con `-b<serverBuild> -pure_<nivel>`, el cliente arranca en el estado correcto y no hay reinicio al conectar.
+
+Los requisitos del servidor gana sobre la config manual (incluido Dev Mode) cuando se conecta a un servidor.
+
 # CitizenFX.ini
 También investigamos cómo FiveM persiste parte de esta configuración.
 
-El archivo está junto al ejecutable de FiveM y puede contener:
+El archivo está junto al ejecutable de FiveM (normalmente ``%localappdata%\FiveM\FiveM.app\CitizenFX.ini``).
+
+## Estado verificado
+- La **única key documentada oficialmente** bajo ``[Game]`` además de ``IVPath`` es ``SavedBuildNumber=<build>``: lanza FiveM directamente en ese build (mismo efecto que ``-b``, pero persistente).
+- Ejemplo de lo que vimos en un ini real:
 ```ini
 [Game]
 IVPath=D:\SteamLibrary\steamapps\common\Grand Theft Auto V
@@ -224,20 +229,11 @@ ReplaceExecutable=0
 UpdateChannel=beta
 DefaultBuild=3258
 ```
-Esto es importante para el diseño.
+- ``PoolSizesIncrease``, ``DefaultBuild``, ``ReplaceExecutable`` **existen de facto pero no son API pública documentada**. El pure mode **no** se persiste aquí (se lee solo de la línea de comandos).
 
-No necesariamente debemos pasar todo mediante argumentos de línea de comandos.
-
-Algunas opciones pueden requerir modificar el entorno/configuración de FiveM.
-
-En particular:
-```
-PoolSizesIncrease
-Game Build
-```
-pueden estar relacionadas con ``CitizenFX.ini``.
-
-Debemos investigar antes de implementar una estrategia definitiva.
+## Consecuencia para el diseño
+- La vía principal y consistente para pre-cargar build/pure es **argumentos de línea de comandos** (además, el UIT-level ``fivem://connect`` acepta parámetros).
+- ``CitizenFX.ini`` queda fuera del alcance de esta fase: se descarta modificar el ini del usuario salvo que investigaciones futuras lo justifiquen (p.ej. PoolSizesIncrease, que hoy **de hecho se gestiona por el propio cliente** vía `IncreasePoolSize` / PoolSizeManager al conectar).
 
 
 # Dev Mode
@@ -273,9 +269,12 @@ con un JSON de pools, por ejemplo:
 ```
 No queremos tratar este JSON como una configuración arbitraria del launcher.
 
-Debe existir una representación adecuada en el dominio y/o una estrategia específica para aplicarlo a FiveM.
+## Estado verificado
+- FiveM gestiona los pool sizes **internamente al conectar**: el cliente recibe la petición y aplica vía ``PoolSizeManager`` / ``IncreasePoolSize``, sin intervención del launcher ni del ini (ver ``CrossBuildSwitch.cpp`` y ``PoolSizesState.h`` en citizenfx/fivem).
+- Limites de pool permitidos se servan desde ``content.cfx.re``.
 
-La implementación debe investigarse antes de decidir si se modifica CitizenFX.ini,
+## Consecuencia para el diseño
+Los pool sizes **quedan fuera de FiveMLaunchOptions**: el launcher no necesita a aplicarlos; preservamos el JSON solo si en el futuro queremos mostrarlo/validarlo en el dominio, pero no para modificar configuración de FiveM.
 
 # Cliente FiveM / Enhanced
 El launcher soporta:
@@ -301,6 +300,17 @@ Conceptualmente:
 └───────────────────────────────┘
 ```
 El dropdown permite seleccionar el cliente.
+
+## FiveM Enhanced: estado verificado (investigado antes de asumir)
+- **Es un cliente y launcher separados**: se descarga aparte (fivem.net), se instala en su propia carpeta y **no documenta** `fivem://connect`, `-b`, `-pure_` ni `-cl2`.
+- **`-cl2` no existe en Enhanced** (doc oficial "Running two FiveM clients"): una segunda instancia requiere `sv_devMode true` server-side y luego "Launch Additional Client" desde las devtools (F8) del cliente. No hay argumento CLI.
+- **`+set moo 31337` fue removido**: el devmode de Enhanced es server-side (`sv_devMode true`), no por línea de comandos.
+- **Pure mode siempre activo** en Enhanced ("can no longer be turned off"); sin `-pure_X`.
+- **Solo soporta el último gamebuild** (Kortz Center Heist); sin builds que pinear con `-b`.
+- **El proceso de conexión se rediseñó** (Development Update #2): ya no arranca el juego en background y **se eliminó el reinicio del cliente** al unirse a un servidor con distinta configuración. El problema del cross-build restart de Legacy no existe en Enhanced.
+
+## Consecuencia para el diseño
+- La serialización de conexión directa (`fivem://connect/<addr>`) y los args `-b`/`-pure_`/`-cl2` aplican a **FiveM (Legacy) y RedM**. Para **FiveM Enhanced** el launcher solo puede **abrir el cliente**; conectarse ocurre dentro de la UI del propio cliente. Un `FiveMLaunchOptions` con `GameClient = FiveMEnhanced` no serializa URI ni args de conexión.
 
 # UX
 La filosofía principal es: No molestar si todo está listo.
