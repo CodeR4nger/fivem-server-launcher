@@ -72,6 +72,46 @@ public class FiveMLaunchOptionsTests
     }
 
     [Fact]
+    public void Create_WithIpPortAddress_ShouldAccept()
+    {
+        // Given
+        const string ipPort = "149.56.120.52:30320";
+        const GameClient gameClient = GameClient.FiveM;
+
+        // When
+        var options = FiveMLaunchOptions.Create(ipPort, gameClient, null, null, false);
+
+        // Then
+        Assert.Equal(ipPort, options.Address);
+    }
+
+    [Fact]
+    public void Create_WithDomainPortAddress_ShouldAccept()
+    {
+        // Given
+        const string domainPort = "play.example.com:30120";
+        const GameClient gameClient = GameClient.FiveM;
+
+        // When
+        var options = FiveMLaunchOptions.Create(domainPort, gameClient, null, null, false);
+
+        // Then
+        Assert.Equal(domainPort, options.Address);
+    }
+
+    [Fact]
+    public void Create_WithMalformedIpPort_ShouldThrow()
+    {
+        // Given
+        const string malformedIpPort = "999.56.120.52:30320";
+        const GameClient gameClient = GameClient.FiveM;
+
+        // When / Then
+        Assert.Throws<InvalidAddressException>(() =>
+            FiveMLaunchOptions.Create(malformedIpPort, gameClient, null, null, false));
+    }
+
+    [Fact]
     public void Create_WithAddressMissingId_ShouldThrow()
     {
         // Given

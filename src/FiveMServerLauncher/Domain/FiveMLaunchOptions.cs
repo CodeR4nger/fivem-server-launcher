@@ -25,11 +25,21 @@ public sealed class FiveMLaunchOptions
     public static FiveMLaunchOptions FromServerProfile(ServerProfile profile)
     {
         return Create(
-            ServerAddress.FromCfxId(profile.CfxId),
+            ProfileAddress(profile),
             profile.GameClient,
             profile.Requirements.GameBuild,
             profile.Requirements.PureMode,
             false);
+    }
+
+    private static string? ProfileAddress(ServerProfile profile)
+    {
+        if (!string.IsNullOrWhiteSpace(profile.CfxId))
+        {
+            return ServerAddress.FromCfxId(profile.CfxId);
+        }
+
+        return profile.Address;
     }
 
     public Uri? ToUri()
@@ -100,7 +110,13 @@ public sealed class FiveMLaunchOptions
 
     private static void ValidateAddress(string? address)
     {
-        if (address is null || ServerAddress.HasServerFormWithNonEmptyId(address))
+        if (address is null)
+        {
+            return;
+        }
+
+        var kind = ServerAddress.Classify(address);
+        if (kind is ServerAddressKind.CfxJoinUrl or ServerAddressKind.IpPort or ServerAddressKind.DomainPort)
         {
             return;
         }
