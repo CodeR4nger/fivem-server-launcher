@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Reflection;
 using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Domain;
@@ -118,6 +119,18 @@ public class FiveMLaunchOptionsTests
 
         // When / Then
         Assert.Null(parameterizedCtor);
+    }
+
+    [Fact]
+    public void Type_ShouldHaveNoMutatingAccessors()
+    {
+        // Given / When
+        var properties = typeof(FiveMLaunchOptions).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+        var cloneMethod = typeof(FiveMLaunchOptions).GetMethod("<Clone>$", BindingFlags.Public | BindingFlags.Instance);
+
+        // Then
+        Assert.All(properties, property => Assert.Null(property.SetMethod));
+        Assert.Null(cloneMethod);
     }
 
     [Fact]
@@ -289,7 +302,35 @@ public class FiveMLaunchOptionsTests
     }
 
     [Fact]
-    public void ToCommandLineArgs_ShouldReturnReadOnlyList()
+    public void ToCommandLineArgs_ShouldReturnImmutableArray()
+    {
+        // Given
+        var options = FiveMLaunchOptions.Create(null, GameClient.FiveM, 3258, 1, false);
+
+        // When
+        var args = options.ToCommandLineArgs();
+
+        // Then
+        Assert.IsNotType<string[]>(args);
+        Assert.IsType<ImmutableArray<string>>(args);
+        Assert.Equal(new[] { "-b3258", "-pure_1" }, args);
+    }
+
+    [Fact]
+    public void ToCommandLineArgs_ShouldReturnImmutableArrayWithSecondClient()
+    {
+        // Given
+        var options = FiveMLaunchOptions.Create(null, GameClient.FiveM, 3258, 1, true);
+
+        // When
+        var args = options.ToCommandLineArgs();
+
+        // Then
+        Assert.IsType<ImmutableArray<string>>(args);
+        Assert.Equal(new[] { "-b3258", "-pure_1", "-cl2" }, args);
+    }
+    [Fact]
+    public void ToCommandLineArgs_ShouldRejectMutationByIndexerCast()
     {
         // Given
         var options = FiveMLaunchOptions.Create(null, GameClient.FiveM, 3258, 1, false);
@@ -300,8 +341,8 @@ public class FiveMLaunchOptionsTests
 
         // Then
         Assert.NotNull(mutable);
-        Assert.True(mutable.IsReadOnly);
-        Assert.Throws<NotSupportedException>(() => mutable.Add("-b1234"));
+        Assert.Throws<NotSupportedException>(() => mutable[0] = "-b1234");
+        Assert.Equal(new[] { "-b3258", "-pure_1" }, args);
     }
 
     [Fact]
@@ -330,14 +371,20 @@ public class FiveMLaunchOptionsTests
     {
         // Given
         var options = FiveMLaunchOptions.Create(null, GameClient.FiveM, 3258, 1, true);
+        var other = FiveMLaunchOptions.Create(null, GameClient.FiveM, 3258, 1, true);
 
-        // When
-        var modified = options with { GameBuild = 0 };
+        // When / Then
+        Assert.Empty(GetSetters(typeof(FiveMLaunchOptions)));
+        Assert.False(ReferenceEquals(options, other));
+    }
 
-        // Then
-        Assert.Equal(3258, options.GameBuild);
-        Assert.Equal(1, options.PureMode);
-        Assert.False(ReferenceEquals(options, modified));
+    private static MethodInfo[] GetSetters(Type type)
+    {
+        return type
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Select(property => property.SetMethod)
+            .Where(setter => setter is not null)
+            .ToArray();
     }
 
     [Fact]

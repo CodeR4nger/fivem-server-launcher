@@ -1,16 +1,17 @@
-﻿using FiveMServerLauncher.Core.Enums;
+﻿using System.Collections.Immutable;
+using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Domain.Exceptions;
 using GameClientEnum = FiveMServerLauncher.Core.Enums.GameClient;
 
 namespace FiveMServerLauncher.Domain;
 
-public sealed record FiveMLaunchOptions
+public sealed class FiveMLaunchOptions
 {
-    public string? Address { get; init; }
-    public GameClient? GameClient { get; init; }
-    public int? GameBuild { get; init; }
-    public int? PureMode { get; init; }
-    public bool SecondClient { get; init; }
+    public string? Address { get; }
+    public GameClient? GameClient { get; }
+    public int? GameBuild { get; }
+    public int? PureMode { get; }
+    public bool SecondClient { get; }
 
     private FiveMLaunchOptions(string? address, GameClient? gameClient, int? gameBuild, int? pureMode, bool secondClient)
     {
@@ -48,21 +49,22 @@ public sealed record FiveMLaunchOptions
         return new Uri(uri);
     }
 
-    public IReadOnlyList<string> ToCommandLineArgs()
+    public ImmutableArray<string> ToCommandLineArgs()
     {
         if (IsEnhanced())
         {
-            return Array.Empty<string>();
+            return ImmutableArray<string>.Empty;
         }
 
-        var args = new List<string>(BuildGameFlags());
+        var builder = ImmutableArray.CreateBuilder<string>();
+        builder.AddRange(BuildGameFlags());
 
         if (SecondClient)
         {
-            args.Add("-cl2");
+            builder.Add("-cl2");
         }
 
-        return args.ToArray();
+        return builder.ToImmutable();
     }
 
     private bool IsEnhanced()

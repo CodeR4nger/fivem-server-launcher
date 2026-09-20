@@ -1,6 +1,7 @@
 ﻿<Window x:Class="FiveMServerLauncher.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:views="clr-namespace:FiveMServerLauncher.Views"
         Title="FiveM Server Launcher"
@@ -10,10 +11,32 @@
         WindowStyle="SingleBorderWindow"
         ResizeMode="NoResize">
 
+    <Window.Resources>
+        <sys:Double x:Key="CaptionHeight">40</sys:Double>
+        <sys:Double x:Key="WindowButtonWidth">50</sys:Double>
+        <GridLength x:Key="CaptionRowHeight">40</GridLength>
+        <Style x:Key="WindowButtonStyle" TargetType="{x:Type Button}">
+            <Setter Property="Width"
+                    Value="{StaticResource WindowButtonWidth}"/>
+            <Setter Property="Height"
+                    Value="{StaticResource CaptionHeight}"/>
+            <Setter Property="Background"
+                    Value="Transparent"/>
+            <Setter Property="Foreground"
+                    Value="White"/>
+            <Setter Property="BorderThickness"
+                    Value="0"/>
+            <Setter Property="Cursor"
+                    Value="Hand"/>
+            <Setter Property="shell:WindowChrome.IsHitTestVisibleInChrome"
+                    Value="True"/>
+        </Style>
+    </Window.Resources>
+
     <shell:WindowChrome.WindowChrome>
 
         <shell:WindowChrome
-            CaptionHeight="40"
+            CaptionHeight="{StaticResource CaptionHeight}"
             ResizeBorderThickness="6"
             GlassFrameThickness="0"
             UseAeroCaptionButtons="False"/>
@@ -23,7 +46,7 @@
     <Grid Background="#151515">
 
         <Grid.RowDefinitions>
-            <RowDefinition Height="40"/>
+            <RowDefinition Height="{StaticResource CaptionRowHeight}"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -66,28 +89,16 @@
                 <!-- MINIMIZAR -->
 
                 <Button Content="—"
-                        Width="50"
-                        Height="40"
-                        Background="Transparent"
-                        Foreground="White"
-                        BorderThickness="0"
                         FontSize="16"
-                        Cursor="Hand"
-                        WindowChrome.IsHitTestVisibleInChrome="True"
+                        Style="{StaticResource WindowButtonStyle}"
                         Click="MinimizeButton_Click"/>
 
 
                 <!-- CERRAR -->
 
                 <Button Content="✕"
-                        Width="50"
-                        Height="40"
-                        Background="Transparent"
-                        Foreground="White"
-                        BorderThickness="0"
                         FontSize="14"
-                        Cursor="Hand"
-                        WindowChrome.IsHitTestVisibleInChrome="True"
+                        Style="{StaticResource WindowButtonStyle}"
                         Click="CloseButton_Click"/>
 
             </StackPanel>

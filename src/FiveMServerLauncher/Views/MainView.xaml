@@ -95,8 +95,9 @@
 
         </ControlTemplate>
 
-        <!-- BOTÓN PRINCIPAL -->
-        <Style x:Key="MainButtonStyle" TargetType="{x:Type Button}">
+        <!-- BASE DE BOTÓN -->
+
+        <Style x:Key="BaseButtonStyle" TargetType="{x:Type Button}">
 
             <Setter Property="Background"
                     Value="{StaticResource PanelLightBrush}"/>
@@ -110,26 +111,33 @@
             <Setter Property="BorderThickness"
                     Value="1"/>
 
-            <Setter Property="FontSize"
-                    Value="15"/>
-
-            <Setter Property="FontWeight"
-                    Value="SemiBold"/>
-
             <Setter Property="Cursor"
                     Value="Hand"/>
-
-            <Setter Property="Padding"
-                    Value="20,12"/>
-
-            <Setter Property="HorizontalContentAlignment"
-                    Value="Center"/>
 
             <Setter Property="VerticalContentAlignment"
                     Value="Center"/>
 
             <Setter Property="Template"
                     Value="{StaticResource ButtonTemplate}"/>
+
+        </Style>
+
+        <!-- BOTÓN PRINCIPAL -->
+        <Style x:Key="MainButtonStyle"
+               TargetType="{x:Type Button}"
+               BasedOn="{StaticResource BaseButtonStyle}">
+
+            <Setter Property="FontSize"
+                    Value="15"/>
+
+            <Setter Property="FontWeight"
+                    Value="SemiBold"/>
+
+            <Setter Property="HorizontalContentAlignment"
+                    Value="Center"/>
+
+            <Setter Property="Padding"
+                    Value="20,12"/>
 
         </Style>
 
@@ -142,27 +150,13 @@
             <Setter Property="Background"
                     Value="{StaticResource PanelBrush}"/>
 
-            <Setter Property="BorderBrush"
-                    Value="{StaticResource BorderBrush}"/>
-
-            <Setter Property="BorderThickness"
-                    Value="1"/>
-
         </Style>
 
         <!-- BOTÓN DROPDOWN -->
 
         <Style x:Key="DropdownButtonStyle"
-               TargetType="{x:Type Button}">
-
-            <Setter Property="Background"
-                    Value="{StaticResource PanelLightBrush}"/>
-
-            <Setter Property="Foreground"
-                    Value="{StaticResource TextBrush}"/>
-
-            <Setter Property="BorderBrush"
-                    Value="{StaticResource BorderBrush}"/>
+               TargetType="{x:Type Button}"
+               BasedOn="{StaticResource BaseButtonStyle}">
 
             <Setter Property="BorderThickness"
                     Value="0"/>
@@ -176,48 +170,19 @@
             <Setter Property="HorizontalContentAlignment"
                     Value="Left"/>
 
-            <Setter Property="VerticalContentAlignment"
-                    Value="Center"/>
-
             <Setter Property="Padding"
                     Value="18,13"/>
-
-            <Setter Property="Cursor"
-                    Value="Hand"/>
-
-            <Setter Property="Template"
-                    Value="{StaticResource ButtonTemplate}"/>
 
         </Style>
 
         <!-- BOTÓN DE FLECHA -->
 
         <Style x:Key="ArrowButtonStyle"
-               TargetType="{x:Type Button}">
-
-            <Setter Property="Background"
-                    Value="{StaticResource PanelLightBrush}"/>
-
-            <Setter Property="Foreground"
-                    Value="{StaticResource TextBrush}"/>
-
-            <Setter Property="BorderBrush"
-                    Value="{StaticResource BorderBrush}"/>
-
-            <Setter Property="BorderThickness"
-                    Value="1"/>
-
-            <Setter Property="Cursor"
-                    Value="Hand"/>
+               TargetType="{x:Type Button}"
+               BasedOn="{StaticResource BaseButtonStyle}">
 
             <Setter Property="HorizontalContentAlignment"
                     Value="Center"/>
-
-            <Setter Property="VerticalContentAlignment"
-                    Value="Center"/>
-
-            <Setter Property="Template"
-                    Value="{StaticResource ButtonTemplate}"/>
 
         </Style>
 

@@ -25,7 +25,7 @@ public class ServerResolverTests
 
         using var httpClient = new HttpClient(handler);
         var cfxService = new CfxService(httpClient);
-        var resolver = new ServerResolver(cfxService, new ServerRequirementsResolver());
+        var resolver = CreateResolver(cfxService);
 
         // When
         var result = await resolver.ResolveAsync(cfxId);
@@ -45,7 +45,7 @@ public class ServerResolverTests
 
         using var httpClient = new HttpClient(handler);
         var cfxService = new CfxService(httpClient);
-        var resolver = new ServerResolver(cfxService, new ServerRequirementsResolver());
+        var resolver = CreateResolver(cfxService);
 
         // When / Then
         await Assert.ThrowsAsync<InvalidAddressException>(
@@ -70,7 +70,7 @@ public class ServerResolverTests
 
         using var httpClient = new HttpClient(handler);
         var cfxService = new CfxService(httpClient);
-        var resolver = new ServerResolver(cfxService, new ServerRequirementsResolver());
+        var resolver = CreateResolver(cfxService);
 
         // When / Then
         await Assert.ThrowsAsync<InvalidAddressException>(
@@ -95,7 +95,7 @@ public class ServerResolverTests
 
         using var httpClient = new HttpClient(handler);
         var cfxService = new CfxService(httpClient);
-        var resolver = new ServerResolver(cfxService, new ServerRequirementsResolver());
+        var resolver = CreateResolver(cfxService);
 
         // When
         await resolver.ResolveAsync(address);
@@ -125,7 +125,7 @@ public class ServerResolverTests
 
         using var httpClient = new HttpClient(handler);
         var cfxService = new CfxService(httpClient);
-        var resolver = new ServerResolver(cfxService, new ServerRequirementsResolver());
+        var resolver = CreateResolver(cfxService);
 
         // When
         var result = await resolver.ResolveAsync(address);
@@ -152,7 +152,7 @@ public class ServerResolverTests
 
         using var httpClient = new HttpClient(handler);
         var cfxService = new CfxService(httpClient);
-        var resolver = new ServerResolver(cfxService, new ServerRequirementsResolver());
+        var resolver = CreateResolver(cfxService);
 
         // When
         var result = await resolver.ResolveAsync(address);
@@ -182,7 +182,7 @@ public class ServerResolverTests
 
         using var httpClient = new HttpClient(handler);
         var cfxService = new CfxService(httpClient);
-        var resolver = new ServerResolver(cfxService, new ServerRequirementsResolver());
+        var resolver = CreateResolver(cfxService);
 
         // When
         var result = await resolver.ResolveAsync(cfxId);
@@ -215,7 +215,7 @@ public class ServerResolverTests
 
         using var httpClient = new HttpClient(handler);
         var cfxService = new CfxService(httpClient);
-        var resolver = new ServerResolver(cfxService, new ServerRequirementsResolver());
+        var resolver = CreateResolver(cfxService);
 
         // When
         var result = await resolver.ResolveAsync(cfxId);
@@ -248,7 +248,7 @@ public class ServerResolverTests
 
         using var httpClient = new HttpClient(handler);
         var cfxService = new CfxService(httpClient);
-        var resolver = new ServerResolver(cfxService, new ServerRequirementsResolver());
+        var resolver = CreateResolver(cfxService);
 
         // When
         var result = await resolver.ResolveAsync(cfxId);
@@ -276,13 +276,18 @@ public class ServerResolverTests
 
         using var httpClient = new HttpClient(handler);
         var cfxService = new CfxService(httpClient);
-        var resolver = new ServerResolver(cfxService, new ServerRequirementsResolver());
+        var resolver = CreateResolver(cfxService);
 
         // When
         var result = await resolver.ResolveAsync(cfxId);
 
         // Then
         Assert.Null(result.GameClient);
+    }
+
+    private static ServerResolver CreateResolver(CfxService cfxService)
+    {
+        return new ServerResolver(cfxService, new ServerRequirementsResolver());
     }
 
 }
