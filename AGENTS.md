@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Windows-only C#/.NET 10 WPF launcher for FiveM. Design decisions and UX philosophy live in `DOC.md` (written in Spanish); commit messages are English conventional commits. Development is strictly TDD (RED -> minimal implementation -> GREEN -> refactor), one layer at a time.
+Windows-only C#/.NET 10 WPF launcher for FiveM. Design decisions and UX philosophy live in `DOC.md` (written in Spanish); commit messages are English conventional commits. Development is strictly TDD (RED -> minimal implementation -> GREEN -> REFACTOR), one layer at a time. The refactor step is mandatory: after every GREEN, improve the code — enforcing DRY, KISS, SOLID and YAGNI — with the suite still green, before starting the next test.
 
 ## Commands
 - Build: `dotnet build FiveMServerLauncher.slnx`
@@ -10,8 +10,9 @@ Windows-only C#/.NET 10 WPF launcher for FiveM. Design decisions and UX philosop
 - Requires .NET 10 SDK. Verify with `dotnet --version` before running anything.
 
 ## Current state (verified; do not "fix" blindly)
-- Build and all 38 tests pass (`dotnet test`).
-- `Domain/ServerResolver.ResolveAsync` returns a `ServerProfile` (`CfxId`, `ProjectName`, `GameClient`, `Requirements`) composing `CfxService` + `ServerRequirementsResolver`. `ServerRequirements` carries CFX-published `GameBuild`, `PureMode`, `RequestSteamTicket` (all nullable when not published). `ServerResolver` extracts `cfx.re/join/<id>` from URLs via `ExtractCfxId` (no validation — TODO validation). IP:port/domain resolution is still an open TODO.
+- Build and all 60 tests pass (`dotnet test`).
+- `Domain/ServerResolver.ResolveAsync` returns a `ServerProfile` (`CfxId`, `ProjectName`, `GameClient`, `Requirements`) composing `CfxService` + `ServerRequirementsResolver`. `ServerRequirements` carries CFX-published `GameBuild`, `PureMode`, `RequestSteamTicket` (all nullable when not published). `ServerResolver` extracts `cfx.re/join/<id>` from URLs via `ServerAddress.ExtractCfxId` (no validation — TODO validation). IP:port/domain resolution is still an open TODO.
+- `Domain/FiveMLaunchOptions` (single seam, immutable, private ctor — only the validated `Create`/`FromServerProfile` factories construct it) serializes launch intent: `Address` (`cfx.re/join/<id>`, null when opening directly), `GameClient`, `GameBuild`, `PureMode`, `SecondClient`. `ToUri()` returns `fivem://connect/<addr>?-b<build>?-pure_<nivel>` (null when no address or `FiveMEnhanced`); `ToCommandLineArgs()` returns `-b<build> -pure_<nivel> [-cl2]` (empty for `FiveMEnhanced`, read-only). `Domain/ServerAddress` is the single owner of the `cfx.re/join/` form (extract id, derive address, validate form — no whitespace in id).
 - `Service/CfxService.cs` uses the *requested* `cfxId` as `CfxServerInfo.CfxId` (the response `EndPoint` is a connection endpoint, not the id). `requestSteamTicket` distinguishes `on` → `true`, `off` → `false`, absent/invalid → `null`.
 - UI is minimal and unbound: `Views/MainView.xaml` (static FiveM/server mock layout, one shared button `ControlTemplate`), `MainWindow` (custom window chrome). No commands/MVVM wiring yet. Business logic stays out of XAML code-behind; the single dropdown handler reads the label from `CommandParameter`.
 - Branch `main` is ahead of `origin/main`; commits are conventional English per the workflow below.
@@ -22,6 +23,7 @@ Windows-only C#/.NET 10 WPF launcher for FiveM. Design decisions and UX philosop
 - `Service/CfxService.cs`: queries `https://frontend.cfx-services.net/api/servers/single/{cfxId}`; typed vars include `sv_enforceGameBuild`, `sv_pureLevel`, `gamename`, `requestSteamTicket`.
 - `Domain/ServerResolver.cs`: resolves a CFX id or `cfx.re/join/<id>` address. IP:port and domain resolution is an open TODO.
 - `ConfigurationRepository` and `ServerRequirementsResolver` are intentional seams per `docs/adr/0001-intentional-middle-men-seams.md` (do not inline without reopening that ADR).
+- `Domain/ServerAddress` owns the `cfx.re/join/<id>` form (single source for extract id, derive address, validate form), reused by `ServerResolver` and `FiveMLaunchOptions`.
 - Keep business logic out of XAML code-behind and out of real processes/filesystem so tests stay fast.
 
 ## Tests
@@ -32,7 +34,7 @@ Windows-only C#/.NET 10 WPF launcher for FiveM. Design decisions and UX philosop
 ## Workflow: Spec-Driven Development + TDD (agent skills)
 - Skills live in `.agents/skills` (registered via `skills.paths` in `opencode.json`; `skills-lock.json` pins versions — update with `npx skills update`).
 - Per feature: `to-spec` (or `spec-driven-development` from addyosmani for a full PRD) -> `to-tickets` -> `implement` (drives `/tdd`) -> `code-review`, then commit.
-- `tdd` (mattpocock): RED->GREEN loop at pre-agreed seams only, one vertical slice per cycle, no refactor inside the loop.
+- `tdd` (mattpocock): RED->GREEN loop at pre-agreed seams only, one vertical slice per cycle. After each GREEN, run the mandatory REFACTOR step (DRY/KISS/SOLID/YAGNI) with the suite still green before starting the next test.
 - .NET test helpers: `run-tests` before guessing a `dotnet test` command; `find-untested-sources`/`test-anti-patterns`/`test-gap-analysis`/`assertion-quality` for audits; `detect-static-dependencies` + `code-testing-agent` to add coverage.
 - `domain-modeling`/`codebase-design` define module seam vocabulary; `diagnosing-bugs` for logic/CFX API bugs.
 
