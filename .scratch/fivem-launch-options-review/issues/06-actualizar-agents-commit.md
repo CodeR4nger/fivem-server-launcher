@@ -4,10 +4,10 @@
 
 **Blocked by:** 01, 02, 03, 04, 05
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] `AGENTS.md` describe `FiveMLaunchOptions` (seam, serializaciones, Enhanced en `Current state`/`Architecture`)
-- [ ] `AGENTS.md` refleja el número real de tests verdes
-- [ ] Los tickets de la fase quedan con sus casillas `[x]` verificadas contra el código
-- [ ] La fase se commitea con mensaje(s) conventional commit en inglés
-- [ ] La suite completa sigue verde en el punto commiteado
+- [x] `AGENTS.md` describe `FiveMLaunchOptions` (seam, serializaciones, Enhanced en `Current state`/`Architecture`)
+- [x] `AGENTS.md` refleja el número real de tests verdes (60)
+- [x] Los tickets de la fase quedan con sus casillas `[x]` verificadas contra el código
+- [x] La fase se commitea con mensaje(s) conventional commit en inglés (`feat(domain)` 6f57c0a, `docs(agents)` 959f4d2)
+- [x] La suite completa sigue verde en el punto commiteado
