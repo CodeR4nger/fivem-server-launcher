@@ -1,12 +1,107 @@
-﻿<Window x:Class="fivem_server_launcher.MainWindow"
+﻿<Window x:Class="FiveMServerLauncher.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:fivem_server_launcher"
-        mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:views="clr-namespace:FiveMServerLauncher.Views"
+        Title="FiveM Server Launcher"
+        Height="300"
+        Width="700"
+        Background="#151515"
+        WindowStyle="SingleBorderWindow"
+        ResizeMode="NoResize">
+
+    <shell:WindowChrome.WindowChrome>
+
+        <shell:WindowChrome
+            CaptionHeight="40"
+            ResizeBorderThickness="6"
+            GlassFrameThickness="0"
+            UseAeroCaptionButtons="False"/>
+
+    </shell:WindowChrome.WindowChrome>
+
+    <Grid Background="#151515">
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- BARRA SUPERIOR -->
+
+        <Grid Grid.Row="0"
+              Background="#1E1E1E"
+              Panel.ZIndex="10">
+
+
+            <!-- ================================================= -->
+            <!-- ZONA PARA MOVER LA VENTANA -->
+            <!-- ================================================= -->
+
+            <Border Background="Transparent"
+                    Margin="0,0,100,0"
+                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
+                    WindowChrome.IsHitTestVisibleInChrome="True">
+
+                <TextBlock Text="FiveM Server Launcher"
+                           Foreground="White"
+                           FontSize="13"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           Margin="15,0,0,0"
+                           IsHitTestVisible="False"/>
+
+            </Border>
+
+
+            <!-- ================================================= -->
+            <!-- BOTONES DE VENTANA -->
+            <!-- ================================================= -->
+
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top">
+
+
+                <!-- MINIMIZAR -->
+
+                <Button Content="—"
+                        Width="50"
+                        Height="40"
+                        Background="Transparent"
+                        Foreground="White"
+                        BorderThickness="0"
+                        FontSize="16"
+                        Cursor="Hand"
+                        WindowChrome.IsHitTestVisibleInChrome="True"
+                        Click="MinimizeButton_Click"/>
+
+
+                <!-- CERRAR -->
+
+                <Button Content="✕"
+                        Width="50"
+                        Height="40"
+                        Background="Transparent"
+                        Foreground="White"
+                        BorderThickness="0"
+                        FontSize="14"
+                        Cursor="Hand"
+                        WindowChrome.IsHitTestVisibleInChrome="True"
+                        Click="CloseButton_Click"/>
+
+            </StackPanel>
+
+        </Grid>
+
+        <!-- CONTENIDO -->
+        
+        <Grid Grid.Row="1">
+
+            <views:MainView/>
+
+        </Grid>
 
     </Grid>
+
 </Window>
