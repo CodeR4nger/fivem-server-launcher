@@ -10,13 +10,8 @@ public class FileSettingsStorageTests
     public void Save_ShouldCreateSettingsFile()
     {
         // Given
-        var directory = Path.Combine(
-            Path.GetTempPath(),
-            Guid.NewGuid().ToString());
-
-        var filePath = Path.Combine(directory, "settings.json");
-
-        var storage = new FileSettingsStorage(filePath);
+        using var tempDir = new TempSettingsDirectory();
+        var storage = new FileSettingsStorage(tempDir.FilePath);
 
         var settings = new LauncherSettings
         {
@@ -24,106 +19,42 @@ public class FileSettingsStorageTests
             AutoLaunch = true,
         };
 
-        try
-        {
-            // When
-            storage.Save(settings);
+        // When
+        storage.Save(settings);
 
-            // Then
-            Assert.True(File.Exists(filePath));
-        }
-        finally
-        {
-            if (Directory.Exists(directory))
-            {
-                Directory.Delete(directory, true);
-            }
-        }
+        // Then
+        Assert.True(File.Exists(tempDir.FilePath));
     }
+
     [Fact]
     public void Save_ShouldPersistSettingsAsJson()
     {
         // Given
-        var directory = Path.Combine(
-            Path.GetTempPath(),
-            Guid.NewGuid().ToString());
-
-        var filePath = Path.Combine(directory, "settings.json");
-
-        var storage = new FileSettingsStorage(filePath);
+        using var tempDir = new TempSettingsDirectory();
+        var storage = new FileSettingsStorage(tempDir.FilePath);
 
         var settings = new LauncherSettings
         {
             PreferredClient = GameClient.FiveMEnhanced,
             AutoLaunch = true,
         };
-        try
-        {
-            // When
-            storage.Save(settings);
 
-            var json = File.ReadAllText(filePath);
+        // When
+        storage.Save(settings);
 
-            // Then
-            Assert.Contains("\"PreferredClient\":\"FiveMEnhanced\"", json);
-            Assert.Contains("\"AutoLaunch\":true", json);
-        }
-        finally
-        {
-            if (Directory.Exists(directory))
-            {
-                Directory.Delete(directory, true);
-            }
-        }
+        var json = File.ReadAllText(tempDir.FilePath);
+
+        // Then
+        Assert.Contains("\"PreferredClient\":\"FiveMEnhanced\"", json);
+        Assert.Contains("\"AutoLaunch\":true", json);
     }
-    [Fact]
-    public void Load_ShouldRestoreSavedSettings()
-    {
-        // Given
-        var directory = Path.Combine(
-            Path.GetTempPath(),
-            Guid.NewGuid().ToString());
 
-        var filePath = Path.Combine(directory, "settings.json");
-
-        var storage = new FileSettingsStorage(filePath);
-
-        var original = new LauncherSettings
-        {
-            PreferredClient = GameClient.FiveMEnhanced,
-            AutoLaunch = true,
-        };
-        try
-        {
-            // When
-            storage.Save(original);
-
-            var loaded = storage.Load();
-
-            // Then
-            Assert.NotNull(loaded);
-            Assert.Equal(original.PreferredClient, loaded.PreferredClient);
-            Assert.Equal(original.AutoLaunch, loaded.AutoLaunch);
-        }
-        finally
-        {
-            if (Directory.Exists(directory))
-            {
-                Directory.Delete(directory, true);
-            }
-        }
-    }
     [Fact]
     public void Load_WhenFileDoesNotExist_ShouldReturnNull()
     {
         // Given
-        var directory = Path.Combine(
-            Path.GetTempPath(),
-            Guid.NewGuid().ToString());
-
-        var filePath = Path.Combine(directory, "settings.json");
-
-        var storage = new FileSettingsStorage(filePath);
+        using var tempDir = new TempSettingsDirectory();
+        var storage = new FileSettingsStorage(tempDir.FilePath);
 
         // When
         var result = storage.Load();
@@ -131,118 +62,71 @@ public class FileSettingsStorageTests
         // Then
         Assert.Null(result);
     }
+
     [Fact]
     public void Load_WhenFileContainsInvalidJson_ShouldReturnNull()
     {
         // Given
-        var directory = Path.Combine(
-            Path.GetTempPath(),
-            Guid.NewGuid().ToString());
+        using var tempDir = new TempSettingsDirectory();
+        Directory.CreateDirectory(tempDir.DirectoryPath);
+        File.WriteAllText(tempDir.FilePath, "{ invalid json");
 
-        var filePath = Path.Combine(directory, "settings.json");
+        var storage = new FileSettingsStorage(tempDir.FilePath);
 
-        Directory.CreateDirectory(directory);
+        // When
+        var result = storage.Load();
 
-        File.WriteAllText(filePath, "{ invalid json");
-
-        var storage = new FileSettingsStorage(filePath);
-
-        try
-        {
-            // When
-            var result = storage.Load();
-
-            // Then
-            Assert.Null(result);
-        }
-        finally
-        {
-            if (Directory.Exists(directory))
-            {
-                Directory.Delete(directory, true);
-            }
-        }
+        // Then
+        Assert.Null(result);
     }
+
     [Fact]
     public void Load_WhenJsonCannotBeDeserialized_ShouldReturnNull()
     {
         // Given
-        var directory = Path.Combine(
-            Path.GetTempPath(),
-            Guid.NewGuid().ToString());
-
-        var filePath = Path.Combine(directory, "settings.json");
-
-        Directory.CreateDirectory(directory);
+        using var tempDir = new TempSettingsDirectory();
+        Directory.CreateDirectory(tempDir.DirectoryPath);
 
         var json = """
-                {
-                    "PreferredClient": "RedMEnhanced",
-                    "AutoLaunch": true,
-                }
-                """;
+                    {
+                        "PreferredClient": "RedMEnhanced",
+                        "AutoLaunch": true,
+                    }
+                    """;
 
-        File.WriteAllText(filePath, json);
+        File.WriteAllText(tempDir.FilePath, json);
 
-        var storage = new FileSettingsStorage(filePath);
+        var storage = new FileSettingsStorage(tempDir.FilePath);
 
-        try
-        {
-            // When
-            var result = storage.Load();
+        // When
+        var result = storage.Load();
 
-            // Then
-            Assert.Null(result);
-        }
-        finally
-        {
-            if (Directory.Exists(directory))
-            {
-                Directory.Delete(directory, true);
-            }
-        }
+        // Then
+        Assert.Null(result);
     }
+
     [Fact]
     public void Load_WhenFileIsEmpty_ShouldReturnNull()
     {
         // Given
-        var directory = Path.Combine(
-            Path.GetTempPath(),
-            Guid.NewGuid().ToString());
+        using var tempDir = new TempSettingsDirectory();
+        Directory.CreateDirectory(tempDir.DirectoryPath);
+        File.WriteAllText(tempDir.FilePath, string.Empty);
 
-        var filePath = Path.Combine(directory, "settings.json");
+        var storage = new FileSettingsStorage(tempDir.FilePath);
 
-        Directory.CreateDirectory(directory);
+        // When
+        var result = storage.Load();
 
-        File.WriteAllText(filePath, string.Empty);
-
-        var storage = new FileSettingsStorage(filePath);
-
-        try
-        {
-            // When
-            var result = storage.Load();
-
-            // Then
-            Assert.Null(result);
-        }
-        finally
-        {
-            if (Directory.Exists(directory))
-            {
-                Directory.Delete(directory, true);
-            }
-        }
+        // Then
+        Assert.Null(result);
     }
+
     [Fact]
     public void Save_WhenDirectoryDoesNotExist_ShouldCreateDirectoryAndPersistSettings()
     {
         // Given
-        var directory = Path.Combine(
-            Path.GetTempPath(),
-            Guid.NewGuid().ToString());
-
-        var filePath = Path.Combine(directory, "settings.json");
+        using var tempDir = new TempSettingsDirectory();
 
         var settings = new LauncherSettings
         {
@@ -250,33 +134,20 @@ public class FileSettingsStorageTests
             AutoLaunch = true
         };
 
-        var storage = new FileSettingsStorage(filePath);
+        var storage = new FileSettingsStorage(tempDir.FilePath);
 
-        try
-        {
-            // When
-            storage.Save(settings);
+        // When
+        storage.Save(settings);
 
-            // Then
-            Assert.True(File.Exists(filePath));
-        }
-        finally
-        {
-            if (Directory.Exists(directory))
-            {
-                Directory.Delete(directory, true);
-            }
-        }
+        // Then
+        Assert.True(File.Exists(tempDir.FilePath));
     }
+
     [Fact]
     public void Save_WhenFileAlreadyExists_ShouldOverwriteExistingSettings()
     {
         // Given
-        var directory = Path.Combine(
-            Path.GetTempPath(),
-            Guid.NewGuid().ToString());
-
-        var filePath = Path.Combine(directory, "settings.json");
+        using var tempDir = new TempSettingsDirectory();
 
         var firstSettings = new LauncherSettings
         {
@@ -290,38 +161,25 @@ public class FileSettingsStorageTests
             AutoLaunch = true
         };
 
-        var storage = new FileSettingsStorage(filePath);
+        var storage = new FileSettingsStorage(tempDir.FilePath);
 
-        try
-        {
-            // When
-            storage.Save(firstSettings);
-            storage.Save(secondSettings);
+        // When
+        storage.Save(firstSettings);
+        storage.Save(secondSettings);
 
-            // Then
-            var result = storage.Load();
+        // Then
+        var result = storage.Load();
 
-            Assert.NotNull(result);
-            Assert.Equal(GameClient.FiveMEnhanced, result.PreferredClient);
-            Assert.True(result.AutoLaunch);
-        }
-        finally
-        {
-            if (Directory.Exists(directory))
-            {
-                Directory.Delete(directory, true);
-            }
-        }
+        Assert.NotNull(result);
+        Assert.Equal(GameClient.FiveMEnhanced, result.PreferredClient);
+        Assert.True(result.AutoLaunch);
     }
+
     [Fact]
     public void SaveAndLoad_ShouldPreserveAllSettings()
     {
         // Given
-        var directory = Path.Combine(
-            Path.GetTempPath(),
-            Guid.NewGuid().ToString());
-
-        var filePath = Path.Combine(directory, "settings.json");
+        using var tempDir = new TempSettingsDirectory();
 
         var settings = new LauncherSettings
         {
@@ -329,26 +187,15 @@ public class FileSettingsStorageTests
             AutoLaunch = true,
         };
 
-        var storage = new FileSettingsStorage(filePath);
+        var storage = new FileSettingsStorage(tempDir.FilePath);
 
-        try
-        {
-            // When
-            storage.Save(settings);
-            var result = storage.Load();
+        // When
+        storage.Save(settings);
+        var result = storage.Load();
 
-            // Then
-            Assert.NotNull(result);
-            Assert.Equal(settings.PreferredClient, result.PreferredClient);
-            Assert.Equal(settings.AutoLaunch, result.AutoLaunch);
-        }
-        finally
-        {
-            if (Directory.Exists(directory))
-            {
-                Directory.Delete(directory, true);
-            }
-        }
+        // Then
+        Assert.NotNull(result);
+        Assert.Equal(settings.PreferredClient, result.PreferredClient);
+        Assert.Equal(settings.AutoLaunch, result.AutoLaunch);
     }
-
 }
