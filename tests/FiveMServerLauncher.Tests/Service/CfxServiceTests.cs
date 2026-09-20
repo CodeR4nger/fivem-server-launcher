@@ -233,4 +233,32 @@ public class CfxServiceTests
         Assert.False(result.RequestSteamTicket);
     }
 
+    [Fact]
+    public async Task GetServer_WhenRequestSteamTicketAbsent_ShouldReturnNull()
+    {
+        // Given
+        const string cfxId = "y4lg95";
+
+        var handler = new FakeHttpMessageHandler(
+            HttpStatusCode.OK,
+            """
+            {
+                "EndPoint": "https://example.com",
+                "Data": {
+                    "sv_projectName": "Test Server"
+                }
+            }
+            """);
+
+        using var httpClient = new HttpClient(handler);
+        var cfxService = new CfxService(httpClient);
+
+        // When
+        var result = await cfxService.GetServerAsync(cfxId);
+
+        // Then
+        Assert.NotNull(result);
+        Assert.Null(result.RequestSteamTicket);
+    }
+
 }

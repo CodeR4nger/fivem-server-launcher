@@ -6,7 +6,7 @@
 
 **Status:** resolved
 
-- [ ] `CfxService` mapea `requestSteamTicket: "off"` → `RequestSteamTicket = false`
-- [ ] `requestSteamTicket: "on"` → `true`
-- [ ] var ausente → `null`
-- [ ] Tests cubren los tres casos en `CfxServiceTests`
+- [x] `CfxService` mapea `requestSteamTicket: "off"` → `RequestSteamTicket = false`
+- [x] `requestSteamTicket: "on"` → `true`
+- [x] var ausente → `null`
+- [x] Tests cubren los tres casos en `CfxServiceTests`

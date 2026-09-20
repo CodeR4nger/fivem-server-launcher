@@ -6,7 +6,7 @@
 
 **Status:** resolved
 
-- [ ] `ServerProfile` expone un campo `GameClient`
-- [ ] Resolver un servidor con `gamename: gta5enhanced` devuelve el perfil con ese GameClient mapeado
-- [ ] Un servidor sin `gamename` deja el campo en `null` (no asumir cliente)
-- [ ] Test cubre el mapping en `ServerResolver` (seam alto)
+- [x] `ServerProfile` expone un campo `GameClient`
+- [x] Resolver un servidor con `gamename: gta5enhanced` devuelve el perfil con ese GameClient mapeado
+- [x] Un servidor sin `gamename` deja el campo en `null` (no asumir cliente)
+- [x] Test cubre el mapping en `ServerResolver` (seam alto)
