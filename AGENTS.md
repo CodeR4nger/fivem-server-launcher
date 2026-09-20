@@ -10,7 +10,8 @@ Windows-only C#/.NET 10 WPF launcher for FiveM. Design decisions and UX philosop
 - Requires .NET 10 SDK. Verify with `dotnet --version` before running anything.
 
 ## Current state (verified; do not "fix" blindly)
-- Build and all 29 tests pass (`dotnet test`). The RED step for `ServerRequirementsResolver` is done: `Domain/ServerRequirementsResolver.cs` + `Domain/ServerRequirements.cs` return the CFX-published `EnforceGameBuild` as `GameBuild` (nullable `int`).
+- Build and all 34 tests pass (`dotnet test`).
+- `Domain/ServerResolver.ResolveAsync` returns a `ServerProfile` (`CfxId`, `ProjectName`, `Requirements`) composing `CfxService` + `ServerRequirementsResolver`. `ServerRequirements` carries CFX-published `GameBuild`, `PureMode`, `RequestSteamTicket` (all nullable when not published). IP:port/domain resolution is still an open TODO.
 - UI is minimal and unbound: `Views/MainView.xaml` (static FiveM/server mock layout), `MainWindow` (custom window chrome). No commands/MVVM wiring yet. Business logic stays out of XAML code-behind.
 - Branch `main` is ahead of `origin/main`; commits are conventional English per the workflow below.
 

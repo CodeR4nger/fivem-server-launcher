@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 (Ampliar ServerRequirements con Pure Mode y Steam ticket)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Resolver una CFX id válida devuelve un `ServerProfile` con ese `CfxId`
 - [ ] El `ServerProfile` incluye el `ProjectName` publicado por el servidor
