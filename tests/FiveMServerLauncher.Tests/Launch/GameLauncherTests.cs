@@ -56,28 +56,26 @@ public class GameLauncherTests
     }
 
     [Fact]
-    public async Task ConnectAsync_WithUnvalidatedIpPortProfile_ShouldLaunchDirectConnectUri()
+    public async Task ConnectAsync_WhenProcessLauncherThrows_ShouldReturnStartFailed()
     {
         // Given
         var profile = new ServerProfile
         {
-            Address = "149.56.120.52:30320",
+            CfxId = "y4lg95",
             ProjectName = "Test Server",
             GameClient = GameClient.FiveM,
             Requirements = new ServerRequirements(),
-            IsCfxValidated = false,
+            IsCfxValidated = true,
         };
 
-        var processLauncher = new FakeGameProcessLauncher();
+        var processLauncher = new FakeGameProcessLauncher { ThrowOnStart = true };
         var launcher = new GameLauncher(processLauncher);
 
         // When
         var result = await launcher.ConnectAsync(profile);
 
         // Then
-        var connect = Assert.IsType<LaunchResult.Connect>(result);
-        Assert.Equal("fivem://connect/149.56.120.52:30320", connect.ConnectUri.AbsoluteUri);
-        Assert.Single(processLauncher.Requests);
-        Assert.Equal(connect.ConnectUri, processLauncher.Requests[0]);
+        Assert.IsType<LaunchResult.StartFailed>(result);
+        Assert.Empty(processLauncher.Requests);
     }
 }

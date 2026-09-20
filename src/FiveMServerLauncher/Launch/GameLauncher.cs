@@ -16,7 +16,14 @@ public class GameLauncher(IGameProcessLauncher processLauncher)
             return new LaunchResult.OpenClient(profile.GameClient ?? GameClient.FiveM);
         }
 
-        await _processLauncher.StartAsync(uri);
+        try
+        {
+            await _processLauncher.StartAsync(uri);
+        }
+        catch
+        {
+            return new LaunchResult.StartFailed();
+        }
 
         return new LaunchResult.Connect(uri);
     }

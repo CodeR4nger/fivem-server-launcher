@@ -59,6 +59,7 @@ public class MainViewModel : INotifyPropertyChanged
             {
                 LaunchResult.Connect => "Lanzando FiveM...",
                 LaunchResult.OpenClient(var client) => $"Abriendo {client}...",
+                LaunchResult.StartFailed => "No se puede lanzar",
             };
         }
         catch (InvalidAddressException)

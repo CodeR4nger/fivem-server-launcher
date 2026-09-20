@@ -68,6 +68,23 @@ public class MainViewModelTests
         Assert.Empty(processLauncher.Requests);
     }
 
+    [Fact]
+    public async Task ConnectAsync_WhenStartFails_ShouldShowStartFailedText()
+    {
+        // Given
+        const string address = "cfx.re/join/y4lg95";
+        var processLauncher = new FakeGameProcessLauncher { ThrowOnStart = true };
+        var vm = CreateViewModel(processLauncher, CfxJson("gta5"));
+        vm.ServerAddress = address;
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Equal("No se puede lanzar", vm.StatusText);
+        Assert.False(vm.IsBusy);
+    }
+
     private static string CfxJson(string gamename)
     {
         return $"{{\"data\":{{\"sv_projectName\":\"Test Server\",\"vars\":{{\"gamename\":\"{gamename}\"}}}}}}";

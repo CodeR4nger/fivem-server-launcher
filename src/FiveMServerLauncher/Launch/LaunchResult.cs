@@ -11,4 +11,6 @@ public abstract record LaunchResult
     public sealed record Connect(Uri ConnectUri) : LaunchResult;
 
     public sealed record OpenClient(GameClient GameClient) : LaunchResult;
+
+    public sealed record StartFailed : LaunchResult;
 }
