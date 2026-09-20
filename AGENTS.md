@@ -10,7 +10,7 @@ Windows-only C#/.NET 10 WPF launcher for FiveM. Design decisions and UX philosop
 - Requires .NET 10 SDK. Verify with `dotnet --version` before running anything.
 
 ## Current state (verified; do not "fix" blindly)
-- Build and all 110 tests pass (`dotnet test`).
+- Build and all 114 tests pass (`dotnet test`).
 - `Domain/ServerResolver.ResolveAsync` accepts the four DOC.md address forms (`CfxId`, `cfx.re/join/<id>` with/without scheme, `IP:port`, `domain:port`) via `ServerAddress.Classify` and returns a `ServerProfile` (`CfxId`, `Address`, `ProjectName`, `GameClient`, `Requirements`, `IsCfxValidated`). `ServerRequirements` carries CFX-published `GameBuild`, `PureMode`, `RequestSteamTicket` (all nullable when not published).
   - `CfxId`/`CfxJoinUrl` → `CfxService` (+`ServerRequirementsResolver`), `IsCfxValidated=true`; unknown form → `InvalidAddressException`.
   - `IpPort`/`DomainPort` → `ServerCatalog` lookup (streamRedir catalog). Found → validated profile built from catalog vars; not found/unavailable → connectable unvalidated profile (`IsCfxValidated=false`, `Address` = raw address, no invented fields). `domain:port` resolves DNS→IP for the match via `IDnsResolver` (seam); DNS failure or catalog outage also degrade to unvalidated (no exception).
@@ -29,6 +29,7 @@ Windows-only C#/.NET 10 WPF launcher for FiveM. Design decisions and UX philosop
 - `Service/CfxService.cs`: queries `https://frontend.cfx-services.net/api/servers/single/{cfxId}`; typed vars include `sv_enforceGameBuild`, `sv_pureLevel`, `gamename`, `requestSteamTicket`.
 - `Service/ServerCatalog.cs` (seam): downloads + caches (TTL) the streamRedir catalog (protobuf frames via `Service/ServerCatalogDecoder` + `Proto/master.proto` codegen); answers `LookupByIpPortAsync`/`LookupByEndPointAsync`. `LookupByEndPointAsync` (match by cfx id) is currently used only by tests but stays as part of the catalog seam contract, ready for future id-based lookups. Never throws on outage/corruption — returns no match. In catalog frames `EndPoint` is the canonical cfx id; in `/single/` responses it is a connection endpoint.
 - `Service/CfxVars.cs`: shared variable mapping (`gamename`→`GameClient` via `TryGetGameClient`, ints via `TryGetInt`, `requestSteamTicket` via `MapSteamTicket`) used by `CfxService` and `ServerResolver`.
+- `Service/IClientInstallLocator` (seam): `Task<bool> IsInstalledAsync(GameClient)`, `Task<string?> GetExecutablePathAsync(GameClient)`. Real impl `Service/ClientInstallLocator` probes `%localappdata%` (`FiveM/FiveM.app/FiveM.exe` Legacy, `FiveM for GTAV Enhanced/FiveM.app/FiveM.exe` Enhanced). Never test the real OS install (seam replaces filesystem calls).
 - `Domain/ServerResolver.cs`: resolves the four address forms; `IpPort`/`DomainPort` degrade to a connectable unvalidated profile when not published in CFX (or on DNS/catalog failure). `IDnsResolver` is the DNS seam.
 - `ConfigurationRepository` and `ServerRequirementsResolver` are intentional seams per `docs/adr/0001-intentional-middle-men-seams.md` (do not inline without reopening that ADR).
 - `Domain/ServerAddress` owns the `cfx.re/join/<id>` form and address classification/validation (`ServerAddressKind`, `Classify`, `ExtractCfxId`, `HasServerFormWithNonEmptyId`), reused by `ServerResolver` and `FiveMLaunchOptions`.
