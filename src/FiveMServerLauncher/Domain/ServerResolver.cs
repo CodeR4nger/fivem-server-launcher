@@ -4,9 +4,9 @@ using FiveMServerLauncher.Service;
 namespace FiveMServerLauncher.Domain;
 
 //TODO: Implement IP and domain filter
-public class ServerResolver(CfxService cfxService)
+public class ServerResolver(CfxService cfxService, ServerRequirementsResolver requirementsResolver)
 {
-    public async Task<ResolvedServer> ResolveAsync(string address)
+    public async Task<ServerProfile> ResolveAsync(string address)
     {
         if (string.IsNullOrWhiteSpace(address))
         {
@@ -22,9 +22,11 @@ public class ServerResolver(CfxService cfxService)
             throw new InvalidAddressException(address);
         }
 
-        return new ResolvedServer
+        return new ServerProfile
         {
-            CfxId = server.CfxId
+            CfxId = server.CfxId,
+            ProjectName = server.ProjectName,
+            Requirements = requirementsResolver.Resolve(server)
         };
     }
 

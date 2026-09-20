@@ -25,7 +25,7 @@ public class ServerResolverTests
 
         using var httpClient = new HttpClient(handler);
         var cfxService = new CfxService(httpClient);
-        var resolver = new ServerResolver(cfxService);
+        var resolver = new ServerResolver(cfxService, new ServerRequirementsResolver());
 
         // When
         var result = await resolver.ResolveAsync(cfxId);
@@ -45,7 +45,7 @@ public class ServerResolverTests
 
         using var httpClient = new HttpClient(handler);
         var cfxService = new CfxService(httpClient);
-        var resolver = new ServerResolver(cfxService);
+        var resolver = new ServerResolver(cfxService, new ServerRequirementsResolver());
 
         // When / Then
         await Assert.ThrowsAsync<InvalidAddressException>(
@@ -70,7 +70,7 @@ public class ServerResolverTests
 
         using var httpClient = new HttpClient(handler);
         var cfxService = new CfxService(httpClient);
-        var resolver = new ServerResolver(cfxService);
+        var resolver = new ServerResolver(cfxService, new ServerRequirementsResolver());
 
         // When / Then
         await Assert.ThrowsAsync<InvalidAddressException>(
@@ -95,7 +95,7 @@ public class ServerResolverTests
 
         using var httpClient = new HttpClient(handler);
         var cfxService = new CfxService(httpClient);
-        var resolver = new ServerResolver(cfxService);
+        var resolver = new ServerResolver(cfxService, new ServerRequirementsResolver());
 
         // When
         await resolver.ResolveAsync(address);
@@ -125,7 +125,7 @@ public class ServerResolverTests
 
         using var httpClient = new HttpClient(handler);
         var cfxService = new CfxService(httpClient);
-        var resolver = new ServerResolver(cfxService);
+        var resolver = new ServerResolver(cfxService, new ServerRequirementsResolver());
 
         // When
         var result = await resolver.ResolveAsync(address);
@@ -152,7 +152,7 @@ public class ServerResolverTests
 
         using var httpClient = new HttpClient(handler);
         var cfxService = new CfxService(httpClient);
-        var resolver = new ServerResolver(cfxService);
+        var resolver = new ServerResolver(cfxService, new ServerRequirementsResolver());
 
         // When
         var result = await resolver.ResolveAsync(address);
@@ -161,6 +161,69 @@ public class ServerResolverTests
         Assert.Equal(
             "https://frontend.cfx-services.net/api/servers/single/y4lg95",
             handler.LastRequest?.RequestUri?.ToString());
+    }
+
+    [Fact]
+    public async Task Resolve_ShouldReturnProfileWithProjectName()
+    {
+        // Given
+        const string cfxId = "y4lg95";
+
+        var handler = new FakeHttpMessageHandler(
+            System.Net.HttpStatusCode.OK,
+            """
+            {
+                "EndPoint": "y4lg95",
+                "Data": {
+                    "sv_projectName": "Test Server"
+                }
+            }
+            """);
+
+        using var httpClient = new HttpClient(handler);
+        var cfxService = new CfxService(httpClient);
+        var resolver = new ServerResolver(cfxService, new ServerRequirementsResolver());
+
+        // When
+        var result = await resolver.ResolveAsync(cfxId);
+
+        // Then
+        Assert.Equal("Test Server", result.ProjectName);
+    }
+
+    [Fact]
+    public async Task Resolve_ShouldReturnDerivedRequirements()
+    {
+        // Given
+        const string cfxId = "y4lg95";
+
+        var handler = new FakeHttpMessageHandler(
+            System.Net.HttpStatusCode.OK,
+            """
+            {
+                "EndPoint": "y4lg95",
+                "Data": {
+                    "sv_projectName": "Test Server",
+                    "requestSteamTicket": "on",
+                    "vars": {
+                        "sv_enforceGameBuild": "3258",
+                        "sv_pureLevel": "1"
+                    }
+                }
+            }
+            """);
+
+        using var httpClient = new HttpClient(handler);
+        var cfxService = new CfxService(httpClient);
+        var resolver = new ServerResolver(cfxService, new ServerRequirementsResolver());
+
+        // When
+        var result = await resolver.ResolveAsync(cfxId);
+
+        // Then
+        Assert.Equal(3258, result.Requirements.GameBuild);
+        Assert.Equal(1, result.Requirements.PureMode);
+        Assert.True(result.Requirements.RequestSteamTicket);
     }
 
 }
