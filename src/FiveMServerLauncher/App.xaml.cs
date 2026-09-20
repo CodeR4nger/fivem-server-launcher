@@ -1,4 +1,10 @@
-﻿using System.Windows;
+﻿using System.Net.Http;
+using System.Windows;
+using FiveMServerLauncher.Configuration;
+using FiveMServerLauncher.Domain;
+using FiveMServerLauncher.Launch;
+using FiveMServerLauncher.Service;
+using FiveMServerLauncher.ViewModels;
 
 namespace FiveMServerLauncher;
 
@@ -7,5 +13,20 @@ namespace FiveMServerLauncher;
 /// </summary>
 public partial class App : Application
 {
-}
+    protected override void OnStartup(StartupEventArgs e)
+    {
+        base.OnStartup(e);
 
+        var httpClient = new HttpClient();
+        var resolver = new ServerResolver(
+            new CfxService(httpClient),
+            new ServerCatalog(httpClient),
+            new ServerRequirementsResolver(),
+            new DnsResolver());
+        var launcher = new GameLauncher(new GameProcessLauncher());
+
+        var window = new MainWindow();
+        window.DataContext = new MainViewModel(resolver, launcher);
+        window.Show();
+    }
+}
