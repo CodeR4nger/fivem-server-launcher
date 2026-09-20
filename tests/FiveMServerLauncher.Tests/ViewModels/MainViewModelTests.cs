@@ -13,7 +13,7 @@ namespace FiveMServerLauncher.Tests.ViewModels;
 
 public class MainViewModelTests
 {
-[Fact]
+    [Fact]
     public async Task ConnectAsync_WithValidCfxJoinAddress_ShouldLaunchConnectUri()
     {
         // Given
@@ -70,8 +70,7 @@ public class MainViewModelTests
 
     private static string CfxJson(string gamename)
     {
-        return """{"data":{"sv_projectName":"Test Server","vars":{"gamename":"VALUE"}}}"""
-            .Replace("VALUE", gamename);
+        return $"{{\"data\":{{\"sv_projectName\":\"Test Server\",\"vars\":{{\"gamename\":\"{gamename}\"}}}}}}";
     }
 
     private static MainViewModel CreateViewModel(IGameProcessLauncher processLauncher, string cfxJson)

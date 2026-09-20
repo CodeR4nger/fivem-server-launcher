@@ -45,7 +45,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-public async Task ConnectAsync()
+    public async Task ConnectAsync()
     {
         IsBusy = true;
         StatusText = "Resolviendo...";
@@ -59,7 +59,6 @@ public async Task ConnectAsync()
             {
                 LaunchResult.Connect => "Lanzando FiveM...",
                 LaunchResult.OpenClient(var client) => $"Abriendo {client}...",
-                _ => "Listo",
             };
         }
         catch (InvalidAddressException)
