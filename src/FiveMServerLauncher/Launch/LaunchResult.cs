@@ -2,24 +2,13 @@ using FiveMServerLauncher.Core.Enums;
 
 namespace FiveMServerLauncher.Launch;
 
-public sealed class LaunchResult
+public abstract record LaunchResult
 {
-    public Uri? ConnectUri { get; }
-    public GameClient? GameClient { get; }
-
-    private LaunchResult(Uri? connectUri, GameClient? gameClient)
+    private LaunchResult()
     {
-        ConnectUri = connectUri;
-        GameClient = gameClient;
     }
 
-    public static LaunchResult Connect(Uri connectUri)
-    {
-        return new LaunchResult(connectUri, null);
-    }
+    public sealed record Connect(Uri ConnectUri) : LaunchResult;
 
-    public static LaunchResult OpenClient(GameClient gameClient)
-    {
-        return new LaunchResult(null, gameClient);
-    }
+    public sealed record OpenClient(GameClient GameClient) : LaunchResult;
 }

@@ -13,11 +13,11 @@ public class GameLauncher(IGameProcessLauncher processLauncher)
 
         if (options.ToUri() is not { } uri)
         {
-            return LaunchResult.OpenClient(profile.GameClient ?? GameClient.FiveM);
+            return new LaunchResult.OpenClient(profile.GameClient ?? GameClient.FiveM);
         }
 
         await _processLauncher.StartAsync(uri);
 
-        return LaunchResult.Connect(uri);
+        return new LaunchResult.Connect(uri);
     }
 }

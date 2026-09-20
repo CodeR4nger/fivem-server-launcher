@@ -1,13 +1,13 @@
-using FiveMServerLauncher.Launch;
 using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Domain;
+using FiveMServerLauncher.Launch;
 
 namespace FiveMServerLauncher.Tests.Launch;
 
 public class GameLauncherTests
 {
     [Fact]
-    public async Task ConnectAsync_WithValidationCfxProfile_ShouldLaunchConnectUri()
+    public async Task ConnectAsync_WithValidatedCfxProfile_ShouldLaunchConnectUri()
     {
         // Given
         var profile = new ServerProfile
@@ -25,9 +25,10 @@ public class GameLauncherTests
         var result = await launcher.ConnectAsync(profile);
 
         // Then
-        Assert.Equal("fivem://connect/cfx.re/join/y4lg95?-b3258?-pure_1", result.ConnectUri?.AbsoluteUri);
+        var connect = Assert.IsType<LaunchResult.Connect>(result);
+        Assert.Equal("fivem://connect/cfx.re/join/y4lg95?-b3258?-pure_1", connect.ConnectUri.AbsoluteUri);
         Assert.Single(processLauncher.Requests);
-        Assert.Equal(result.ConnectUri, processLauncher.Requests[0]);
+        Assert.Equal(connect.ConnectUri, processLauncher.Requests[0]);
     }
 
     [Fact]
@@ -49,8 +50,8 @@ public class GameLauncherTests
         var result = await launcher.ConnectAsync(profile);
 
         // Then
-        Assert.Null(result.ConnectUri);
-        Assert.Equal(GameClient.FiveMEnhanced, result.GameClient);
+        var openClient = Assert.IsType<LaunchResult.OpenClient>(result);
+        Assert.Equal(GameClient.FiveMEnhanced, openClient.GameClient);
         Assert.Empty(processLauncher.Requests);
     }
 
@@ -74,8 +75,9 @@ public class GameLauncherTests
         var result = await launcher.ConnectAsync(profile);
 
         // Then
-        Assert.Equal("fivem://connect/149.56.120.52:30320", result.ConnectUri?.AbsoluteUri);
+        var connect = Assert.IsType<LaunchResult.Connect>(result);
+        Assert.Equal("fivem://connect/149.56.120.52:30320", connect.ConnectUri.AbsoluteUri);
         Assert.Single(processLauncher.Requests);
-        Assert.Equal(result.ConnectUri, processLauncher.Requests[0]);
+        Assert.Equal(connect.ConnectUri, processLauncher.Requests[0]);
     }
 }
