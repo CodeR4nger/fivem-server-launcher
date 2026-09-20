@@ -10,9 +10,10 @@ Windows-only C#/.NET 10 WPF launcher for FiveM. Design decisions and UX philosop
 - Requires .NET 10 SDK. Verify with `dotnet --version` before running anything.
 
 ## Current state (verified; do not "fix" blindly)
-- Build and all 34 tests pass (`dotnet test`).
-- `Domain/ServerResolver.ResolveAsync` returns a `ServerProfile` (`CfxId`, `ProjectName`, `Requirements`) composing `CfxService` + `ServerRequirementsResolver`. `ServerRequirements` carries CFX-published `GameBuild`, `PureMode`, `RequestSteamTicket` (all nullable when not published). IP:port/domain resolution is still an open TODO.
-- UI is minimal and unbound: `Views/MainView.xaml` (static FiveM/server mock layout), `MainWindow` (custom window chrome). No commands/MVVM wiring yet. Business logic stays out of XAML code-behind.
+- Build and all 38 tests pass (`dotnet test`).
+- `Domain/ServerResolver.ResolveAsync` returns a `ServerProfile` (`CfxId`, `ProjectName`, `GameClient`, `Requirements`) composing `CfxService` + `ServerRequirementsResolver`. `ServerRequirements` carries CFX-published `GameBuild`, `PureMode`, `RequestSteamTicket` (all nullable when not published). `ServerResolver` extracts `cfx.re/join/<id>` from URLs via `ExtractCfxId` (no validation — TODO validation). IP:port/domain resolution is still an open TODO.
+- `Service/CfxService.cs` uses the *requested* `cfxId` as `CfxServerInfo.CfxId` (the response `EndPoint` is a connection endpoint, not the id). `requestSteamTicket` distinguishes `on` → `true`, `off` → `false`, absent/invalid → `null`.
+- UI is minimal and unbound: `Views/MainView.xaml` (static FiveM/server mock layout, one shared button `ControlTemplate`), `MainWindow` (custom window chrome). No commands/MVVM wiring yet. Business logic stays out of XAML code-behind; the single dropdown handler reads the label from `CommandParameter`.
 - Branch `main` is ahead of `origin/main`; commits are conventional English per the workflow below.
 
 ## Architecture
@@ -20,10 +21,11 @@ Windows-only C#/.NET 10 WPF launcher for FiveM. Design decisions and UX philosop
 - `Configuration/`: global launcher settings only. `LauncherSettings` is just `PreferredClient` + `AutoLaunch`. JSON persistence via `ISettingsStorage` -> `FileSettingsStorage` (System.Text.Json + `JsonStringEnumConverter`). Never add per-server fields, `Platform`, or `ServerPort` here.
 - `Service/CfxService.cs`: queries `https://frontend.cfx-services.net/api/servers/single/{cfxId}`; typed vars include `sv_enforceGameBuild`, `sv_pureLevel`, `gamename`, `requestSteamTicket`.
 - `Domain/ServerResolver.cs`: resolves a CFX id or `cfx.re/join/<id>` address. IP:port and domain resolution is an open TODO.
+- `ConfigurationRepository` and `ServerRequirementsResolver` are intentional seams per `docs/adr/0001-intentional-middle-men-seams.md` (do not inline without reopening that ADR).
 - Keep business logic out of XAML code-behind and out of real processes/filesystem so tests stay fast.
 
 ## Tests
-- xUnit, project targets `net10.0-windows` and references the main project. No mocking library — fake HTTP via `tests/.../Service/FakeHttpMessageHandler` and in-memory settings via `tests/.../Configuration/InMemorySettingsStorage` (both live in the test project).
+- xUnit, project targets `net10.0-windows` and references the main project. No mocking library — fake HTTP via `tests/.../Service/FakeHttpMessageHandler`, in-memory settings via `tests/.../Configuration/InMemorySettingsStorage`, and temp files via `tests/.../Configuration/TempSettingsDirectory` (`IDisposable`, unique path per test + teardown; all live in the test project).
 - JSON fixtures use C# raw strings (`"""..."""`, `$$"""..."""`).
 - Naming style: `<Method>_Should<Expectation>` with Given/When/Then comments.
 
