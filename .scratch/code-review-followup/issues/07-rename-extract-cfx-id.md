@@ -4,9 +4,9 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] El método se renombra a un nombre que refleja su comportamiento real
-- [ ] Los tests existentes siguen verdes
-- [ ] Se documenta/aclara por qué `EndPoint` alimenta `CfxId` (o se corrige el mapeo)
-- [ ] Sin cambios de comportamiento
+- [x] El método se renombra a un nombre que refleja su comportamiento real
+- [x] Los tests existentes siguen verdes
+- [x] Se documenta/aclara por qué `EndPoint` alimenta `CfxId` (o se corrige el mapeo)
+- [x] Sin cambios de comportamiento
