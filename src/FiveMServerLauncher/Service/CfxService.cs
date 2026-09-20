@@ -12,47 +12,6 @@ public class CfxService(HttpClient httpClient)
     {
        PropertyNameCaseInsensitive = true
     };
-    private static int? GetIntVariable(
-        Dictionary<string, string>? variables,
-        string name)
-    {
-        if (variables is null ||
-            !variables.TryGetValue(name, out var value))
-        {
-            return null;
-        }
-
-        return int.TryParse(value, out var result)
-            ? result
-            : null;
-    }
-
-    private static GameClient? GetGameClientVariable(Dictionary<string, string>? variables)
-    {
-        if (variables is null ||
-            !variables.TryGetValue("gamename", out var game))
-        {
-            return null;
-        }
-
-        return game switch
-        {
-            "gta5" => GameClient.FiveM,
-            "gta5enhanced" => GameClient.FiveMEnhanced,
-            "rdr3" => GameClient.RedM,
-            _ => null
-        };
-    }
-
-    private static bool? GetRequestSteamTicketVariable(string? value)
-    {
-        return value switch
-        {
-            "on" => true,
-            "off" => false,
-            _ => null
-        };
-    }
 
     public async Task<CfxServerInfo?> GetServerAsync(string cfxId)
     {
@@ -78,10 +37,13 @@ public class CfxService(HttpClient httpClient)
         {
             CfxId = cfxId,
             ProjectName = cfxResponse.Data.Sv_projectName ?? string.Empty,
-            EnforceGameBuild = GetIntVariable(cfxResponse.Data.Vars, "sv_enforceGameBuild"),
-            GameClient = GetGameClientVariable(cfxResponse.Data.Vars),
-            PureLevel = GetIntVariable(cfxResponse.Data.Vars, "sv_pureLevel"),
-            RequestSteamTicket = GetRequestSteamTicketVariable(cfxResponse.Data.RequestSteamTicket)
+            EnforceGameBuild = CfxVars.TryGetInt(cfxResponse.Data.Vars, "sv_enforceGameBuild"),
+            GameClient = cfxResponse.Data.Vars is not null &&
+                         cfxResponse.Data.Vars.TryGetValue("gamename", out var game)
+                ? CfxVars.MapGameClient(game)
+                : null,
+            PureLevel = CfxVars.TryGetInt(cfxResponse.Data.Vars, "sv_pureLevel"),
+            RequestSteamTicket = CfxVars.MapSteamTicket(cfxResponse.Data.RequestSteamTicket)
         };
     }
 

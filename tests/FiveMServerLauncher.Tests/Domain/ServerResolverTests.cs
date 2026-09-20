@@ -285,9 +285,188 @@ public class ServerResolverTests
         Assert.Null(result.GameClient);
     }
 
-    private static ServerResolver CreateResolver(CfxService cfxService)
+    [Fact]
+    public async Task Resolve_WhenIpPortFoundInCatalog_ShouldReturnValidatedProfile()
     {
-        return new ServerResolver(cfxService, new ServerRequirementsResolver());
+        // Given
+        const string address = "149.56.120.52:30320";
+
+        var protoServer = new Master.Server
+        {
+            EndPoint = "y4lg95",
+            Data = new Master.ServerData
+            {
+                Vars =
+                {
+                    ["sv_projectName"] = "Catalog Server",
+                    ["gamename"] = "gta5",
+                    ["sv_enforceGameBuild"] = "3095",
+                    ["sv_pureLevel"] = "2",
+                    ["requestSteamTicket"] = "on"
+                },
+                ConnectEndPoints = { address }
+            }
+        };
+        var handler = new FakeHttpMessageHandler(
+            System.Net.HttpStatusCode.OK,
+            TestProtobufFrames.BuildFrameStream(protoServer));
+        using var httpClient = new HttpClient(handler);
+        var resolver = CreateResolver(catalogHttpClient: httpClient);
+
+        // When
+        var result = await resolver.ResolveAsync(address);
+
+        // Then
+        Assert.True(result.IsCfxValidated);
+        Assert.Equal("y4lg95", result.CfxId);
+        Assert.Equal("Catalog Server", result.ProjectName);
+        Assert.Equal(Core.Enums.GameClient.FiveM, result.GameClient);
+        Assert.Equal(3095, result.Requirements.GameBuild);
+        Assert.Equal(2, result.Requirements.PureMode);
+        Assert.True(result.Requirements.RequestSteamTicket);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenIpPortNotInCatalog_ShouldReturnUnvalidatedProfile()
+    {
+        // Given
+        const string address = "149.56.120.52:30320";
+
+        var resolver = CreateResolver(
+            catalogHttpClient: new HttpClient(new FakeHttpMessageHandler(
+                System.Net.HttpStatusCode.OK,
+                TestProtobufFrames.BuildFrameStream(new Master.Server { EndPoint = "other" }))));
+
+        // When
+        var result = await resolver.ResolveAsync(address);
+
+        // Then
+        Assert.False(result.IsCfxValidated);
+        Assert.Equal(address, result.Address);
+        Assert.Equal(string.Empty, result.CfxId);
+        Assert.Equal(string.Empty, result.ProjectName);
+        Assert.Null(result.GameClient);
+        Assert.Null(result.Requirements.GameBuild);
+        Assert.Null(result.Requirements.PureMode);
+        Assert.Null(result.Requirements.RequestSteamTicket);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenDomainPortDnsResolvesAndFound_ShouldReturnValidatedProfile()
+    {
+        // Given
+        const string address = "play.example.com:30120";
+
+        var protoServer = new Master.Server
+        {
+            EndPoint = "y4lg95",
+            Data = new Master.ServerData
+            {
+                Vars =
+                {
+                    ["sv_projectName"] = "Catalog Server",
+                    ["gamename"] = "gta5"
+                },
+                ConnectEndPoints = { "149.56.120.52:30120" }
+            }
+        };
+        var resolver = CreateResolver(
+            catalogHttpClient: new HttpClient(new FakeHttpMessageHandler(
+                System.Net.HttpStatusCode.OK,
+                TestProtobufFrames.BuildFrameStream(protoServer))),
+            dnsResolver: new FakeDnsResolver("149.56.120.52"));
+
+        // When
+        var result = await resolver.ResolveAsync(address);
+
+        // Then
+        Assert.True(result.IsCfxValidated);
+        Assert.Equal("y4lg95", result.CfxId);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenDomainPortDnsFails_ShouldReturnUnvalidatedProfile()
+    {
+        // Given
+        const string address = "unknown.example.com:30120";
+
+        var resolver = CreateResolver();
+
+        // When
+        var result = await resolver.ResolveAsync(address);
+
+        // Then
+        Assert.False(result.IsCfxValidated);
+        Assert.Equal(address, result.Address);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenDomainPortDnsResolvesButNotInCatalog_ShouldReturnUnvalidatedProfile()
+    {
+        // Given
+        const string address = "play.example.com:30120";
+
+        var resolver = CreateResolver(
+            catalogHttpClient: new HttpClient(new FakeHttpMessageHandler(
+                System.Net.HttpStatusCode.OK,
+                TestProtobufFrames.BuildFrameStream(new Master.Server { EndPoint = "other" }))),
+            dnsResolver: new FakeDnsResolver("149.56.120.52"));
+
+        // When
+        var result = await resolver.ResolveAsync(address);
+
+        // Then
+        Assert.False(result.IsCfxValidated);
+        Assert.Equal(address, result.Address);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenInvalidForm_ShouldThrow()
+    {
+        // Given
+        const string address = "not a valid form";
+
+        var resolver = CreateResolver();
+
+        // When / Then
+        await Assert.ThrowsAsync<InvalidAddressException>(
+            () => resolver.ResolveAsync(address));
+    }
+
+    [Fact]
+    public async Task Resolve_WhenIpPortAndCatalogUnavailable_ShouldReturnUnvalidatedProfile()
+    {
+        // Given
+        const string address = "149.56.120.52:30320";
+
+        var resolver = CreateResolver(
+            catalogHttpClient: new HttpClient(new FakeHttpMessageHandler(true)));
+
+        // When
+        var result = await resolver.ResolveAsync(address);
+
+        // Then
+        Assert.False(result.IsCfxValidated);
+        Assert.Equal(address, result.Address);
+    }
+
+    private static ServerResolver CreateResolver(
+        CfxService? cfxService = null,
+        HttpClient? catalogHttpClient = null,
+        FakeDnsResolver? dnsResolver = null)
+    {
+        var service = cfxService ?? new CfxService(
+            new HttpClient(new FakeHttpMessageHandler(
+                System.Net.HttpStatusCode.NotFound, string.Empty)));
+
+        var catalog = new ServerCatalog(
+            catalogHttpClient ?? new HttpClient(new FakeHttpMessageHandler(
+                System.Net.HttpStatusCode.OK, Array.Empty<byte>())),
+            new FakeTimeProvider(),
+            TimeSpan.FromDays(1));
+
+        return new ServerResolver(service, catalog, new ServerRequirementsResolver(),
+            dnsResolver ?? new FakeDnsResolver());
     }
 
 }

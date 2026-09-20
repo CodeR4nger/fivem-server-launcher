@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package master;
+
+message Server
+{
+    string EndPoint = 1;
+    ServerData Data = 2;
+}
+
+message ServerData
+{
+    int32 svMaxclients = 1;
+    int32 clients = 2;
+    string hostname = 4;
+    string gametype = 5;
+    string mapname = 6;
+    string server = 9;
+    map<string, string> vars = 12;
+    repeated string connectEndPoints = 18;
+}
