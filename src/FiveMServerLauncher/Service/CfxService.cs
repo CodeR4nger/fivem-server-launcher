@@ -44,6 +44,16 @@ public class CfxService(HttpClient httpClient)
         };
     }
 
+    private static bool? GetRequestSteamTicketVariable(string? value)
+    {
+        return value switch
+        {
+            "on" => true,
+            "off" => false,
+            _ => null
+        };
+    }
+
     public async Task<CfxServerInfo?> GetServerAsync(string cfxId)
     {
         var response = await _httpClient.GetAsync($"https://frontend.cfx-services.net/api/servers/single/{cfxId}");
@@ -71,7 +81,7 @@ public class CfxService(HttpClient httpClient)
             EnforceGameBuild = GetIntVariable(cfxResponse.Data.Vars, "sv_enforceGameBuild"),
             GameClient = GetGameClientVariable(cfxResponse.Data.Vars),
             PureLevel = GetIntVariable(cfxResponse.Data.Vars, "sv_pureLevel"),
-            RequestSteamTicket = cfxResponse.Data.RequestSteamTicket == "on" ? true : null
+            RequestSteamTicket = GetRequestSteamTicketVariable(cfxResponse.Data.RequestSteamTicket)
         };
     }
 
