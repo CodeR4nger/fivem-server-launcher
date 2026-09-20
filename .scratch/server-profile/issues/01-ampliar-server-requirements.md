@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Dado un `CfxServerInfo` con `PureLevel`, el resultado expone un `PureMode` con ese valor
 - [ ] Dado un `CfxServerInfo` con `RequestSteamTicket`, el resultado expone un `RequestSteamTicket` con ese valor
