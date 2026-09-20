@@ -4,9 +4,9 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Un helper/fixture proporciona un path temporal único por test y lo elimina en teardown
-- [ ] Los 9 usos del patrón temp-dir + `try/finally Delete` lo consumen
-- [ ] La duplicación SaveAndLoad↔Load se reduce compartiendo el escenario
-- [ ] Suite verde sin regresiones
+- [x] Un helper/fixture proporciona un path temporal único por test y lo elimina en teardown
+- [x] Los 9 usos del patrón temp-dir + `try/finally Delete` lo consumen
+- [x] La duplicación SaveAndLoad↔Load se reduce compartiendo el escenario
+- [x] Suite verde sin regresiones
