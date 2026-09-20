@@ -4,9 +4,9 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Un solo handler onClick para las opciones del dropdown
-- [ ] El botón `FiveMButton` muestra el label correcto según la opción elegida
-- [ ] El dropdown colapsa y la flecha vuelve a ▼ tras elegir
-- [ ] MainView.xaml pasa el label como `CommandParameter`
+- [x] Un solo handler onClick para las opciones del dropdown
+- [x] El botón `FiveMButton` muestra el label correcto según la opción elegida
+- [x] El dropdown colapsa y la flecha vuelve a ▼ tras elegir
+- [x] MainView.xaml pasa el label como `CommandParameter`

@@ -19,6 +19,82 @@
         <SolidColorBrush x:Key="GreenBrush" Color="#55C271"/>
         <SolidColorBrush x:Key="RedBrush" Color="#E05252"/>
 
+        <!-- TEMPLATE DE BOTÓN COMPARTIDO -->
+        <ControlTemplate x:Key="ButtonTemplate" TargetType="{x:Type Button}">
+
+            <Border x:Name="ButtonBorder"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    Padding="{TemplateBinding Padding}">
+
+                <ContentPresenter
+                    HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                    VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                    Content="{TemplateBinding Content}"
+                    ContentTemplate="{TemplateBinding ContentTemplate}"
+                    ContentStringFormat="{TemplateBinding ContentStringFormat}"/>
+
+            </Border>
+
+            <ControlTemplate.Triggers>
+
+                <!-- HOVER -->
+
+                <Trigger Property="IsMouseOver"
+                         Value="True">
+
+                    <Setter TargetName="ButtonBorder"
+                            Property="Background"
+                            Value="{StaticResource AccentBrush}"/>
+
+                    <Setter TargetName="ButtonBorder"
+                            Property="BorderBrush"
+                            Value="{StaticResource AccentDarkBrush}"/>
+
+                    <Setter Property="Foreground"
+                            Value="{StaticResource BackgroundBrush}"/>
+
+                </Trigger>
+
+
+                <!-- PRESSED -->
+
+                <Trigger Property="IsPressed"
+                         Value="True">
+
+                    <Setter TargetName="ButtonBorder"
+                            Property="Background"
+                            Value="{StaticResource AccentDarkBrush}"/>
+
+                    <Setter TargetName="ButtonBorder"
+                            Property="BorderBrush"
+                            Value="{StaticResource AccentDarkBrush}"/>
+
+                    <Setter Property="Foreground"
+                            Value="{StaticResource BackgroundBrush}"/>
+
+                </Trigger>
+
+
+                <!-- DISABLED -->
+
+                <Trigger Property="IsEnabled"
+                         Value="False">
+
+                    <Setter TargetName="ButtonBorder"
+                            Property="Opacity"
+                            Value="0.45"/>
+
+                    <Setter Property="Cursor"
+                            Value="Arrow"/>
+
+                </Trigger>
+
+            </ControlTemplate.Triggers>
+
+        </ControlTemplate>
+
         <!-- BOTÓN PRINCIPAL -->
         <Style x:Key="MainButtonStyle" TargetType="{x:Type Button}">
 
@@ -52,88 +128,8 @@
             <Setter Property="VerticalContentAlignment"
                     Value="Center"/>
 
-            <Setter Property="Template">
-
-                <Setter.Value>
-
-                    <ControlTemplate TargetType="{x:Type Button}">
-
-                        <Border x:Name="ButtonBorder"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                Padding="{TemplateBinding Padding}">
-
-                            <ContentPresenter
-                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                                Content="{TemplateBinding Content}"
-                                ContentTemplate="{TemplateBinding ContentTemplate}"
-                                ContentStringFormat="{TemplateBinding ContentStringFormat}"/>
-
-                        </Border>
-
-                        <ControlTemplate.Triggers>
-
-                            <!-- HOVER -->
-
-                            <Trigger Property="IsMouseOver"
-                                     Value="True">
-
-                                <Setter TargetName="ButtonBorder"
-                                        Property="Background"
-                                        Value="{StaticResource AccentBrush}"/>
-
-                                <Setter TargetName="ButtonBorder"
-                                        Property="BorderBrush"
-                                        Value="{StaticResource AccentDarkBrush}"/>
-
-                                <Setter Property="Foreground"
-                                        Value="{StaticResource BackgroundBrush}"/>
-
-                            </Trigger>
-
-
-                            <!-- PRESSED -->
-
-                            <Trigger Property="IsPressed"
-                                     Value="True">
-
-                                <Setter TargetName="ButtonBorder"
-                                        Property="Background"
-                                        Value="{StaticResource AccentDarkBrush}"/>
-
-                                <Setter TargetName="ButtonBorder"
-                                        Property="BorderBrush"
-                                        Value="{StaticResource AccentDarkBrush}"/>
-
-                                <Setter Property="Foreground"
-                                        Value="{StaticResource BackgroundBrush}"/>
-
-                            </Trigger>
-
-
-                            <!-- DISABLED -->
-
-                            <Trigger Property="IsEnabled"
-                                     Value="False">
-
-                                <Setter TargetName="ButtonBorder"
-                                        Property="Opacity"
-                                        Value="0.45"/>
-
-                                <Setter Property="Cursor"
-                                        Value="Arrow"/>
-
-                            </Trigger>
-
-                        </ControlTemplate.Triggers>
-
-                    </ControlTemplate>
-
-                </Setter.Value>
-
-            </Setter>
+            <Setter Property="Template"
+                    Value="{StaticResource ButtonTemplate}"/>
 
         </Style>
 
@@ -189,85 +185,8 @@
             <Setter Property="Cursor"
                     Value="Hand"/>
 
-            <Setter Property="Template">
-
-                <Setter.Value>
-
-                    <ControlTemplate TargetType="{x:Type Button}">
-
-                        <Border x:Name="DropdownBorder"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                Padding="{TemplateBinding Padding}">
-
-                            <ContentPresenter
-                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                                Content="{TemplateBinding Content}"
-                                ContentTemplate="{TemplateBinding ContentTemplate}"
-                                ContentStringFormat="{TemplateBinding ContentStringFormat}"/>
-
-                        </Border>
-
-                        <ControlTemplate.Triggers>
-
-                            <!-- HOVER -->
-
-                            <Trigger Property="IsMouseOver"
-                                     Value="True">
-
-                                <Setter TargetName="DropdownBorder"
-                                        Property="Background"
-                                        Value="{StaticResource AccentBrush}"/>
-
-                                <Setter TargetName="DropdownBorder"
-                                        Property="BorderBrush"
-                                        Value="{StaticResource AccentDarkBrush}"/>
-
-                                <Setter Property="Foreground"
-                                        Value="{StaticResource BackgroundBrush}"/>
-
-                            </Trigger>
-
-
-                            <!-- PRESSED -->
-
-                            <Trigger Property="IsPressed"
-                                     Value="True">
-
-                                <Setter TargetName="DropdownBorder"
-                                        Property="Background"
-                                        Value="{StaticResource AccentDarkBrush}"/>
-
-                                <Setter TargetName="DropdownBorder"
-                                        Property="BorderBrush"
-                                        Value="{StaticResource AccentDarkBrush}"/>
-
-                                <Setter Property="Foreground"
-                                        Value="{StaticResource BackgroundBrush}"/>
-
-                            </Trigger>
-
-
-                            <!-- DISABLED -->
-
-                            <Trigger Property="IsEnabled"
-                                     Value="False">
-
-                                <Setter TargetName="DropdownBorder"
-                                        Property="Opacity"
-                                        Value="0.45"/>
-
-                            </Trigger>
-
-                        </ControlTemplate.Triggers>
-
-                    </ControlTemplate>
-
-                </Setter.Value>
-
-            </Setter>
+            <Setter Property="Template"
+                    Value="{StaticResource ButtonTemplate}"/>
 
         </Style>
 
@@ -297,68 +216,8 @@
             <Setter Property="VerticalContentAlignment"
                     Value="Center"/>
 
-            <Setter Property="Template">
-
-                <Setter.Value>
-
-                    <ControlTemplate TargetType="{x:Type Button}">
-
-                        <Border x:Name="ArrowBorder"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}">
-
-                            <ContentPresenter
-                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                                Content="{TemplateBinding Content}"
-                                ContentTemplate="{TemplateBinding ContentTemplate}"/>
-
-                        </Border>
-
-                        <ControlTemplate.Triggers>
-
-                            <!-- HOVER -->
-
-                            <Trigger Property="IsMouseOver"
-                                     Value="True">
-
-                                <Setter TargetName="ArrowBorder"
-                                        Property="Background"
-                                        Value="{StaticResource AccentBrush}"/>
-
-                                <Setter TargetName="ArrowBorder"
-                                        Property="BorderBrush"
-                                        Value="{StaticResource AccentDarkBrush}"/>
-
-                                <Setter Property="Foreground"
-                                        Value="{StaticResource BackgroundBrush}"/>
-
-                            </Trigger>
-
-
-                            <!-- PRESSED -->
-
-                            <Trigger Property="IsPressed"
-                                     Value="True">
-
-                                <Setter TargetName="ArrowBorder"
-                                        Property="Background"
-                                        Value="{StaticResource AccentDarkBrush}"/>
-
-                                <Setter TargetName="ArrowBorder"
-                                        Property="BorderBrush"
-                                        Value="{StaticResource AccentDarkBrush}"/>
-
-                            </Trigger>
-
-                        </ControlTemplate.Triggers>
-
-                    </ControlTemplate>
-
-                </Setter.Value>
-
-            </Setter>
+            <Setter Property="Template"
+                    Value="{StaticResource ButtonTemplate}"/>
 
         </Style>
 
@@ -491,7 +350,8 @@
                             <Button Content="FiveM"
                                     Height="42"
                                     Style="{StaticResource DropdownButtonStyle}"
-                                    Click="FiveMOption_Click"/>
+                                    CommandParameter="FiveM"
+                                    Click="ClientOption_Click"/>
 
                             <Border Height="1"
                                     Background="#080808"/>
@@ -499,7 +359,8 @@
                             <Button Content="FiveM Enhanced"
                                     Height="42"
                                     Style="{StaticResource DropdownButtonStyle}"
-                                    Click="FiveMEnhancedOption_Click"/>
+                                    CommandParameter="FiveM Enhanced"
+                                    Click="ClientOption_Click"/>
 
                         </StackPanel>
 

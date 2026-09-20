@@ -24,17 +24,12 @@ namespace FiveMServerLauncher.Views
             }
         }
 
-        private void FiveMOption_Click(object sender, RoutedEventArgs e)
+        private void ClientOption_Click(object sender, RoutedEventArgs e)
         {
-            FiveMButton.Content = "FiveM";
-
-            FiveMDropdown.Visibility = Visibility.Collapsed;
-            ArrowText.Text = "▼";
-        }
-
-        private void FiveMEnhancedOption_Click(object sender, RoutedEventArgs e)
-        {
-            FiveMButton.Content = "FiveM Enhanced";
+            if (sender is Button { CommandParameter: string label })
+            {
+                FiveMButton.Content = label;
+            }
 
             FiveMDropdown.Visibility = Visibility.Collapsed;
             ArrowText.Text = "▼";

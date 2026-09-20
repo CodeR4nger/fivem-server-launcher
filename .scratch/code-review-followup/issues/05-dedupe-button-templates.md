@@ -4,9 +4,9 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Un único `ControlTemplate` compartido por los tres estilos
-- [ ] El comportamiento visual (hover/pressed/disabled) se conserva exactamente
-- [ ] Sin cambios de diseño visibles (solo estructura)
-- [ ] La app compila (build WPF OK)
+- [x] Un único `ControlTemplate` compartido por los tres estilos
+- [x] El comportamiento visual (hover/pressed/disabled) se conserva exactamente
+- [x] Sin cambios de diseño visibles (solo estructura)
+- [x] La app compila (build WPF OK)
