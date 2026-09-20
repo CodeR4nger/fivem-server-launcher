@@ -8,7 +8,9 @@ public class ServerRequirementsResolver
     {
         return new ServerRequirements
         {
-            GameBuild = serverInfo.EnforceGameBuild
+            GameBuild = serverInfo.EnforceGameBuild,
+            PureMode = serverInfo.PureLevel,
+            RequestSteamTicket = serverInfo.RequestSteamTicket
         };
     }
 }
