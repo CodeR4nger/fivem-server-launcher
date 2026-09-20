@@ -4,10 +4,10 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] `ConfigurationRepositoryTests` usa Given/When/Then en lugar de Arrange/Act/Assert
-- [ ] `FileSettingsStorageTests` usa Given/When/Then
-- [ ] `InMemorySettingsStorageTests` usa Given/When/Then
-- [ ] `LauncherSettingsTests` añade los comentarios Given/When/Then (hoy sin ellos)
-- [ ] Suite completa sigue verde (solo cambio cosmético de comentarios)
+- [x] `ConfigurationRepositoryTests` usa Given/When/Then en lugar de Arrange/Act/Assert
+- [x] `FileSettingsStorageTests` usa Given/When/Then
+- [x] `InMemorySettingsStorageTests` usa Given/When/Then
+- [x] `LauncherSettingsTests` añade los comentarios Given/When/Then (hoy sin ellos)
+- [x] Suite completa sigue verde (solo cambio cosmético de comentarios)
