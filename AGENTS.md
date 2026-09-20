@@ -28,11 +28,20 @@ Windows-only C#/.NET 10 WPF launcher for FiveM. Design decisions and UX philosop
 
 ## Workflow: Spec-Driven Development + TDD (agent skills)
 - Skills live in `.agents/skills` (registered via `skills.paths` in `opencode.json`; `skills-lock.json` pins versions — update with `npx skills update`).
-- Run once per repo: `/setup-matt-pocock-skills` (records issue tracker for `to-spec`/`to-tickets` in `docs/agents/`. Until run, treat skill docs as source and confirm tracker choice with the user.)
 - Per feature: `to-spec` (or `spec-driven-development` from addyosmani for a full PRD) -> `to-tickets` -> `implement` (drives `/tdd`) -> `code-review`, then commit.
 - `tdd` (mattpocock): RED->GREEN loop at pre-agreed seams only, one vertical slice per cycle, no refactor inside the loop.
 - .NET test helpers: `run-tests` before guessing a `dotnet test` command; `find-untested-sources`/`test-anti-patterns`/`test-gap-analysis`/`assertion-quality` for audits; `detect-static-dependencies` + `code-testing-agent` to add coverage.
 - `domain-modeling`/`codebase-design` define module seam vocabulary; `diagnosing-bugs` for logic/CFX API bugs.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs are tracked as local markdown files under `.scratch/`. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context layout: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
 ## Hard design constraints (from DOC.md)
 - RSC is never managed by the launcher. Steam/Discord are per-server `ServerProfile` requirements, never universal.
