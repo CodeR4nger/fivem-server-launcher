@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] `ServerProfile` expone un campo `GameClient`
 - [ ] Resolver un servidor con `gamename: gta5enhanced` devuelve el perfil con ese GameClient mapeado
