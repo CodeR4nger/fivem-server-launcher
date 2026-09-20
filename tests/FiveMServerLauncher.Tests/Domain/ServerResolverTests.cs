@@ -226,4 +226,63 @@ public class ServerResolverTests
         Assert.True(result.Requirements.RequestSteamTicket);
     }
 
+    [Fact]
+    public async Task Resolve_ShouldReturnGameClient()
+    {
+        // Given
+        const string cfxId = "y4lg95";
+
+        var handler = new FakeHttpMessageHandler(
+            System.Net.HttpStatusCode.OK,
+            """
+            {
+                "EndPoint": "y4lg95",
+                "Data": {
+                    "sv_projectName": "Test Server",
+                    "vars": {
+                        "gamename": "gta5enhanced"
+                    }
+                }
+            }
+            """);
+
+        using var httpClient = new HttpClient(handler);
+        var cfxService = new CfxService(httpClient);
+        var resolver = new ServerResolver(cfxService, new ServerRequirementsResolver());
+
+        // When
+        var result = await resolver.ResolveAsync(cfxId);
+
+        // Then
+        Assert.Equal(Core.Enums.GameClient.FiveMEnhanced, result.GameClient);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenGameClientNotPublished_ShouldReturnNull()
+    {
+        // Given
+        const string cfxId = "y4lg95";
+
+        var handler = new FakeHttpMessageHandler(
+            System.Net.HttpStatusCode.OK,
+            """
+            {
+                "EndPoint": "y4lg95",
+                "Data": {
+                    "sv_projectName": "Test Server"
+                }
+            }
+            """);
+
+        using var httpClient = new HttpClient(handler);
+        var cfxService = new CfxService(httpClient);
+        var resolver = new ServerResolver(cfxService, new ServerRequirementsResolver());
+
+        // When
+        var result = await resolver.ResolveAsync(cfxId);
+
+        // Then
+        Assert.Null(result.GameClient);
+    }
+
 }

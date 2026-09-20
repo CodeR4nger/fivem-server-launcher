@@ -26,6 +26,7 @@ public class ServerResolver(CfxService cfxService, ServerRequirementsResolver re
         {
             CfxId = server.CfxId,
             ProjectName = server.ProjectName,
+            GameClient = server.GameClient,
             Requirements = requirementsResolver.Resolve(server)
         };
     }
