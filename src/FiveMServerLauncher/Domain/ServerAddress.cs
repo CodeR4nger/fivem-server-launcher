@@ -57,49 +57,36 @@ public static class ServerAddress
         return !string.IsNullOrWhiteSpace(id) && !id.Any(char.IsWhiteSpace);
     }
 
-    private static bool IsCfxJoinUrl(string address)
-    {
-        return address.IndexOf(Prefix, StringComparison.OrdinalIgnoreCase) >= 0;
-    }
-
     private static bool IsIpPort(string address)
     {
-        var separator = address.LastIndexOf(':');
-        if (separator <= 0 || separator == address.Length - 1)
+        if (!TrySplitHostPort(address, out var host, out var port))
         {
             return false;
         }
 
-        var ip = address[..separator];
-        var portText = address[(separator + 1)..];
-
-        return IsValidPort(portText) && IsIpv4(ip);
+        return IsValidPort(port) && IsIpv4(host);
     }
 
     private static bool IsDomainPort(string address)
     {
-        var separator = address.LastIndexOf(':');
-        if (separator <= 0 || separator == address.Length - 1)
+        if (!TrySplitHostPort(address, out var host, out var port))
         {
             return false;
         }
 
-        var host = address[..separator];
-        var portText = address[(separator + 1)..];
-
-        return IsValidPort(portText) && IsValidDomain(host);
+        return IsValidPort(port) && IsValidDomain(host);
     }
 
     private static bool IsValidDomain(string host)
     {
         var labels = host.Split('.');
-        if (labels.Length < 2 || labels.Any(string.IsNullOrEmpty))
+        if (labels.Any(string.IsNullOrEmpty))
         {
             return false;
         }
 
         var allLabelsValid = labels.All(IsValidLabel);
-        var tldHasLetter = labels[^1].Any(char.IsLetter);
+        var tldHasLetter = labels.Length < 2 || labels[^1].Any(char.IsLetter);
 
         return allLabelsValid && tldHasLetter;
     }
@@ -136,6 +123,21 @@ public static class ServerAddress
     public static string FromCfxId(string cfxId)
     {
         return $"{Prefix}{cfxId}";
+    }
+
+    public static bool TrySplitHostPort(string address, out string host, out string port)
+    {
+        var separator = address.LastIndexOf(':');
+        if (separator <= 0 || separator == address.Length - 1)
+        {
+            host = string.Empty;
+            port = string.Empty;
+            return false;
+        }
+
+        host = address[..separator];
+        port = address[(separator + 1)..];
+        return true;
     }
 
     public static string ExtractCfxId(string address)

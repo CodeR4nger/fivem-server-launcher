@@ -28,15 +28,15 @@ public class ServerResolver(
         };
     }
 
-    private async Task<ServerProfile> ResolveCfxAsync(string address)
+    private async Task<ServerProfile> ResolveCfxAsync(string originalAddress)
     {
-        address = ServerAddress.ExtractCfxId(address);
+        var cfxId = ServerAddress.ExtractCfxId(originalAddress);
 
-        var server = await cfxService.GetServerAsync(address);
+        var server = await cfxService.GetServerAsync(cfxId);
 
         if (server is null)
         {
-            throw new InvalidAddressException(address);
+            throw new InvalidAddressException(originalAddress);
         }
 
         return new ServerProfile
@@ -60,14 +60,16 @@ public class ServerResolver(
 
     private async Task<ServerProfile> ResolveDomainPortAsync(string address)
     {
-        var ip = await dnsResolver.ResolveToIpAsync(GetHost(address));
+        ServerAddress.TrySplitHostPort(address, out var host, out var port);
+
+        var ip = await dnsResolver.ResolveToIpAsync(host);
 
         if (ip is null)
         {
             return BuildUnvalidatedProfile(address);
         }
 
-        var server = await serverCatalog.LookupByIpPortAsync($"{ip}:{GetPort(address)}")
+        var server = await serverCatalog.LookupByIpPortAsync($"{ip}:{port}")
                      ?? await serverCatalog.LookupByIpPortAsync(address);
 
         return server is not null
@@ -93,7 +95,7 @@ public class ServerResolver(
             CfxId = server.EndPoint,
             Address = server.Data.ConnectEndPoints.FirstOrDefault(),
             ProjectName = vars.TryGetValue("sv_projectName", out var projectName) ? projectName : server.Data.Hostname,
-            GameClient = vars.TryGetValue("gamename", out var game) ? CfxVars.MapGameClient(game) : null,
+            GameClient = CfxVars.TryGetGameClient(vars),
             Requirements = BuildRequirements(vars),
             IsCfxValidated = true
         };
@@ -108,17 +110,5 @@ public class ServerResolver(
             RequestSteamTicket = CfxVars.MapSteamTicket(
                 vars.TryGetValue("requestSteamTicket", out var steam) ? steam : null)
         };
-    }
-
-    private static string GetHost(string address)
-    {
-        var separator = address.LastIndexOf(':');
-        return address[..separator];
-    }
-
-    private static string GetPort(string address)
-    {
-        var separator = address.LastIndexOf(':');
-        return address[(separator + 1)..];
     }
 }

@@ -450,6 +450,20 @@ public class ServerResolverTests
         Assert.Equal(address, result.Address);
     }
 
+    [Fact]
+    public async Task Resolve_WhenCfxUrlNotFound_ShouldThrowWithOriginalAddress()
+    {
+        // Given
+        const string address = "https://cfx.re/join/y4lg95";
+
+        var resolver = CreateResolver();
+
+        // When / Then
+        var exception = await Assert.ThrowsAsync<InvalidAddressException>(
+            () => resolver.ResolveAsync(address));
+        Assert.Contains(address, exception.Message);
+    }
+
     private static ServerResolver CreateResolver(
         CfxService? cfxService = null,
         HttpClient? catalogHttpClient = null,

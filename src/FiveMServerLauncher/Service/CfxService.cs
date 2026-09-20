@@ -38,10 +38,7 @@ public class CfxService(HttpClient httpClient)
             CfxId = cfxId,
             ProjectName = cfxResponse.Data.Sv_projectName ?? string.Empty,
             EnforceGameBuild = CfxVars.TryGetInt(cfxResponse.Data.Vars, "sv_enforceGameBuild"),
-            GameClient = cfxResponse.Data.Vars is not null &&
-                         cfxResponse.Data.Vars.TryGetValue("gamename", out var game)
-                ? CfxVars.MapGameClient(game)
-                : null,
+            GameClient = CfxVars.TryGetGameClient(cfxResponse.Data.Vars),
             PureLevel = CfxVars.TryGetInt(cfxResponse.Data.Vars, "sv_pureLevel"),
             RequestSteamTicket = CfxVars.MapSteamTicket(cfxResponse.Data.RequestSteamTicket)
         };

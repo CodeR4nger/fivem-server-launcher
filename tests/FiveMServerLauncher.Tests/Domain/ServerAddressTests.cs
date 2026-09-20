@@ -95,6 +95,19 @@ public class ServerAddressTests
     }
 
     [Fact]
+    public void Classify_WhenSingleLabelHost_ShouldReturnDomainPort()
+    {
+        // Given
+        const string address = "localhost:30120";
+
+        // When
+        var kind = ServerAddress.Classify(address);
+
+        // Then
+        Assert.Equal(ServerAddressKind.DomainPort, kind);
+    }
+
+    [Fact]
     public void Classify_WhenDomainWithScheme_ShouldReturnUnknown()
     {
         // Given

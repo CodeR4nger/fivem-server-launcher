@@ -4,6 +4,17 @@ namespace FiveMServerLauncher.Service;
 
 internal static class CfxVars
 {
+    public static GameClient? TryGetGameClient(IDictionary<string, string>? variables)
+    {
+        if (variables is null ||
+            !variables.TryGetValue("gamename", out var game))
+        {
+            return null;
+        }
+
+        return MapGameClient(game);
+    }
+
     public static GameClient? MapGameClient(string game)
     {
         return game switch

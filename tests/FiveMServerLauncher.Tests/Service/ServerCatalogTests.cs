@@ -145,6 +145,28 @@ public class ServerCatalogTests
     }
 
     [Fact]
+    public async Task Lookup_WhenUnexpectedException_ShouldPropagate()
+    {
+        // Given
+        using var httpClient = new HttpClient(new CrashedHttpMessageHandler());
+        var catalog = new ServerCatalog(httpClient);
+
+        // When / Then
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => catalog.LookupByEndPointAsync("y4lg95"));
+    }
+
+    private sealed class CrashedHttpMessageHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            throw new InvalidOperationException("Simulated programming error");
+        }
+    }
+
+    [Fact]
     public async Task LookupByIpPort_WhenServerListed_ShouldReturnServer()
     {
         // Given

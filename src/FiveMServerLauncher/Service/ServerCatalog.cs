@@ -57,7 +57,11 @@ public class ServerCatalog(
 
             return servers;
         }
-        catch (Exception)
+        catch (HttpRequestException)
+        {
+            return [];
+        }
+        catch (TaskCanceledException)
         {
             return [];
         }
