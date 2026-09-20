@@ -11,7 +11,7 @@ El code review de `6f67ba8...HEAD` (31 commits) dejó dos hallazgos del eje Spec
 2. **`ToCommandLineArgs` no es inmutable de verdad (Spec, alto)**: devuelve `string[]` (`args.ToArray()`); `((IList<string>)args)[0] = "x"` muta por índice. El test actual solo cubre que `Add` lanze. Viola `03-serializaciones-robustas.md:9` ("colección inmutable de verdad (no mutables por cast)").
 3. **Duplicación en `MainView.xaml` (Standards, DRY)**: `DropdownButtonStyle` y `ArrowButtonStyle` re-declaran ~9 setters compartidos que `SecondaryButtonStyle` demuestra que pueden heredar con `BasedOn`.
 4. **Duplicación en `MainWindow.xaml` (Standards, DRY)**: los botones Minimizar/Cerrar repiten el mismo conjunto de atributos; `Height="40"` recursa en caption/row/botones.
-5. **Duplicación en `ServerResolverTests` (Standards, DRY, menor)**: `new ServerResolver(cfxService, new ServerRequirementsResolver())` se repite 9×.
+5. **Duplicación en `ServerResolverTests` (Standards, DRY, menor)**: `new ServerResolver(cfxService, new ServerRequirementsResolver())` se repite 10×.
 
 ## Solution
 
@@ -19,7 +19,7 @@ El code review de `6f67ba8...HEAD` (31 commits) dejó dos hallazgos del eje Spec
 - **`ToCommandLineArgs()` devuelve `ImmutableArray<string>`** (BCL de .NET 10, sin dependencia nueva): inmutable de verdad, inmune a cast por índice y a mutadores. Firma pública pasa de `IReadOnlyList<string>` a `ImmutableArray<string>` (add `using System.Collections.Immutable;`).
 - **Estilos heredables en `MainView.xaml`**: `DropdownButtonStyle` y `ArrowButtonStyle` usan `BasedOn` sobre un estilo base común (p.ej. `MainButtonStyle` o un nuevo base) y solo declaran sus diferencias; se aprovecha que `SecondaryButtonStyle` ya demuestra el patrón.
 - **Botones de ventana en `MainWindow.xaml`**: un `Style` compartido para Minimizar/Cerrar (mismo ancho, alto, fondo, primer plano, borde, cursor y `Template`/chrome) + convertir las dimensiones repetidas en el layout del `WindowChrome` en un recurso estático (`CaptionHeight`/`GridLength`/`Width`).
-- **Arrange helper en `ServerResolverTests`**: método privado (o variable local de fábrica) `CreateResolver(cfxService)` que arma `new ServerResolver(cfxService, new ServerRequirementsResolver())`, eliminando la repetición 9×.
+- **Arrange helper en `ServerResolverTests`**: método privado (o variable local de fábrica) `CreateResolver(cfxService)` que arma `new ServerResolver(cfxService, new ServerRequirementsResolver())`, eliminando la repetición 10×.
 
 ## User Stories
 
@@ -39,7 +39,7 @@ El code review de `6f67ba8...HEAD` (31 commits) dejó dos hallazgos del eje Spec
 
 ## Testing Decisions
 
-- **Ticket 01 (sealed class)**: RED — test que compruebe por reflexión que `with` ya no es posible (cero `init` accessors públicos y sin método sintético de clone) o que directamente no compile un `with`; en la práctica el test de compilación es la prueba: se añade un test `Type_ShouldNotHaveInitSetters` (reflexión: ninguna prop tiene setter público de tipo init y `GetProperties` no devuelve accessors `init` sino get-only) y se ajusta `Value_ShouldBeImmutableAfterConstruction` (ya no hay `with`; verifica ausencia de mutadores y, por ejemplo, que dos instancias con mismos valores no son la misma referencia). Suite debe quedar verde con el resto de tests sin cambios de aserción salvo los que usan `with` (solo `Value_ShouldBeImmutableAfterConstruction`) → el resto de tests siguen construyendo vía `Create` y no cambian.
+- **Ticket 01 (sealed class)**: RED — test que compruebe por reflexión que `with` ya no es posible (cero `init` accessors públicos y sin método sintético de clone, test implementado como `Type_ShouldHaveNoMutatingAccessors`) y se ajusta `Value_ShouldBeImmutableAfterConstruction` (ya no hay `with`; verifica ausencia de mutadores y que dos instancias independientes con igual estado exponen exactamente los mismos valores).
 - **Ticket 02 (ImmutableArray)**: RED — test que casté a `IList<string>` y escriba por índice (`args[0] = "x"`) esperando que NO mute la colección devuelta (con `string[]` muta/compila; con `ImmutableArray` no hay indexador de escritura públicamente → el test cambia a comprobar inmutabilidad vía `IsDefaultOrEmpty`/contenido estable, y que un segundo llamada devuelve la misma secuencia). Más importante: verificar mediante reflexión o por tipo que el retorno NO es `string[]` (RED sobre el tipo concreto). Vecindad con test existente `ToCommandLineArgs_ShouldReturnReadOnlyList` (Add lanza) → se adapta al nuevo tipo.
 - **Ticket 03 (MainView XAML)**: sin test de comportamiento (refactor visual); comprobar que `dotnet build` sigue verde y la UI arranca/mock no cambia visualmente de forma estructural. Si se sospecha pérdida de look, el review posterior lo captura.
 - **Ticket 04 (MainWindow XAML)**: ídem, build verde.

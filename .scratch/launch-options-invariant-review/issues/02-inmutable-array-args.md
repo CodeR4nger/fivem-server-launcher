@@ -11,4 +11,4 @@
 - [x] El test RED previo confirma el fallo contra el `string[]` actual (mutabilidad por índice) antes del cambio
 - [x] `ToCommandLineArgs_ShouldReturnReadOnlyList` se adapta al nuevo tipo (el valor es inmutable, contiene los args correctos, y para Enhanced está vacío)
 - [x] Args correctos: `["-b3258", "-pure_1", "-cl2"]` con `SecondClient`, y vacía para `FiveMEnhanced`
-- [x] Suite completa verde (63)
+- [x] Suite completa verde (62)

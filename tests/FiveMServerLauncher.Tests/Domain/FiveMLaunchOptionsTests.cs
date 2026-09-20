@@ -125,11 +125,10 @@ public class FiveMLaunchOptionsTests
     public void Type_ShouldHaveNoMutatingAccessors()
     {
         // Given / When
-        var properties = typeof(FiveMLaunchOptions).GetProperties(BindingFlags.Public | BindingFlags.Instance);
         var cloneMethod = typeof(FiveMLaunchOptions).GetMethod("<Clone>$", BindingFlags.Public | BindingFlags.Instance);
 
         // Then
-        Assert.All(properties, property => Assert.Null(property.SetMethod));
+        Assert.Empty(GetSetters(typeof(FiveMLaunchOptions)));
         Assert.Null(cloneMethod);
     }
 
@@ -272,6 +271,8 @@ public class FiveMLaunchOptionsTests
         var args = options.ToCommandLineArgs();
 
         // Then
+        Assert.IsNotType<string[]>(args);
+        Assert.IsType<ImmutableArray<string>>(args);
         Assert.Equal(new[] { "-b3258", "-pure_1", "-cl2" }, args);
     }
 
@@ -317,19 +318,6 @@ public class FiveMLaunchOptionsTests
     }
 
     [Fact]
-    public void ToCommandLineArgs_ShouldReturnImmutableArrayWithSecondClient()
-    {
-        // Given
-        var options = FiveMLaunchOptions.Create(null, GameClient.FiveM, 3258, 1, true);
-
-        // When
-        var args = options.ToCommandLineArgs();
-
-        // Then
-        Assert.IsType<ImmutableArray<string>>(args);
-        Assert.Equal(new[] { "-b3258", "-pure_1", "-cl2" }, args);
-    }
-    [Fact]
     public void ToCommandLineArgs_ShouldRejectMutationByIndexerCast()
     {
         // Given
@@ -370,12 +358,16 @@ public class FiveMLaunchOptionsTests
     public void Value_ShouldBeImmutableAfterConstruction()
     {
         // Given
-        var options = FiveMLaunchOptions.Create(null, GameClient.FiveM, 3258, 1, true);
-        var other = FiveMLaunchOptions.Create(null, GameClient.FiveM, 3258, 1, true);
+        var first = FiveMLaunchOptions.Create(null, GameClient.FiveM, 3258, 2, true);
+        var second = FiveMLaunchOptions.Create(null, GameClient.FiveM, 3258, 2, true);
 
         // When / Then
         Assert.Empty(GetSetters(typeof(FiveMLaunchOptions)));
-        Assert.False(ReferenceEquals(options, other));
+        Assert.Equal(first.Address, second.Address);
+        Assert.Equal(first.GameClient, second.GameClient);
+        Assert.Equal(first.GameBuild, second.GameBuild);
+        Assert.Equal(first.PureMode, second.PureMode);
+        Assert.Equal(first.SecondClient, second.SecondClient);
     }
 
     private static MethodInfo[] GetSetters(Type type)
