@@ -35,6 +35,15 @@ Configuration
 
 La persistencia utiliza ``System.Text.Json`` y ``JsonStringEnumConverter``.
 
+### Seams intencionales (ConfigurationRepository y ServerRequirementsResolver)
+
+Aunque ``ConfigurationRepository`` y ``ServerRequirementsResolver`` mayormente delegan, se mantienen a propósito como seams. Su frontera:
+
+- ``ConfigurationRepository`` es la API no-nula del módulo Configuration: ``Load()`` devuelve siempre un ``LauncherSettings`` (aplica ``?? new LauncherSettings()``) y valida la entrada en ``Save``. Aísla a la UI de la nulabilidad del storage y es sustituible en tests por ``InMemorySettingsStorage``.
+- ``ServerRequirementsResolver`` traduce ``CfxServerInfo`` (Service, shape de CFX) a ``ServerRequirements`` (Domain). Mantiene el Domain sin conocer las convenciones de CFX (``sv_enforceGameBuild``, ``sv_pureLevel``, ``requestSteamTicket``) y es testeable directo sin HTTP.
+
+Inlinearlos acoplaría Domain o UI al detalle de CFX/storage. Decisión registrada en ``docs/adr/0001-intentional-middle-men-seams.md``.
+
 La suite de tests utiliza ``xUnit`` y actualmente está completamente verde.
 
 El último estado conocido es:

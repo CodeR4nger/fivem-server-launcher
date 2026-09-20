@@ -4,9 +4,9 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Se registra la decisión (ADR en `docs/adr/` o nota en DOC.md)
-- [ ] Si se mantienen: DOC.md explica por qué son seams (testabilidad/separación) y su frontera
-- [ ] Si se inlinean: el consumidor llama al target directo y se borran las clases intermedias
-- [ ] Suite verde tras el cambio
+- [x] Se registra la decisión (ADR en `docs/adr/` o nota en DOC.md)
+- [x] Si se mantienen: DOC.md explica por qué son seams (testabilidad/separación) y su frontera
+- [x] Si se inlinean: el consumidor llama al target directo y se borran las clases intermedias
+- [x] Suite verde tras el cambio
