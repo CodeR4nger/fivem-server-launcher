@@ -1,17 +1,17 @@
-# 01: GameLauncher lanza fivem://connect para un perfil Legacy con CfxId
+# 01: GameLauncher launches fivem://connect for a Legacy profile with CfxId
 
-**What to build:** primera slice vertical del orquestador. `GameLauncher.ConnectAsync(profile)` con un perfil Legacy (CfxId + Requirements) delega `fivem://connect/cfx.re/join/y4lg95?-b3258?-pure_1` al seam `IGameProcessLauncher` y devuelve `LaunchResult.Connect(uri)`. Incluye definir `LaunchResult` (inmutable) y el seam `IGameProcessLauncher` + fake de test.
+**What to build:** first vertical slice of the orchestrator. `GameLauncher.ConnectAsync(profile)` with a Legacy profile (CfxId + Requirements) delegates `fivem://connect/cfx.re/join/y4lg95?-b3258?-pure_1` to the `IGameProcessLauncher` seam and returns `LaunchResult.Connect(uri)`. Includes defining `LaunchResult` (immutable) and the `IGameProcessLauncher` seam + test fake.
 
 **Blocked by:** None (can start immediately)
 
 **Status:** resolved
 
-- [x] `IGameProcessLauncher` con `StartAsync(Uri)`; fake en tests (`FakeGameProcessLauncher`) que registra requests.
-- [x] `LaunchResult` inmutable con payload; factories explícitas (sin ctor público).
-- [x] `GameLauncher.ConnectAsync` con perfil Legacy+CfxId+Requirements → seam recibe `fivem://connect/cfx.re/join/y4lg95?-b3258?-pure_1`.
-- [x] Resultado `Connect(uri)` devuelto.
-- [x] Suite completa verde.
+- [x] `IGameProcessLauncher` with `StartAsync(Uri)`; test fake (`FakeGameProcessLauncher`) that records requests.
+- [x] Immutable `LaunchResult` with payload; explicit factories (no public ctor).
+- [x] `GameLauncher.ConnectAsync` with Legacy+CfxId+Requirements profile → seam receives `fivem://connect/cfx.re/join/y4lg95?-b3258?-pure_1`.
+- [x] `Connect(uri)` result returned.
+- [x] Full suite green.
 
 ## Comments
 
-Nota: la capa se nombró `Launch` (namespace `FiveMServerLauncher.Launch`) en vez de `Application` porque chocaba con `System.Windows.Application` (WPF, `App.xaml.cs`).
+Note: the layer was named `Launch` (namespace `FiveMServerLauncher.Launch`) instead of `Application` because it collided with `System.Windows.Application` (WPF, `App.xaml.cs`).

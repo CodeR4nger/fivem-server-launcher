@@ -1,14 +1,14 @@
-# 02: ResolveAsync devuelve ServerProfile con identidad y requisitos
+# 02: ResolveAsync returns a ServerProfile with identity and requirements
 
-**What to build:** el tracer bullet de la fase ServerProfile. Dada una dirección (CFX id, o `cfx.re/join/<id>` con o sin esquema), resolver el servidor devuelve ahora un `ServerProfile` que agrupa la identidad (`CfxId`, `ProjectName`) y los `Requirements` derivados de la información que CFX publica. `ResolvedServer` se sustituye por `ServerProfile`. El resolver compone internamente la consulta a CFX y la derivación de requisitos. Se conserva la validación actual: dirección vacía → excepción; servidor no encontrado → excepción.
+**What to build:** the tracer bullet of the ServerProfile phase. Given an address (CFX id, or `cfx.re/join/<id>` with or without scheme), resolving the server now returns a `ServerProfile` grouping the identity (`CfxId`, `ProjectName`) and the `Requirements` derived from what CFX publishes. `ResolvedServer` is replaced by `ServerProfile`. The resolver internally composes the CFX query and the requirements derivation. Current validation is preserved: empty address → exception; server not found → exception.
 
-**Blocked by:** 01 (Ampliar ServerRequirements con Pure Mode y Steam ticket)
+**Blocked by:** 01 (Extend ServerRequirements with Pure Mode and Steam ticket)
 
 **Status:** resolved
 
-- [ ] Resolver una CFX id válida devuelve un `ServerProfile` con ese `CfxId`
-- [ ] El `ServerProfile` incluye el `ProjectName` publicado por el servidor
-- [ ] El `ServerProfile` incluye los `Requirements` derivados (GameBuild, PureMode, RequestSteamTicket) tal como los publica CFX
-- [ ] `cfx.re/join/<id>` con esquema y sin esquema siguen resolviéndose con el id correcto
-- [ ] Dirección vacía y servidor no encontrado siguen lanzando la excepción actual (no regresión)
-- [ ] `LauncherSettings` no se modifica; la lógica vive en el dominio
+- [ ] Resolving a valid CFX id returns a `ServerProfile` with that `CfxId`
+- [ ] The `ServerProfile` includes the `ProjectName` published by the server
+- [ ] The `ServerProfile` includes the derived `Requirements` (GameBuild, PureMode, RequestSteamTicket) as CFX publishes them
+- [ ] `cfx.re/join/<id>` with and without scheme keep resolving to the correct id
+- [ ] Empty address and server-not-found still throw the current exception (no regression)
+- [ ] `LauncherSettings` is not modified; the logic lives in the domain

@@ -1,12 +1,12 @@
-# 07: Renombrar ExtractCfxIdIfValidUrl y aclarar mapping EndPoint→CfxId
+# 07: Rename ExtractCfxIdIfValidUrl and clarify the EndPoint→CfxId mapping
 
-**What to build:** el método `ExtractCfxIdIfValidUrl` de `ServerResolver` no valida nada: solo extrae el substring de `cfx.re/join/`. Se renombra para decir lo que hace (`ExtractCfxId`). Además se aclara el mapping de `CfxService.cs` que asigna `EndPoint` a `CfxId` (los fixtures usan una URL como EndPoint y el resolver la devuelve como id).
+**What to build:** the `ExtractCfxIdIfValidUrl` method of `ServerResolver` validates nothing: it only extracts the substring from `cfx.re/join/`. It is renamed to say what it does (`ExtractCfxId`). Also the mapping in `CfxService.cs` that assigns `EndPoint` to `CfxId` is clarified (fixtures use a URL as EndPoint and the resolver returns it as the id).
 
 **Blocked by:** None (can start immediately)
 
 **Status:** resolved
 
-- [x] El método se renombra a un nombre que refleja su comportamiento real
-- [x] Los tests existentes siguen verdes
-- [x] Se documenta/aclara por qué `EndPoint` alimenta `CfxId` (o se corrige el mapeo)
-- [x] Sin cambios de comportamiento
+- [x] The method is renamed to a name that reflects its real behavior
+- [x] Existing tests stay green
+- [x] It is documented/clarified why `EndPoint` feeds `CfxId` (or the mapping is fixed)
+- [x] No behavior changes

@@ -1,15 +1,15 @@
-# 03: MainView extensión con TextBox de dirección y binding a MainViewModel
+# 03: MainView extension with address TextBox and binding to MainViewModel
 
-**What to build:** wiring XAML. Nuevo layout en `MainView.xaml`: TextBox + botón "Entrar al servidor" + estado textblock. Sin lógica en code-behind. El DataContext no se conecta aquí (se arma en una fase posterior con el composition real del grafo).
+**What to build:** XAML wiring. New layout in `MainView.xaml`: TextBox + "Entrar al servidor" button + status textblock. No logic in code-behind. The DataContext is not wired here (it is assembled in a later phase with the real graph composition).
 
 **Blocked by:** 02
 
 **Status:** resolved
 
-- [x] TextBox que edita `ServerAddress` (`UpdateSourceTrigger=PropertyChanged`, two-way).
-- [x] "ENTRAR AL SERVIDOR" con `Command="{Binding ConnectCommand}"`, disabled cuando `IsBusy`.
-- [x] TextBlock con `Text="{Binding StatusText}"`.
-- [x] Binding solo; sin concrete `DataContext` — la compo real del grafo es fase posterior.
-- [x] Build + suite verde.
+- [x] TextBox that edits `ServerAddress` (`UpdateSourceTrigger=PropertyChanged`, two-way).
+- [x] "ENTRAR AL SERVIDOR" with `Command="{Binding ConnectCommand}"`, disabled when `IsBusy`.
+- [x] TextBlock with `Text="{Binding StatusText}"`.
+- [x] Binding only; no concrete `DataContext` — the real graph composition is a later phase.
+- [x] Build + green suite.
 
 ## Comments

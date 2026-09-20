@@ -1,17 +1,17 @@
-# 03: Reformat indentaciones + interpolación en CfxJson
+# 03: Reformat indentation + interpolation in CfxJson
 
-**What to build:** cosmética.
-1. `MainViewModel.ConnectAsync` tiene indentación rota en el final del método.
-2. `[Fact]` en `MainViewModelTests.ConnectAsync_WithValidCfxJoinAddress` incorrectamente alineado.
-3. `CfxJson` usa `"""...Replace("VALUE", gamename)` — verificar si raw string `$$"""..."""` evita el error CS9007. Si no es posible devido al formato (CS9007 sobre `}}}`), documentar la decisión de mantener `.Replace`.
+**What to build:** cosmetics.
+1. `MainViewModel.ConnectAsync` has broken indentation at the end of the method.
+2. `[Fact]` in `MainViewModelTests.ConnectAsync_WithValidCfxJoinAddress` incorrectly aligned.
+3. `CfxJson` uses `"""...Replace("VALUE", gamename)` — check whether a `$$"""..."""` raw string avoids the CS9007 error. If not possible due to the format (CS9007 on `}}}`), document the decision to keep `.Replace`.
 
 **Blocked by:** None (can start immediately)
 
 **Status:** resolved
 
-- [x] Indentación en `MainViewModel.cs` correcta.
-- [x] Indentación en `[Fact]` correcta.
-- [x] `CfxJson` usa interpolated string (`$"...{{...}}..."`) con escape de braces dentro del raw literal — raw string `$"` y `$""""""` de `$"` con JSON causaban CS9007 por conflicto de `}}}`.
-- [x] Suite completa verde (109).
+- [x] Indentation in `MainViewModel.cs` correct.
+- [x] Indentation in `[Fact]` correct.
+- [x] `CfxJson` uses an interpolated string (`$"...{{...}}..."`) with brace escaping inside the raw literal — raw string `$"` and `$""""""` with JSON caused CS9007 due to the `}}}` conflict.
+- [x] Full suite green (109).
 
 ## Comments

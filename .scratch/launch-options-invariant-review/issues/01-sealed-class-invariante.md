@@ -1,14 +1,14 @@
-# 01: FiveMLaunchOptions de record a sealed class (invariante en compilación)
+# 01: FiveMLaunchOptions from record to sealed class (compile-time invariant)
 
-**What to build:** `src/FiveMServerLauncher/Domain/FiveMLaunchOptions.cs` pasa de `sealed record` a `sealed class` con ctor privado y get-only props (sin `init`), eliminando el `with` y bloqueando en compilación cualquier estado inválido fuera de `Create`. `ToUri()`/`ToCommandLineArgs()`/`IsEnhanced`/`BuildGameFlags`/`ValidateAddress`/`ValidateGameClient` se conservan sin cambiar su comportamiento. `Create` y `FromServerProfile` siguen siendo las únicas fábricas públicas.
+**What to build:** `src/FiveMServerLauncher/Domain/FiveMLaunchOptions.cs` moves from `sealed record` to `sealed class` with a private ctor and get-only props (no `init`), eliminating the `with` and blocking at compile time any invalid state outside `Create`. `ToUri()`/`ToCommandLineArgs()`/`IsEnhanced`/`BuildGameFlags`/`ValidateAddress`/`ValidateGameClient` are preserved without changing their behavior. `Create` and `FromServerProfile` remain the only public factories.
 
 **Blocked by:** None
 
 **Status:** resolved
 
-- [x] `FiveMLaunchOptions` es `sealed class` con ctor privado y get-only props (sin `init`), y no existe método `with`/clone sintético — verificable por reflexión
-- [x] No hay setter público de ningún tipo (ni `init`, ni `set`) en las props — reflexión lo confirma
-- [x] `Create`/`FromServerProfile` siguen siendo las únicas vías públicas de construcción
-- [x] `ToUri()` aún devuelve `null` con `Address` nula o `GameClient == FiveMEnhanced`, y URI/args con el formato exacto de hoy (sin cambios de comportamiento)
-- [x] `Value_ShouldBeImmutableAfterConstruction` se adapta (sin `with`): verifica ausencia de mutadores públicos y no-identidad de instancias
-- [x] Suite completa verde (61)
+- [x] `FiveMLaunchOptions` is a `sealed class` with private ctor and get-only props (no `init`), and no `with`/synthetic clone method exists — verifiable via reflection
+- [x] There is no public setter of any kind (neither `init` nor `set`) on the props — reflection confirms it
+- [x] `Create`/`FromServerProfile` remain the only public construction paths
+- [x] `ToUri()` still returns `null` with null `Address` or `GameClient == FiveMEnhanced`, and URI/args with today's exact format (no behavior changes)
+- [x] `Value_ShouldBeImmutableAfterConstruction` is adapted (no `with`): verifies absence of public mutators and non-identity of instances
+- [x] Full suite green (61)

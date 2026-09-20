@@ -1,14 +1,14 @@
-# 02: Cerrar fase path-resolver (suite verde + docs)
+# 02: Close the path-resolver phase (green suite + docs)
 
-**What to build:** cierre. AGENTS.md + spec/tickets updated + commit.
+**What to build:** close-out. AGENTS.md + spec/tickets updated + commit.
 
 **Blocked by:** 01
 
 **Status:** resolved
 
-- [x] AGENTS.md actualizado (seam `IClientInstallLocator`, conteo 114).
+- [x] AGENTS.md updated (`IClientInstallLocator` seam, count 114).
 - [x] Spec/tickets `resolved`.
-- [x] Suite verde (114).
-- [x] Commit convencional en inglés (pendiente de confirmación).
+- [x] Suite green (114).
+- [x] English conventional commit (pending confirmation).
 
 ## Comments

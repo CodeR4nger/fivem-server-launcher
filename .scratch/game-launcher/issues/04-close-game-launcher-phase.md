@@ -1,14 +1,14 @@
-# 04: Cerrar fase game-launcher
+# 04: Close the game-launcher phase
 
-**What to build:** mantener la suite verde, actualizar documentación y cerrar los paper trails. Según el workflow de la fase: tras el GREEN obligatorio, REFACTOR (DRY/KISS/SOLID/YAGNI) y al cierre actualizar `AGENTS.md`.
+**What to build:** keep the suite green, update documentation and close the paper trails. Per the phase workflow: after the mandatory GREEN, REFACTOR (DRY/KISS/SOLID/YAGNI) and at close-out update `AGENTS.md`.
 
 **Blocked by:** 03
 
 **Status:** resolved
 
-- [x] AGENTS.md: capa `Launch` (GameLauncher + `IGameProcessLauncher` seam, `LaunchResult`), `FiveMLaunchOptions.Create` ahora acepta IpPort/DomainPort (con fallback `Address` en `FromServerProfile`), conteo 106 de tests.
-- [x] Spec `resolved`, tickets con casillas completas.
-- [x] Suite completa verde + `dotnet build FiveMServerLauncher.slnx` sin errores.
-- [x] Commit convencional en inglés (pendiente de confirmación del usuario).
+- [x] AGENTS.md: `Launch` layer (GameLauncher + `IGameProcessLauncher` seam, `LaunchResult`), `FiveMLaunchOptions.Create` now accepts IpPort/DomainPort (with `Address` fallback in `FromServerProfile`), test count 106.
+- [x] Spec `resolved`, tickets with complete checkboxes.
+- [x] Full suite green + `dotnet build FiveMServerLauncher.slnx` with no errors.
+- [x] English conventional commit (pending user confirmation).
 
 ## Comments

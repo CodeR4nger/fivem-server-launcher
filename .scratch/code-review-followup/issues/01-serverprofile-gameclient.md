@@ -1,12 +1,12 @@
-# 01: ServerProfile conserva GameClient
+# 01: ServerProfile preserves GameClient
 
-**What to build:** la composición de `ResolveAsync` no pierde el `GameClient` (FiveM | FiveMEnhanced | RedM) que CFX publica en `gamename`. El `ServerProfile` que devuelve el resolver lo expone para que capas posteriores (p.ej. `Requirements`) puedan consultarlo.
+**What to build:** the `ResolveAsync` composition must not lose the `GameClient` (FiveM | FiveMEnhanced | RedM) that CFX publishes in `gamename`. The `ServerProfile` returned by the resolver exposes it so later layers (e.g. `Requirements`) can query it.
 
 **Blocked by:** None (can start immediately)
 
 **Status:** resolved
 
-- [x] `ServerProfile` expone un campo `GameClient`
-- [x] Resolver un servidor con `gamename: gta5enhanced` devuelve el perfil con ese GameClient mapeado
-- [x] Un servidor sin `gamename` deja el campo en `null` (no asumir cliente)
-- [x] Test cubre el mapping en `ServerResolver` (seam alto)
+- [x] `ServerProfile` exposes a `GameClient` field
+- [x] Resolving a server with `gamename: gta5enhanced` returns the profile with that mapped GameClient
+- [x] A server without `gamename` leaves the field at `null` (do not assume a client)
+- [x] Test covers the mapping in `ServerResolver` (high-level seam)

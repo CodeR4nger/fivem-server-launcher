@@ -1,14 +1,14 @@
-# 01: Modelo base FiveMLaunchOptions con fábrica validada
+# 01: Base FiveMLaunchOptions model with validated factory
 
-**What to build:** el valor inmutable del dominio que describe cómo lanzar FiveM para una intención dada. Expone `Address` (nullable: la address de conexión cuando se conecta a un servidor; `null` al abrir el cliente directamente), `GameClient`, `GameBuild`, `PureMode` y `SecondClient`. Una fábrica estática construye el modelo validando su estado (address malformada → error; `GameClient` inválido/desconocido → error). No lanza procesos ni toca archivos; depende solo de tipos de dominio.
+**What to build:** the immutable domain value that describes how to launch FiveM for a given intent. It exposes `Address` (nullable: the connection address when connecting to a server; `null` when opening the client directly), `GameClient`, `GameBuild`, `PureMode` and `SecondClient`. A static factory builds the model validating its state (malformed address → error; invalid/unknown `GameClient` → error). It launches no processes and touches no files; it depends only on domain types.
 
 **Blocked by:** None (can start immediately)
 
 **Status:** resolved
 
-- [x] Dado un `FiveMLaunchOptions` construido con campos conocidos, expone `Address`, `GameClient`, `GameBuild`, `PureMode` y `SecondClient` con esos valores
-- [x] Se puede construir sin `Address` (intención "abrir directo") sin error
-- [x] La fábrica rechaza una address malformada (vacía o sin forma de address de servidor)
-- [x] La fábrica rechaza un `GameClient` inválido (valor desconocido del enum)
-- [x] El valor es inmutable: asignaciones que lo cambiarían no compilan/fallan en tiempo de diseño
-- [x] No referencia UI, servicios ni configuración; solo tipos de dominio
+- [x] Given a `FiveMLaunchOptions` built with known fields, it exposes `Address`, `GameClient`, `GameBuild`, `PureMode` and `SecondClient` with those values
+- [x] It can be built without `Address` ("open directly" intent) without error
+- [x] The factory rejects a malformed address (empty or without a server-address form)
+- [x] The factory rejects an invalid `GameClient` (unknown enum value)
+- [x] The value is immutable: assignments that would change it don't compile/fail at design time
+- [x] No references to UI, services, or configuration; domain types only

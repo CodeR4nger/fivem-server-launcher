@@ -1,14 +1,14 @@
-# 04: Cerrar fase composition-root
+# 04: Close the composition-root phase
 
-**What to build:** cierre. AGENTS.md -> capa `ViewModels` wiring real (App asigna `DataContext`); suite verde; commit.
+**What to build:** close-out. AGENTS.md -> real `ViewModels` layer wiring (App assigns `DataContext`); green suite; commit.
 
 **Blocked by:** 03
 
 **Status:** ready-for-agent
 
-- [ ] AGENTS.md actualizado (MainWindow wiring real, nombre capa `composition, DataContext en `App`). Conteo de tests (109).
+- [ ] AGENTS.md updated (real MainWindow wiring, `composition` layer name, DataContext in `App`). Test count (109).
 - [ ] Spec `resolved`.
-- [ ] Suite completa verde, build zero.
-- [ ] Commit convencional en inglés.
+- [ ] Full suite green, clean build.
+- [ ] English conventional commit.
 
 ## Comments

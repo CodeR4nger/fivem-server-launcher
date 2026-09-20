@@ -1,13 +1,13 @@
-# 03: Tests de Configuration usan Given/When/Then
+# 03: Configuration tests use Given/When/Then
 
-**What to build:** los tests de la carpeta `Configuration` siguen el convenio de comentarios de AGENTS.md (`Given/When/Then` con naming `<Método>_Should<Expectativa>`), igual que el resto de la suite. No cambia comportamiento ni assertions, solo la estructura de comentarios.
+**What to build:** the tests in the `Configuration` folder follow the AGENTS.md comment convention (`Given/When/Then` with `<Method>_Should<Expectation>` naming), same as the rest of the suite. No behavior or assertion changes, only comment structure.
 
 **Blocked by:** None (can start immediately)
 
 **Status:** resolved
 
-- [x] `ConfigurationRepositoryTests` usa Given/When/Then en lugar de Arrange/Act/Assert
-- [x] `FileSettingsStorageTests` usa Given/When/Then
-- [x] `InMemorySettingsStorageTests` usa Given/When/Then
-- [x] `LauncherSettingsTests` añade los comentarios Given/When/Then (hoy sin ellos)
-- [x] Suite completa sigue verde (solo cambio cosmético de comentarios)
+- [x] `ConfigurationRepositoryTests` uses Given/When/Then instead of Arrange/Act/Assert
+- [x] `FileSettingsStorageTests` uses Given/When/Then
+- [x] `InMemorySettingsStorageTests` uses Given/When/Then
+- [x] `LauncherSettingsTests` adds the Given/When/Then comments (currently without them)
+- [x] Full suite stays green (purely cosmetic comment change)

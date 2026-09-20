@@ -1,24 +1,24 @@
-# 03: Servicio Catálogo CFX (streamRedir + búsqueda + cache TTL)
+# 03: CFX Catalog service (streamRedir + lookup + TTL cache)
 
-**What to build:** un servicio tipo `CfxService` (seam, sin persistir estado de la UI) que descarga el catálogo completo desde `https://frontend.cfx-services.net/api/servers/streamRedir/`, lo decodifica con la fundación protobuf de la ticket 02, y responde a preguntas como "¿aparece este `ip:port`?" o "¿existe este cfx id?" devolviendo la entrada `master.Server` que matchea. Mantiene el stream en memoria con un TTL (~5 min) para no re-descargar los MB por cada consulta; si el catálogo no está disponible, devuelve "sin match" (degradación manejada por el llamador).
+**What to build:** a `CfxService`-style service (seam, no UI state persistence) that downloads the full catalog from `https://frontend.cfx-services.net/api/servers/streamRedir/`, decodes it with the protobuf foundation from ticket 02, and answers questions like "does this `ip:port` appear?" or "does this cfx id exist?" by returning the matching `master.Server` entry. It keeps the stream in memory with a TTL (~5 min) to avoid re-downloading the MBs on every query; if the catalog is unavailable, it returns "no match" (degradation handled by the caller).
 
 **Blocked by:** 02
 
 **Status:** resolved
 
-- [x] Fetch del stream vía `HttpClient` inyectable (testeable con `FakeHttpMessageHandler`), con cabeceras/User-Agent razonables.
-- [x] Decodificación de todos los frames usando el helper protobuf de la 02.
-- [x] `LookupByIpPort(ip:port)` matchea contra `connectEndPoints`; `LookupByEndPoint(id)` matchea contra `EndPoint`; sin match → null.
-- [x] El resultado queda expuesto para derivar `gamename`, `sv_projectName` y las vars de requisitos (`sv_enforceGameBuild`, `sv_pureLevel`, `requestSteamTicket`).
-- [x] Cache TTL en memoria (~5 min): una segunda consulta dentro del TTL no re-descarga.
-- [x] Con catálogo inalcanzable/fallido → consulta devuelve sin match (no lanza al llamador).
-- [x] Tests con `FakeHttpMessageHandler` y fixtures binarios construidos en el test (helper de frames de la 02); estilo Given/When/Then.
-- [x] Suite completa sigue verde.
+- [x] Stream fetch via injectable `HttpClient` (testable with `FakeHttpMessageHandler`), with reasonable headers/User-Agent.
+- [x] Decoding of all frames using the protobuf helper from 02.
+- [x] `LookupByIpPort(ip:port)` matches against `connectEndPoints`; `LookupByEndPoint(id)` matches against `EndPoint`; no match → null.
+- [x] The result is exposed to derive `gamename`, `sv_projectName` and the requirement vars (`sv_enforceGameBuild`, `sv_pureLevel`, `requestSteamTicket`).
+- [x] In-memory TTL cache (~5 min): a second query within the TTL does not re-download.
+- [x] With an unreachable/failed catalog → query returns no match (does not throw to the caller).
+- [x] Tests with `FakeHttpMessageHandler` and binary fixtures built in the test (frame helper from 02); Given/When/Then style.
+- [x] Full suite stays green.
 
 ## Comments
 
-- TDD RED→GREEN→REFACTOR completado con 9 tests nuevos en `tests/.../Service/ServerCatalogTests.cs`. Suite completa 90 verdes (81 previos + 9 nuevos).
-- `Service/ServerCatalog` (seam, `HttpClient` inyectable + `TimeProvider` + `cacheTtl` opcionales): `LookupByIpPortAsync` (matchea `connectEndPoints`) y `LookupByEndPointAsync` (matchea `EndPoint`); cache TTL 5 min con `TimeProvider` inyectable; fallo de red/status/corrupción → devuelve sin match, no lanza.
-- User-Agent `FiveMServerLauncher/0.1` por request (la primera versión con assert `NotNull` siempre pasaba: `HttpHeaderValueCollection` nunca es null → se corrigió el assert a `NotEmpty`, RED real).
-- Test helpers nuevos compartidos: `TestProtobufFrames` (frames binarios, DRY con la 02) y `FakeTimeProvider` (avance manual del reloj para TTL).
-- REFACTOR: `FakeHttpMessageHandler` ganó soporte `byte[]` + `RequestCount` + modo "lanza HttpRequestException" (fallo de red simulado).
+- TDD RED→GREEN→REFACTOR completed with 9 new tests in `tests/.../Service/ServerCatalogTests.cs`. Full suite 90 green (81 previous + 9 new).
+- `Service/ServerCatalog` (seam, injectable `HttpClient` + optional `TimeProvider` + `cacheTtl`): `LookupByIpPortAsync` (matches `connectEndPoints`) and `LookupByEndPointAsync` (matches `EndPoint`); 5-min TTL cache with injectable `TimeProvider`; network/status/corruption failure → returns no match, does not throw.
+- User-Agent `FiveMServerLauncher/0.1` per request (the first version with a `NotNull` assert always passed: `HttpHeaderValueCollection` is never null → assert fixed to `NotEmpty`, real RED).
+- New shared test helpers: `TestProtobufFrames` (binary frames, DRY with 02) and `FakeTimeProvider` (manual clock advance for TTL).
+- REFACTOR: `FakeHttpMessageHandler` gained `byte[]` support + `RequestCount` + "throws HttpRequestException" mode (simulated network failure).

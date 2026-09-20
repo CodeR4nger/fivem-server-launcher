@@ -1,13 +1,13 @@
-# 04: Cerrar fase ui-connect-flow-review-fixes
+# 04: Close the ui-connect-flow-review-fixes phase
 
-**What to build:** cierre. Suite verde + AGENTS.md consistente + spec `resolved` + tickets checked + commit convencional en inglés.
+**What to build:** close-out. Green suite + consistent AGENTS.md + spec `resolved` + tickets checked + English conventional commit.
 
 **Blocked by:** 01, 02, 03
 
 **Status:** resolved
 
-- [x] Suite completa verde + `dotnet build` sin errores.
-- [x] Spec/tickets actualizados (Status: resolved).
-- [x] Commit convencional en inglés (pendiente de confirmación del usuario).
+- [x] Full suite green + `dotnet build` with no errors.
+- [x] Spec/tickets updated (Status: resolved).
+- [x] English conventional commit (pending user confirmation).
 
 ## Comments

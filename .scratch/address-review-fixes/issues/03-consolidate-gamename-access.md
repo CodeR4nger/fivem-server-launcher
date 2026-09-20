@@ -1,15 +1,15 @@
-# 03: Consolidar acceso a gamename en CfxVars + reconciliar doc de EndPoint
+# 03: Consolidate gamename access in CfxVars + reconcile EndPoint doc
 
-**What to build:** `CfxVars.TryGetInt` null-guarda el dict pero `MapGameClient` no, forzando null-check ad-hoc distinto en cada caller (`CfxService` vs `ServerResolver`). Consolidar en un solo miembro de `CfxVars` (p.ej. `TryGetGameClient(dict) → GameClient?` con el null-guard adentro) que iguale las formas de ambos call sites. Además, reconciliar AGENTS.md: distinguir que el `EndPoint` de la respuesta `/single/` es un connection endpoint (no se usa como id) mientras que el `EndPoint` de un frame de catálogo streamRedir es el cfx id canónico (por eso `ServerResolver` puede asignarlo a `CfxId`).
+**What to build:** `CfxVars.TryGetInt` null-guards the dict but `MapGameClient` does not, forcing a different ad-hoc null-check in each caller (`CfxService` vs `ServerResolver`). Consolidate into a single `CfxVars` member (e.g. `TryGetGameClient(dict) → GameClient?` with the null-guard inside) that unifies both call sites' shapes. Also, reconcile AGENTS.md: distinguish that the `EndPoint` of the `/single/` response is a connection endpoint (not used as id) while the `EndPoint` of a streamRedir catalog frame is the canonical cfx id (which is why `ServerResolver` can assign it to `CfxId`).
 
-**Blocked by:** 01 (resolver se toca en 01; evitar conflicto)
+**Blocked by:** 01 (resolver is touched in 01; avoid conflict)
 
 **Status:** resolved
 
-- [x] `CfxVars` expone un acceso a `gamename` con null-guard (forma unificada) usado por `CfxService` y `ServerResolver`.
-- [x] `CfxService.cs` deja de hacer el null-check ad-hoc de `Vars` para `gamename`.
-- [x] `ServerResolver.BuildValidatedProfile` usa el mismo acceso que `CfxService`.
-- [x] AGENTS.md "Current state" distingue `EndPoint` de `/single/` (connection endpoint, no id) vs `EndPoint` del catálogo (cfx id canónico). Sin cambiar `CfxId = server.EndPoint` en el resolver.
-- [x] Suite completa verde (`CfxServiceTests` y resolver tests siguen pasando sin modificaciones).
+- [x] `CfxVars` exposes a `gamename` access with null-guard (unified shape) used by `CfxService` and `ServerResolver`.
+- [x] `CfxService.cs` no longer does the ad-hoc null-check of `Vars` for `gamename`.
+- [x] `ServerResolver.BuildValidatedProfile` uses the same access as `CfxService`.
+- [x] AGENTS.md "Current state" distinguishes `EndPoint` of `/single/` (connection endpoint, not id) vs `EndPoint` of the catalog (canonical cfx id). Without changing `CfxId = server.EndPoint` in the resolver.
+- [x] Full suite green (`CfxServiceTests` and resolver tests keep passing unmodified).
 
 ## Comments

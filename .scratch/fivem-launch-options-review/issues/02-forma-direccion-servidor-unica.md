@@ -1,12 +1,12 @@
-# 02: Extraer la forma de dirección de servidor a un solo lugar
+# 02: Extract the server-address form into a single place
 
-**What to build:** el concepto "dirección de servidor" (`cfx.re/join/<id>`) tiene hoy un único dueño en el dominio, en lugar del mismo literal duplicado en tres sitios (`ExtractCfxId` de `ServerResolver` y la validación/construcción de `FiveMLaunchOptions`). Un helper/tipo compartido (DRY) provee: validar si una address tiene forma de servidor, derivar la address desde un `CfxId`, y extraer el `CfxId` desde una address. Sin cambio de comportamiento observable.
+**What to build:** the "server address" concept (`cfx.re/join/<id>`) now has a single owner in the domain, instead of the same literal duplicated in three places (`ExtractCfxId` in `ServerResolver` and the validation/construction in `FiveMLaunchOptions`). A shared helper/type (DRY) provides: validating whether an address has a server form, deriving the address from a `CfxId`, and extracting the `CfxId` from an address. No observable behavior change.
 
-**Blocked by:** 01 (Endurecer y blindar la validación de la fábrica)
+**Blocked by:** 01 (Harden and seal the factory validation)
 
 **Status:** resolved
 
-- [x] El literal `cfx.re/join/` existe una sola vez en el código de dominio
-- [x] `ServerResolver.ExtractCfxId` usa la pieza compartida y sigue extrayendo el id igual que hoy (no regresión)
-- [x] La validación/construcción de `FiveMLaunchOptions` usa la pieza compartida
-- [x] La suite completa sigue verde tras el refactor (sin tests nuevos de comportamiento)
+- [x] The `cfx.re/join/` literal exists only once in the domain code
+- [x] `ServerResolver.ExtractCfxId` uses the shared piece and still extracts the id the same as today (no regression)
+- [x] `FiveMLaunchOptions` validation/construction uses the shared piece
+- [x] The full suite stays green after the refactor (no new behavior tests)

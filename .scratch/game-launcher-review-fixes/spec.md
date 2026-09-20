@@ -1,24 +1,24 @@
 Status: resolved
 Type: spec
 
-# Fixes de post-review de la fase game-launcher
+# Post-review fixes for the game-launcher phase
 
 ## Problem Statement
 
-El code review de la fase `game-launcher` (diff `8e7b60d...HEAD`, ejes Standards y Spec) encontró dos hallazgos que apuntan al mismo punto:
+The code review of the `game-launcher` phase (diff `8e7b60d...HEAD`, Standards and Spec axes) found two findings pointing at the same spot:
 
-1. **Standards:** `LaunchResult` es una null-union: dos payloads nullable (`ConnectUri`/`GameClient`) cuya "kind" se infiere por cuál no es null. Un estado ilegal (ambos null o ambos set) es representable y el reader no ve el contrato del tipo.
-2. **Spec:** la spec pedía "`LaunchResult`: tipo inmutable con `Kind` (`Connect | OpenClient`) y payload"; la implementación no tiene discriminador legitimo, solo payloads nulables.
+1. **Standards:** `LaunchResult` is a null-union: two nullable payloads (`ConnectUri`/`GameClient`) whose "kind" is inferred from which is non-null. An illegal state (both null or both set) is representable and the reader doesn't see the type's contract.
+2. **Spec:** the spec asked for "`LaunchResult`: immutable type with `Kind` (`Connect | OpenClient`) and payload"; the implementation has no legitimate discriminator, only nullable payloads.
 
-Además, la spec tenía una línea ambigua: "PreferredClient fallback del perfil" — el fallback actual, `?? GameClient.FiveM`, no consulta `LauncherSettings.PreferredClient`. El comportamiento actual es válido; se documenta como decisión: el PreferredClient llegará cuando la UI conecte `LauncherSettings` (fase posterior).
+Additionally, the spec had an ambiguous line: "PreferredClient fallback from the profile" — the current fallback, `?? GameClient.FiveM`, does not consult `LauncherSettings.PreferredClient`. The current behavior is valid; it is documented as a decision: PreferredClient will arrive when the UI wires `LauncherSettings` (later phase).
 
 ## Solution
 
-- Refactor `LaunchResult` a sealed record hierarchy: `Connect(Uri) : LaunchResult` y `OpenClient(GameClient) : LaunchResult`. El discriminador es el tipo runtime (pattern matching); no hace falta un enum `Kind` separado. Sin ctor público sobre la clase base. Factories estáticas (o records públicos) permiten crear instancias pero los dos estados no son confundibles.
-- La spec se aclara: "fallback de `GameClient` es `FiveM` por defecto; `LauncherSettings.PreferredClient` se leerá cuando la UI conecte `ConfigurationRepository`" (fase posterior, fuera de alcance aquí).
-- Se renombra el test `ConnectAsync_WithValidationCfxProfile` → `..._WithValidatedCfxProfile`.
+- Refactor `LaunchResult` into a sealed record hierarchy: `Connect(Uri) : LaunchResult` and `OpenClient(GameClient) : LaunchResult`. The discriminator is the runtime type (pattern matching); no separate `Kind` enum is needed. No public ctor on the base class. Static factories (or public records) allow creating instances but the two states are not confusable.
+- The spec is clarified: "`GameClient` fallback is `FiveM` by default; `LauncherSettings.PreferredClient` will be read when the UI wires `ConfigurationRepository`" (later phase, out of scope here).
+- The test `ConnectAsync_WithValidationCfxProfile` is renamed → `..._WithValidatedCfxProfile`.
 
 ## Testing Decisions
 
-- TDD/adaptación: los tests de `GameLauncher` cambian la forma de la assertion con la nueva jerarquía (pattern matching via `IsType`). No hay comportamiento nuevo que validar — solo refactoring de representación.
-- Suite completa verde (106) al final.
+- TDD/adaptation: the `GameLauncher` tests change the assertion shape with the new hierarchy (pattern matching via `IsType`). No new behavior to validate — representation refactoring only.
+- Full suite green (106) at the end.

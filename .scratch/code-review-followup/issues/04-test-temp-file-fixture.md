@@ -1,12 +1,12 @@
-# 04: Fixture de archivo temporal en FileSettingsStorageTests
+# 04: Temporary file fixture in FileSettingsStorageTests
 
-**What to build:** elimina la duplicación de `FileSettingsStorageTests` extrayendo un fixture reutilizable que crea un directorio temporal (y lo limpia) para cada test. También se reutiliza el caso de guardado/lectura completo en vez de repetirlo entre `SaveAndLoad` y `Load`.
+**What to build:** removes duplication in `FileSettingsStorageTests` by extracting a reusable fixture that creates (and cleans up) a temporary directory for each test. The full save/load scenario is also reused instead of being repeated between `SaveAndLoad` and `Load`.
 
 **Blocked by:** None (can start immediately)
 
 **Status:** resolved
 
-- [x] Un helper/fixture proporciona un path temporal único por test y lo elimina en teardown
-- [x] Los 9 usos del patrón temp-dir + `try/finally Delete` lo consumen
-- [x] La duplicación SaveAndLoad↔Load se reduce compartiendo el escenario
-- [x] Suite verde sin regresiones
+- [x] A helper/fixture provides a unique temp path per test and deletes it on teardown
+- [x] The 9 uses of the temp-dir + `try/finally Delete` pattern consume it
+- [x] The SaveAndLoad↔Load duplication is reduced by sharing the scenario
+- [x] Suite green with no regressions

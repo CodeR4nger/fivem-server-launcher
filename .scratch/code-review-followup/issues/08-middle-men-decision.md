@@ -1,12 +1,12 @@
-# 08: Decidir Middle Men: ConfigurationRepository y ServerRequirementsResolver
+# 08: Decide on Middle Men: ConfigurationRepository and ServerRequirementsResolver
 
-**What to build:** decisión de diseño sobre dos clases que mayormente delegan: `ConfigurationRepository` (Save/Load con null-guards) y `ServerRequirementsResolver` (mapper de 3 líneas). Dos caminos: justificarlas como seams intencionales (documentándolo en DOC.md y un ADR) o inlinearlas donde se consumen. Es un ticket de documentación/refactor según lo que se decida.
+**What to build:** design decision on two classes that mostly delegate: `ConfigurationRepository` (Save/Load with null-guards) and `ServerRequirementsResolver` (3-line mapper). Two paths: justify them as intentional seams (documenting it in DOC.md and an ADR) or inline them where they are consumed. This is a documentation/refactor ticket depending on what is decided.
 
 **Blocked by:** None (can start immediately)
 
 **Status:** resolved
 
-- [x] Se registra la decisión (ADR en `docs/adr/` o nota en DOC.md)
-- [x] Si se mantienen: DOC.md explica por qué son seams (testabilidad/separación) y su frontera
-- [ ] Si se inlinean: el consumidor llama al target directo y se borran las clases intermedias (se decidió NO inlinear)
-- [x] Suite verde tras el cambio
+- [x] The decision is recorded (ADR in `docs/adr/` or a note in DOC.md)
+- [x] If kept: DOC.md explains why they are seams (testability/separation) and their boundary
+- [ ] If inlined: the consumer calls the direct target and the intermediate classes are deleted (it was decided NOT to inline)
+- [x] Suite green after the change

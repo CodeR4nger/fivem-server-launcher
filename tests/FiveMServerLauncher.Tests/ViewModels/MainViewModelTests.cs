@@ -29,7 +29,7 @@ public class MainViewModelTests
         Assert.Single(processLauncher.Requests);
         Assert.Equal("fivem://connect/cfx.re/join/y4lg95", processLauncher.Requests[0].AbsoluteUri);
         Assert.False(vm.IsBusy);
-        Assert.Equal("Lanzando FiveM...", vm.StatusText);
+        Assert.Equal("Launching FiveM...", vm.StatusText);
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public class MainViewModelTests
         await vm.ConnectAsync();
 
         // Then
-        Assert.Equal("Dirección inválida", vm.StatusText);
+        Assert.Equal("Invalid address", vm.StatusText);
         Assert.False(vm.IsBusy);
         Assert.Empty(processLauncher.Requests);
     }
@@ -63,7 +63,7 @@ public class MainViewModelTests
         await vm.ConnectAsync();
 
         // Then
-        Assert.Equal("Abriendo FiveMEnhanced...", vm.StatusText);
+        Assert.Equal("Opening FiveMEnhanced...", vm.StatusText);
         Assert.False(vm.IsBusy);
         Assert.Empty(processLauncher.Requests);
     }
@@ -81,7 +81,7 @@ public class MainViewModelTests
         await vm.ConnectAsync();
 
         // Then
-        Assert.Equal("No se puede lanzar", vm.StatusText);
+        Assert.Equal("Launch failed", vm.StatusText);
         Assert.False(vm.IsBusy);
     }
 

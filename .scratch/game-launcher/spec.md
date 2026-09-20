@@ -1,72 +1,72 @@
 Status: resolved
 Type: spec
 
-# GameLauncher: lanzar la conexión a un servidor desde un ServerProfile
+# GameLauncher: launch a server connection from a ServerProfile
 
 ## Problem Statement
 
-El dominio ya es capaz de resumir qué hacer para un servidor (`ServerProfile` → `FiveMLaunchOptions` → URI `fivem://` o args CLI), pero nada orquesta el lanzamiento real. La UI (futura) necesita una capa `Application/Manager` que, dado un `ServerProfile` ya resuelto, decida *qué* lanzar y delegue la ejecución al proceso real.
+The domain can already summarize what to do for a server (`ServerProfile` → `FiveMLaunchOptions` → `fivem://` URI or CLI args), but nothing orchestrates the real launch. The (future) UI needs an `Application/Manager` layer that, given an already-resolved `ServerProfile`, decides *what* to launch and delegates execution to the real process.
 
-Los dos resultados posibles de la decisión (verificado contra docs oficiales y código citizenfx/fivem):
+The two possible outcomes of the decision (verified against official docs and citizenfx/fivem code):
 
-- **Cliente conectable (Legacy/RedM con URI):** `fivem://connect/<addr>?-b<build>?-pure_<nivel>` es el mecanismo de conexión directa (protocolo registrado por el propio cliente; el foro oficial confirma `fivem://connect/<server>`, y `connect 127.0.0.1:30120` y `connect cfx.re/join/y4lg95` funcionan).
-- **`FiveMEnhanced`:** no soporta `fivem://connect`, `-b`, `-pure_` ni `-cl2` (DOC.md). El launcher solo puede *abrir el cliente*; conectar ocurre dentro de su propia UI.
+- **Connectable client (Legacy/RedM with URI):** `fivem://connect/<addr>?-b<build>?-pure_<level>` is the direct-connection mechanism (protocol registered by the client itself; the official forum confirms `fivem://connect/<server>`, and `connect 127.0.0.1:30120` and `connect cfx.re/join/y4lg95` work).
+- **`FiveMEnhanced`:** does not support `fivem://connect`, `-b`, `-pure_` or `-cl2` (DOC.md). The launcher can only *open the client*; connecting happens inside its own UI.
 
-Además hay un caso que hoy `FiveMLaunchOptions.FromServerProfile` no cubre: un perfil **no validado** (`IsCfxValidated=false`, p.ej. IP:port no publicada en CFX) tiene `CfxId` vacío y `Address` crudo (`149.56.120.52:30320`). `FromServerProfile` fuerza `FromCfxId(CfxId)` → `cfx.re/join/` vacío → `InvalidAddressException`. El GameLauncher debe poder conectarse a ese server directo por su `Address`.
+There is also a case `FiveMLaunchOptions.FromServerProfile` doesn't cover today: an **unvalidated** profile (`IsCfxValidated=false`, e.g. an IP:port not published on CFX) has an empty `CfxId` and a raw `Address` (`149.56.120.52:30320`). `FromServerProfile` forces `FromCfxId(CfxId)` → empty `cfx.re/join/` → `InvalidAddressException`. The GameLauncher must be able to connect to that direct server by its `Address`.
 
 ## Solution
 
-Nueva capa `Application` (una sola clase orquestadora + un seam de procesos):
+New `Application` layer (a single orchestrator class + a process seam):
 
-- `GameLauncher.ConnectAsync(ServerProfile)` → devuelve un resultado de lanzamiento (`LaunchResult`):
-  - `Connect(Uri)` cuando el perfil serializa un URI `fivem://connect/...` (Legacy/RedM) — tras delegar la ejecución al seam.
-  - `OpenClient(GameClient)` para `FiveMEnhanced` (o cliente sin direccionar) — **no** llama al seam de procesos: es la UI quien después abrirá el cliente.
-  - Construye las opciones desde el perfil usando `CfxId` si existe (join form) o `Address` directo en caso contrario (IP:port/dominio).
-- **Seam nuevo:** `IGameProcessLauncher` con un único método (p.ej. `Task StartAsync(Uri uri)`). Producción: `Process.Start`/ShellExecute del URI `fivem://` (el protocolo lo maneja FiveM). Tests: fake que registra los `Request` sin procesos reales.
-- `FiveMLaunchOptions` se extiende (decisión registrada abajo) para permitir que `Address` sea un server address válido que no sea join (IP:port/dominio), conservando las invariantes existentes (creación solo vía `Create`/factories, inmutable, null-guard, reutilizando `ServerAddress`).
+- `GameLauncher.ConnectAsync(ServerProfile)` → returns a launch result (`LaunchResult`):
+  - `Connect(Uri)` when the profile serializes a `fivem://connect/...` URI (Legacy/RedM) — after delegating execution to the seam.
+  - `OpenClient(GameClient)` for `FiveMEnhanced` (or unaddressed client) — does **not** call the process seam: it is the UI that will open the client afterwards.
+  - Builds the options from the profile using `CfxId` if present (join form) or the direct `Address` otherwise (IP:port/domain).
+- **New seam:** `IGameProcessLauncher` with a single method (e.g. `Task StartAsync(Uri uri)`). Production: `Process.Start`/ShellExecute of the `fivem://` URI (FiveM handles the protocol). Tests: fake that records the `Request`s without real processes.
+- `FiveMLaunchOptions` is extended (decision recorded below) so that `Address` can be a valid non-join server address (IP:port/domain), preserving the existing invariants (creation only via `Create`/factories, immutable, null-guard, reusing `ServerAddress`).
 
-### Decisión: `FiveMLaunchOptions.Create` acepta IP:port/dominio
+### Decision: `FiveMLaunchOptions.Create` accepts IP:port/domain
 
-Contradice parcialmente la invariante de la fase `launch-options-invariant-review` (solo admitía `cfx.re/join/`). Razón: un server no publicado en CFX se conecta directo por IP:port y el URI `fivem://connect/149.56.120.52:30320` es el mecanismo oficial. La validación pasa de `HasServerFormWithNonEmptyId` a "null **o** cualquier `ServerAddress.Classify` en `CfxJoinUrl|IpPort|DomainPort`" (la clase de clasificación ya centraliza esto). Se documenta en AGENTS.md.
+This partially contradicts the invariant from the `launch-options-invariant-review` phase (which only admitted `cfx.re/join/`). Rationale: a server not published on CFX connects directly by IP:port and the `fivem://connect/149.56.120.52:30320` URI is the official mechanism. Validation moves from `HasServerFormWithNonEmptyId` to "null **or** any `ServerAddress.Classify` in `CfxJoinUrl|IpPort|DomainPort`" (the classification class already centralizes this). Documented in AGENTS.md.
 
 ## User Stories
 
-1. Como jugador, conectarme a un servidor Legacy/RedM publicada en CFX debe lanzar `fivem://connect/cfx.re/join/<id>?-b<build>?-pure_<nivel>` vía el seam de procesos.
-2. Como jugador, conectarme a un servidor `FiveMEnhanced` no lanza URI; el launcher devuelve `OpenClient(FiveMEnhanced)` y la UI abrirá el cliente después.
-3. Como jugador, conectarme a un servidor no publicado (IP:port/dominio) debe lanzar `fivem://connect/<ip:port>` directo.
-4. Como desarrollador, quiero que el seam de procesos sea un único punto (fakeable) para testear el orquestador sin procesos reales.
+1. As a player, connecting to a Legacy/RedM server published on CFX must launch `fivem://connect/cfx.re/join/<id>?-b<build>?-pure_<level>` via the process seam.
+2. As a player, connecting to a `FiveMEnhanced` server does not launch a URI; the launcher returns `OpenClient(FiveMEnhanced)` and the UI will open the client afterwards.
+3. As a player, connecting to an unpublished server (IP:port/domain) must launch `fivem://connect/<ip:port>` directly.
+4. As a developer, I want the process seam to be a single (fakeable) point to test the orchestrator without real processes.
 
 ## Implementation Decisions
 
-- `LaunchResult`: tipo inmutable (record o sealed) con `Kind` (`Connect | OpenClient`) y payload (`Uri?` o `GameClient?`). Factories explícitas; sin ctor público.
-- `GameLauncher` recibe `IGameProcessLauncher` por ctor. `ConnectAsync`:
-  - Construye `FiveMLaunchOptions` desde el perfil: `CfxId` no vacío → `FromCfxId`; si vacío y `Address` clasifica como IpPort/DomainPort → `Address` directo. `GameClient`/`Requirements` del perfil.
-  - `ToUri()` null → `LaunchResult.OpenClient(GameClient ?? PreferredClient fallback del perfil)`. No lanza, no llama al seam.
-  - URI presente → llama al seam y devuelve `LaunchResult.Connect(uri)`.
-- `FiveMLaunchOptions.Create`: `ValidateAddress` acepta `null` o clasificación `CfxJoinUrl | IpPort | DomainPort` (vía `ServerAddress.Classify`). `FromServerProfile` elige `CfxId`/`Address` según el perfil. Tests existentes de `IpPort` inválido siguen: un `Address` que no clasifica sigue lanzando.
-- Este caso reutiliza `ServerAddress` (dueño de la clasificación), no duplica regex.
-- `IGameProcessLauncher` en `Application`. Fake en tests (`FakeGameProcessLauncher`) que registra URIs recibidos y expone `RequestCount`.
-- Fuera de alcance: PathResolver/detección de instalación, Dev Mode, `-cl2`, Steam/Discord, checks de estado, splash/progress, implementación real del seam con `Process.Start` (se deja el contrato; la UI la conectará).
+- `LaunchResult`: immutable type (record or sealed) with `Kind` (`Connect | OpenClient`) and payload (`Uri?` or `GameClient?`). Explicit factories; no public ctor.
+- `GameLauncher` receives `IGameProcessLauncher` via ctor. `ConnectAsync`:
+  - Builds `FiveMLaunchOptions` from the profile: non-empty `CfxId` → `FromCfxId`; if empty and `Address` classifies as IpPort/DomainPort → direct `Address`. `GameClient`/`Requirements` from the profile.
+  - `ToUri()` null → `LaunchResult.OpenClient(GameClient ?? PreferredClient fallback from the profile)`. Does not throw, does not call the seam.
+  - URI present → calls the seam and returns `LaunchResult.Connect(uri)`.
+- `FiveMLaunchOptions.Create`: `ValidateAddress` accepts `null` or classification `CfxJoinUrl | IpPort | DomainPort` (via `ServerAddress.Classify`). `FromServerProfile` picks `CfxId`/`Address` based on the profile. Existing invalid-`IpPort` tests still hold: an `Address` that doesn't classify still throws.
+- This case reuses `ServerAddress` (owner of the classification), no duplicated regex.
+- `IGameProcessLauncher` in `Application`. Fake in tests (`FakeGameProcessLauncher`) that records received URIs and exposes `RequestCount`.
+- Out of scope: PathResolver/install detection, Dev Mode, `-cl2`, Steam/Discord, status checks, splash/progress, real seam implementation with `Process.Start` (the contract is left; the UI will wire it).
 
 ## Testing Decisions
 
-- TDD en el seam de `GameLauncher` (solo el seam confirmado con el usuario: `GameLauncher.ConnectAsync` → `LaunchResult`, con `IGameProcessLauncher` fake).
-- Tests por slice vertical:
-  1. Perfil Legacy con CfxId + requirements → seam recibe `fivem://connect/cfx.re/join/y4lg95?-b3258?-pure_1`; resultado `Connect`.
-  2. Perfil `FiveMEnhanced` → resultado `OpenClient`, seam NO llamado.
-  3. Perfil no validado con `Address` IP:port → seam recibe `fivem://connect/149.56.120.52:30320`; resultado `Connect`.
-  4. Regresión `FiveMLaunchOptions`: `Create` con IP:port/dominio válido no lanza; con cadena basura sigue lanzando `InvalidAddressException`.
-- Naming `<Method>_Should<Expectation>` con Given/When/Then.
+- TDD at the `GameLauncher` seam (only the seam confirmed with the user: `GameLauncher.ConnectAsync` → `LaunchResult`, with a fake `IGameProcessLauncher`).
+- Tests per vertical slice:
+  1. Legacy profile with CfxId + requirements → seam receives `fivem://connect/cfx.re/join/y4lg95?-b3258?-pure_1`; result `Connect`.
+  2. `FiveMEnhanced` profile → result `OpenClient`, seam NOT called.
+  3. Unvalidated profile with IP:port `Address` → seam receives `fivem://connect/149.56.120.52:30320`; result `Connect`.
+  4. `FiveMLaunchOptions` regression: `Create` with valid IP:port/domain does not throw; with a garbage string it still throws `InvalidAddressException`.
+- Naming `<Method>_Should<Expectation>` with Given/When/Then.
 
 ## Out of Scope
 
-- Implementación real de `IGameProcessLauncher` con `Process`/ShellExecute.
-- PathResolver / detección de instalación de FiveM/Enhanced.
+- Real `IGameProcessLauncher` implementation with `Process`/ShellExecute.
+- PathResolver / FiveM/Enhanced install detection.
 - Dev Mode, `-cl2`, Steam/Discord requirements, status checks.
-- MVVM / wiring de UI.
+- MVVM / UI wiring.
 
 ## Further Notes
 
-- Mecanismo verificado: protocolo `fivem://connect/<server>` (usado por el propio client), foro Cfx.re y docs fivem.net confirman conexión directa por IP:port y cfx.re/join. `connect 127.0.0.1:30120` funciona vía URI.
-- `DOC.md` sitúa `GameLauncher` en la capa Application; mantener la lógica fuera de XAML y de procesos reales.
-- Al cerrar: actualizar AGENTS.md (capa Application, seam `IGameProcessLauncher`, `FiveMLaunchOptions.Create` aceptando IpPort/DomainPort), commit convencional en inglés.
+- Verified mechanism: `fivem://connect/<server>` protocol (used by the client itself), Cfx.re forum and fivem.net docs confirm direct connection by IP:port and cfx.re/join. `connect 127.0.0.1:30120` works via URI.
+- `DOC.md` places `GameLauncher` in the Application layer; keep logic out of XAML and real processes.
+- On closing: update AGENTS.md (Application layer, `IGameProcessLauncher` seam, `FiveMLaunchOptions.Create` accepting IpPort/DomainPort), English conventional commit.

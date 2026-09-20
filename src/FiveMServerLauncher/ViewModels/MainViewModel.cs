@@ -13,7 +13,7 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly GameLauncher _launcher;
 
     private string _serverAddress = string.Empty;
-    private string _statusText = "Listo";
+    private string _statusText = "Ready";
     private bool _isBusy;
 
     public MainViewModel(ServerResolver resolver, GameLauncher launcher)
@@ -48,7 +48,7 @@ public class MainViewModel : INotifyPropertyChanged
     public async Task ConnectAsync()
     {
         IsBusy = true;
-        StatusText = "Resolviendo...";
+        StatusText = "Resolving...";
 
         try
         {
@@ -57,14 +57,14 @@ public class MainViewModel : INotifyPropertyChanged
 
             StatusText = result switch
             {
-                LaunchResult.Connect => "Lanzando FiveM...",
-                LaunchResult.OpenClient(var client) => $"Abriendo {client}...",
-                LaunchResult.StartFailed => "No se puede lanzar",
+                LaunchResult.Connect => "Launching FiveM...",
+                LaunchResult.OpenClient(var client) => $"Opening {client}...",
+                LaunchResult.StartFailed => "Launch failed",
             };
         }
         catch (InvalidAddressException)
         {
-            StatusText = "Dirección inválida";
+            StatusText = "Invalid address";
         }
         finally
         {

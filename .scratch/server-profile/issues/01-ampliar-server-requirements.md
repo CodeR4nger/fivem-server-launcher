@@ -1,13 +1,13 @@
-# 01: Ampliar ServerRequirements con Pure Mode y Steam ticket
+# 01: Extend ServerRequirements with Pure Mode and Steam ticket
 
-**What to build:** el building block de dominio reconoce los tres requisitos que CFX publica. Hoy `ServerRequirements` solo expone `GameBuild`; se amplía para exponer también el Pure Mode (cuando el servidor publica `sv_pureLevel`) y el requisito de ticket de Steam (cuando publica `requestSteamTicket`). Cada requisito permanece ausente (`null`) cuando el servidor no lo publica; el launcher no asume valores arbitrarios.
+**What to build:** the domain building block recognizes the three requirements CFX publishes. Today `ServerRequirements` only exposes `GameBuild`; it is extended to also expose Pure Mode (when the server publishes `sv_pureLevel`) and the Steam ticket requirement (when it publishes `requestSteamTicket`). Each requirement stays absent (`null`) when the server doesn't publish it; the launcher doesn't assume arbitrary values.
 
 **Blocked by:** None (can start immediately)
 
 **Status:** resolved
 
-- [ ] Dado un `CfxServerInfo` con `PureLevel`, el resultado expone un `PureMode` con ese valor
-- [ ] Dado un `CfxServerInfo` con `RequestSteamTicket`, el resultado expone un `RequestSteamTicket` con ese valor
-- [ ] Dado un `CfxServerInfo` sin esas vars, los campos correspondientes quedan `null`
-- [ ] El `GameBuild` existente sigue derivándose de `sv_enforceGameBuild` (no regresión)
-- [ ] Mapping propulsado por `CfxServerInfo` (fuente única), sin tocar `Service` ni `LauncherSettings`
+- [ ] Given a `CfxServerInfo` with `PureLevel`, the result exposes a `PureMode` with that value
+- [ ] Given a `CfxServerInfo` with `RequestSteamTicket`, the result exposes a `RequestSteamTicket` with that value
+- [ ] Given a `CfxServerInfo` without those vars, the corresponding fields remain `null`
+- [ ] The existing `GameBuild` keeps deriving from `sv_enforceGameBuild` (no regression)
+- [ ] Mapping driven by `CfxServerInfo` (single source), without touching `Service` or `LauncherSettings`

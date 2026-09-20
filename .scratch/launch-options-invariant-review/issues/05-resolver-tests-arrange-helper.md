@@ -1,14 +1,14 @@
-# 05: Helper de arrange en ServerResolverTests (DRY)
+# 05: Arrange helper in ServerResolverTests (DRY)
 
-**What to build:** En `tests/FiveMServerLauncher.Tests/Domain/ServerResolverTests.cs`, la repetición `new ServerResolver(cfxService, new ServerRequirementsResolver())` (10×) se centraliza en un helper privado de arrange (método o fábrica local) que toma el `cfxService` y devuelve el resolver. Sin cambio en la lógica probada ni en las aserciones.
+**What to build:** In `tests/FiveMServerLauncher.Tests/Domain/ServerResolverTests.cs`, the repeated `new ServerResolver(cfxService, new ServerRequirementsResolver())` (10×) is centralized in a private arrange helper (method or local factory) that takes the `cfxService` and returns the resolver. No change to the tested logic or the assertions.
 
 **Blocked by:** None
 
 **Status:** resolved
 
-- [x] La creación de `new ServerResolver(...)` no se repite inline en los métodos de test; usa el helper
-- [x] Los 9+ tests existentes razonan igual (mismos Given/When/Then y aserciones)
-- [x] Suite completa verde (62)
+- [x] The creation of `new ServerResolver(...)` is no longer repeated inline in the test methods; it uses the helper
+- [x] The 9+ existing tests reason the same (same Given/When/Then and assertions)
+- [x] Full suite green (62)
 
 ## Comments
-- Helper privado `CreateResolver(CfxService)` centraliza `new ServerResolver(cfxService, new ServerRequirementsResolver())`; se reemplazaron las 10 ocurrencias inline.
+- Private helper `CreateResolver(CfxService)` centralizes `new ServerResolver(cfxService, new ServerRequirementsResolver())`; the 10 inline occurrences were replaced.

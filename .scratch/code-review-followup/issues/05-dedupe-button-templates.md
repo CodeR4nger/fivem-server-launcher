@@ -1,12 +1,12 @@
-# 05: Deduplicar templates de botón en MainView.xaml
+# 05: Deduplicate button templates in MainView.xaml
 
-**What to build:** los tres estilos de botón de `MainView.xaml` (MainButton, DropdownButton, ArrowButton) repiten el mismo template Border/ContentPresenter y los triggers HOVER/PRESSED. Se extrae un template compartido parametrizado con `TemplateBinding` a los brushes; cada estilo solo personaliza colores/paddings.
+**What to build:** the three button styles in `MainView.xaml` (MainButton, DropdownButton, ArrowButton) repeat the same Border/ContentPresenter template and the HOVER/PRESSED triggers. A shared template is extracted, parameterized with `TemplateBinding` to the brushes; each style only customizes colors/paddings.
 
 **Blocked by:** None (can start immediately)
 
 **Status:** resolved
 
-- [x] Un único `ControlTemplate` compartido por los tres estilos
-- [x] El comportamiento visual (hover/pressed/disabled) se conserva exactamente
-- [x] Sin cambios de diseño visibles (solo estructura)
-- [x] La app compila (build WPF OK)
+- [x] A single `ControlTemplate` shared by the three styles
+- [x] Visual behavior (hover/pressed/disabled) is preserved exactly
+- [x] No visible design changes (structure only)
+- [x] The app compiles (WPF build OK)

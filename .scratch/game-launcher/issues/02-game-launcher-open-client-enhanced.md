@@ -1,13 +1,13 @@
-# 02: GameLauncher devuelve OpenClient para FiveMEnhanced sin llamar al seam
+# 02: GameLauncher returns OpenClient for FiveMEnhanced without calling the seam
 
-**What to build:** perfil con `GameClient = FiveMEnhanced` no produce URI (`ToUri()` → null). `GameLauncher.ConnectAsync` debe devolver `LaunchResult.OpenClient(FiveMEnhanced)` **sin** llamar a `IGameProcessLauncher` (es la UI quien abre el cliente después). El miss de la slice 01 es que `ConnectAsync` delega sin validar el caso Enhanced.
+**What to build:** a profile with `GameClient = FiveMEnhanced` produces no URI (`ToUri()` → null). `GameLauncher.ConnectAsync` must return `LaunchResult.OpenClient(FiveMEnhanced)` **without** calling `IGameProcessLauncher` (it is the UI that opens the client afterwards). The miss in slice 01 is that `ConnectAsync` delegates without validating the Enhanced case.
 
 **Blocked by:** 01
 
 **Status:** resolved
 
-- [x] `ConnectAsync` con perfil Enhanced → `LaunchResult.OpenClient(GameClient.FiveMEnhanced)`.
-- [x] El fake registra 0 llamadas al seam en este caso.
-- [x] Suite completa verde.
+- [x] `ConnectAsync` with an Enhanced profile → `LaunchResult.OpenClient(GameClient.FiveMEnhanced)`.
+- [x] The fake records 0 seam calls in this case.
+- [x] Full suite green.
 
 ## Comments

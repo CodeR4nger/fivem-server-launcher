@@ -1,14 +1,14 @@
-# 02: ToCommandLineArgs devuelve ImmutableArray (inmutable de verdad)
+# 02: ToCommandLineArgs returns ImmutableArray (truly immutable)
 
-**What to build:** `src/FiveMServerLauncher/Domain/FiveMLaunchOptions.cs` cambia `ToCommandLineArgs()` para devolver `ImmutableArray<string>` (add `using System.Collections.Immutable;`) en lugar de `string[]`, haciendo imposible la mutación por cast por índice. La firma cambia de `IReadOnlyList<string>` a `ImmutableArray<string>`. Comportamiento observable idéntico: mismos args, orden `-b` antes de `-pure_`, `-cl2` condicional, vacía para `FiveMEnhanced`.
+**What to build:** `src/FiveMServerLauncher/Domain/FiveMLaunchOptions.cs` changes `ToCommandLineArgs()` to return `ImmutableArray<string>` (add `using System.Collections.Immutable;`) instead of `string[]`, making mutation via index cast impossible. The signature changes from `IReadOnlyList<string>` to `ImmutableArray<string>`. Identical observable behavior: same args, `-b` before `-pure_` order, conditional `-cl2`, empty for `FiveMEnhanced`.
 
 **Blocked by:** 01
 
 **Status:** resolved
 
-- [x] Firma de `ToCommandLineArgs()` es `ImmutableArray<string>`
-- [x] El valor devuelto NO es un `string[]` (test por tipo/reflexión), por lo que `((IList<string>)args)[0] = "x"` no puede mutar el resultado devuelto al llamador
-- [x] El test RED previo confirma el fallo contra el `string[]` actual (mutabilidad por índice) antes del cambio
-- [x] `ToCommandLineArgs_ShouldReturnReadOnlyList` se adapta al nuevo tipo (el valor es inmutable, contiene los args correctos, y para Enhanced está vacío)
-- [x] Args correctos: `["-b3258", "-pure_1", "-cl2"]` con `SecondClient`, y vacía para `FiveMEnhanced`
-- [x] Suite completa verde (62)
+- [x] `ToCommandLineArgs()` signature is `ImmutableArray<string>`
+- [x] The returned value is NOT a `string[]` (test by type/reflection), so `((IList<string>)args)[0] = "x"` cannot mutate the result returned to the caller
+- [x] The prior RED test confirms the failure against the current `string[]` (index mutability) before the change
+- [x] `ToCommandLineArgs_ShouldReturnReadOnlyList` is adapted to the new type (the value is immutable, contains the correct args, and is empty for Enhanced)
+- [x] Correct args: `["-b3258", "-pure_1", "-cl2"]` with `SecondClient`, and empty for `FiveMEnhanced`
+- [x] Full suite green (62)

@@ -1,20 +1,20 @@
-# 05: Cierre de la fase (AGENTS.md, lanzamiento, commit)
+# 05: Phase close (AGENTS.md, release, commit)
 
-**What to build:** la fase `ip-domain-resolution` queda documentada y lanzada. Actualizar `AGENTS.md` (estado actual: ResolveAsync soporta las 4 formas, `ServerProfile.IsCfxValidated`, servicio de catálogo streamRedir + `Google.Protobuf`, quitar TODOs de IP/domain y de validación, nuevos conteos de tests/deps), verificar el build y toda la suite verde, y commitear con conventional commits en inglés.
+**What to build:** the `ip-domain-resolution` phase is documented and released. Update `AGENTS.md` (current state: ResolveAsync supports the 4 forms, `ServerProfile.IsCfxValidated`, streamRedir catalog service + `Google.Protobuf`, remove IP/domain and validation TODOs, new test/dependency counts), verify the build and whole suite green, and commit with English conventional commits.
 
 **Blocked by:** 04
 
 **Status:** resolved
 
-- [x] `AGENTS.md` refleja el estado real: 4 formas de dirección en `ServerResolver`, `ServerProfile.IsCfxValidated`, catálogo vía `streamRedir` con protobuf + cache TTL, DNS seam, dependencia `Google.Protobuf`/`Grpc.Tools`.
-- [x] TODOs abiertos de IP/domain y de validación removidos del código/specs.
-- [x] `dotnet build` y toda la suite de tests verdes (con el conteo final actualizado donde se mencione).
-- [x] Commit(s) con conventional commits en inglés (p.ej. `feat(domain): resolve ip and domain addresses`, `chore(tickets): ...`).
-- [x] Paper trail de la fase cerrado: casillas de los 5 tickets verificadas contra el código.
+- [x] `AGENTS.md` reflects the real state: 4 address forms in `ServerResolver`, `ServerProfile.IsCfxValidated`, catalog via `streamRedir` with protobuf + TTL cache, DNS seam, `Google.Protobuf`/`Grpc.Tools` dependency.
+- [x] Open IP/domain and validation TODOs removed from code/specs.
+- [x] `dotnet build` and the whole test suite green (with the final count updated wherever mentioned).
+- [x] Commit(s) with English conventional commits (e.g. `feat(domain): resolve ip and domain addresses`, `chore(tickets): ...`).
+- [x] Phase paper trail closed: checkboxes of the 5 tickets verified against the code.
 
 ## Comments
 
-- Todas las casillas de los 5 tickets verificadas contra el código. Suite: **97 tests verdes** (0 errores de build, 0 warnings reportados en el build).
-- Commits de la fase (conventional en inglés):
+- All checkboxes of the 5 tickets verified against the code. Suite: **97 green tests** (0 build errors, 0 warnings reported in the build).
+- Phase commits (English conventional):
   - `feat(domain): resolve ip and domain addresses with streamRedir catalog`
   - `chore(tickets): close ip-domain-resolution phase`

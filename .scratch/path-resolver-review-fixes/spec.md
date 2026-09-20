@@ -1,21 +1,21 @@
 Status: resolved
 Type: spec
 
-# Fixes de post-review de la fase path-resolver
+# Post-review fixes for the path-resolver phase
 
 ## Problem Statement
-Review de `f00d3a7...HEAD`:
-- **Spec**: `GetExecutablePathAsync` devolvía null solo de forma implícita ("Should return null only when installed"); el real no respetaba la especificación (devolvía un path inexistente por dentro). Además existía un RedM mapping no solicitado (creepee) y testet de fake tautológicas.
-- **Standards**: test ni modo nombres "ViaRealImpl"; inside tests folded `LastQueriedClient` capture (dead); typo `Enhaced`.
+Review of `f00d3a7...HEAD`:
+- **Spec**: `GetExecutablePathAsync` returned null only implicitly ("Should return null only when installed"); the real one didn't respect the specification (it returned a nonexistent path internally). There was also an unrequested RedM mapping (scope creep) and tautological fake tests.
+- **Standards**: tests with "ViaRealImpl" name suffixes; fake tests folded a `LastQueriedClient` capture (dead); typo `Enhaced`.
 
 ## Solution
-- `ClientInstallLocator` con ctor inyectable `Func<string,bool> exists` (default: `File.Exists`) — seam inyectable del repo, no seam diferente.
-- `GetExecutablePathAsync` devuelve null cuando no está instalado; `GetPath` no mapea RedM (creepee removida).
-- Tests actualizados: `ClientInstallLocator` con fake exists → real impl testable; renombrado consistente "null al no instal" sin sufijos "ViaRealImpl"; removido dead `LastQueriedClient` del fake.
+- `ClientInstallLocator` with injectable ctor `Func<string,bool> exists` (default: `File.Exists`) — repo injectable seam, not a different seam.
+- `GetExecutablePathAsync` returns null when not installed; `GetPath` doesn't map RedM (scope creep removed).
+- Tests updated: `ClientInstallLocator` with fake exists → real impl testable; consistent rename "null when not installed" without "ViaRealImpl" suffixes; dead `LastQueriedClient` removed from the fake.
 
 ## Testing Decisions
-- Suite verde (117 = antes 114 + 3 RED/GREEN nuevos).
-- Mantener `AGENTS.md` updated (suite count).
+- Green suite (117 = previous 114 + 3 new RED/GREEN).
+- Keep `AGENTS.md` updated (suite count).
 
 ## Out of Scope
-- Steam/Discord detections (otra fase), PathResolver enrichments (custom/etc.), YAGNI abstractions.
+- Steam/Discord detections (another phase), PathResolver enrichments (custom/etc.), YAGNI abstractions.

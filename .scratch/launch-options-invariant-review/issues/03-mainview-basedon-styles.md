@@ -1,15 +1,15 @@
-# 03: Estilos de botón en MainView.xaml vía BasedOn (DRY)
+# 03: Button styles in MainView.xaml via BasedOn (DRY)
 
-**What to build:** En `src/FiveMServerLauncher/Views/MainView.xaml`, `DropdownButtonStyle` y `ArrowButtonStyle` heredan de un estilo base común con `BasedOn` (el patrón ya lo demuestra `SecondaryButtonStyle` sobre `MainButtonStyle`), declarando solo sus diferencias (fondo, borde, alineación, padding, cursor, template donde aplique). Se elimina la re-declaración de los ~9 setters compartidos. Sin cambio de comportamiento visual: mismos valores, misma apariencia.
+**What to build:** In `src/FiveMServerLauncher/Views/MainView.xaml`, `DropdownButtonStyle` and `ArrowButtonStyle` inherit from a common base style with `BasedOn` (the pattern is already demonstrated by `SecondaryButtonStyle` over `MainButtonStyle`), declaring only their differences (background, border, alignment, padding, cursor, template where applicable). The re-declaration of the ~9 shared setters is removed. No visual behavior change: same values, same appearance.
 
 **Blocked by:** 01
 
 **Status:** resolved
 
-- [x] `DropdownButtonStyle` y `ArrowButtonStyle` usan `BasedOn` en lugar de redundar setters compartidos
-- [x] Los valores de cada style (Background, Foreground, BorderBrush, BorderThickness, FontSize, FontWeight, alineaciones, Padding, Cursor, Template) quedan idénticos visualmente a hoy tras el refactor
-- [x] `dotnet build FiveMServerLauncher.slnx` verde
-- [x] Suite completa verde
+- [x] `DropdownButtonStyle` and `ArrowButtonStyle` use `BasedOn` instead of repeating shared setters
+- [x] Each style's values (Background, Foreground, BorderBrush, BorderThickness, FontSize, FontWeight, alignments, Padding, Cursor, Template) remain visually identical to today after the refactor
+- [x] `dotnet build FiveMServerLauncher.slnx` green
+- [x] Full suite green
 
 ## Comments
-- Se introdujo `BaseButtonStyle` con los setters de valor común (Background PanelLight, Foreground Text, BorderBrush Border, BorderThickness 1, Cursor Hand, VAlign Center, Template). `MainButtonStyle` hereda y solo declara FontSize/FontWeight/HAlign/Padding; `DropdownButtonStyle` hereda de base y overridea BorderThickness/FontSize/FontWeight/HAlign/Padding; `ArrowButtonStyle` hereda de base y solo setea HAlign=Center. Secondary sigue `BasedOn` Main con override de Background. Se verificó valor-a-valor que cada estilo quedó idéntico al original (Arrow no tenía FontSize/Padding, por eso no hereda de Main).
+- `BaseButtonStyle` was introduced with the common-value setters (Background PanelLight, Foreground Text, BorderBrush Border, BorderThickness 1, Cursor Hand, VAlign Center, Template). `MainButtonStyle` inherits and only declares FontSize/FontWeight/HAlign/Padding; `DropdownButtonStyle` inherits from base and overrides BorderThickness/FontSize/FontWeight/HAlign/Padding; `ArrowButtonStyle` inherits from base and only sets HAlign=Center. Secondary keeps `BasedOn` Main with a Background override. It was verified value-by-value that each style ended up identical to the original (Arrow had no FontSize/Padding, which is why it doesn't inherit from Main).

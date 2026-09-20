@@ -1,15 +1,15 @@
-# 01: LaunchResult con discriminador explícito (sin null-union)
+# 01: LaunchResult with explicit discriminator (no null-union)
 
-**What to build:** `LaunchResult` pasa de una clase con dos payloads nullable a una jerarquía de records sealed: `Connect(Uri) : LaunchResult` y `OpenClient(GameClient) : LaunchResult`. El discriminador es el tipo (pattern matching). Se mantiene inmutable, sin ctor público sobre la base; instanciación vía factories estáticas finales. Los tests de `GameLauncher` se adaptan para assert sobre la jerarquía (junto al cambio, se renombra el test malformed "ValidationCfx").
+**What to build:** `LaunchResult` moves from a class with two nullable payloads to a sealed record hierarchy: `Connect(Uri) : LaunchResult` and `OpenClient(GameClient) : LaunchResult`. The discriminator is the type (pattern matching). It stays immutable, with no public ctor on the base; instantiation via final static factories. The `GameLauncher` tests are adapted to assert on the hierarchy (alongside the change, the malformed "ValidationCfx" test is renamed).
 
 **Blocked by:** None (can start immediately)
 
 **Status:** resolved
 
-- [x] `LaunchResult` es jerarquía sealed (`Connect(Uri)` / `OpenClient(GameClient)`); sin ctor público, sin null-union.
-- [x] `GameLauncher.ConnectAsync` devuelve `new LaunchResult.Connect(uri)` o `new LaunchResult.OpenClient(profile.GameClient ?? GameClient.FiveM)`; compilación intacta.
-- [x] Tests de `GameLauncher` usan pattern matching / `IsType` sobre el resultado (sin assertions genéricas sobre null-union).
-- [x] Se renombra `ConnectAsync_WithValidationCfxProfile_ShouldLaunchConnectUri` → `WithValidatedCfxProfile`.
-- [x] Suite completa verde (106).
+- [x] `LaunchResult` is a sealed hierarchy (`Connect(Uri)` / `OpenClient(GameClient)`); no public ctor, no null-union.
+- [x] `GameLauncher.ConnectAsync` returns `new LaunchResult.Connect(uri)` or `new LaunchResult.OpenClient(profile.GameClient ?? GameClient.FiveM)`; compilation intact.
+- [x] `GameLauncher` tests use pattern matching / `IsType` on the result (no generic assertions on a null-union).
+- [x] `ConnectAsync_WithValidationCfxProfile_ShouldLaunchConnectUri` renamed → `WithValidatedCfxProfile`.
+- [x] Full suite green (106).
 
 ## Comments

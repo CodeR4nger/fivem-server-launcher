@@ -1,13 +1,13 @@
-# 04: Cerrar huecos de tests
+# 04: Close the test gaps
 
-**What to build:** los tests de `FiveMLaunchOptions` cubren las afirmaciones que los tickets 01-03 del review dejan sin verificar: inmutabilidad del valor, inmutabilidad real de la lista de args, que los requisitos provienen de `ServerRequirements` del perfil sin override manual, y se repara el test vacuoso `ToCommandLineArgs_ShouldNotIncludeServerAddress` (hoy pasa trivialmente con args vacíos). Verifica solo comportamiento observable, no detalles de implementación.
+**What to build:** the `FiveMLaunchOptions` tests cover the claims that review tickets 01-03 leave unverified: value immutability, true immutability of the args list, that requirements come from the profile's `ServerRequirements` with no manual override, and fix the vacuous `ToCommandLineArgs_ShouldNotIncludeServerAddress` test (today it passes trivially with empty args). Verifies only observable behavior, not implementation details.
 
-**Blocked by:** 03 (Serializaciones robustas — lista inmutable real y guarda Enhanced única)
+**Blocked by:** 03 (Robust serializations — truly immutable list and single Enhanced guard)
 
 **Status:** resolved
 
-- [x] Un test verifica que el valor de `FiveMLaunchOptions` no puede mutarse tras construirse
-- [x] Un test verifica que la lista de args es de solo lectura (mutar lanza)
-- [x] Un test verifica que `FromServerProfile` toma `GameBuild`/`PureMode` de `ServerRequirements` del perfil (manipulando el perfil y comprobando la URI/args resultante)
-- [x] El test de "no incluye dirección de servidor" falla por la razón correcta (con args no vacíos o mutando un backing no inmutable)
-- [x] La suite completa sigue verde
+- [x] A test verifies that the `FiveMLaunchOptions` value cannot be mutated after construction
+- [x] A test verifies that the args list is read-only (mutating throws)
+- [x] A test verifies that `FromServerProfile` takes `GameBuild`/`PureMode` from the profile's `ServerRequirements` (tampering with the profile and checking the resulting URI/args)
+- [x] The "does not include server address" test fails for the right reason (with non-empty args or mutating a non-immutable backing)
+- [x] The full suite stays green

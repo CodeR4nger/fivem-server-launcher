@@ -1,15 +1,15 @@
-# 01: GetExecutablePath null cuando no instalado + remove RedM mapping
+# 01: GetExecutablePath null when not installed + remove RedM mapping
 
-**What to build:** fix spec: real `ClientInstallLocator.GetExecutablePathAsync` debe devolver null si no instalado (no debería devolver la ruta esperada si el archivo no existe). Remove scope creep: `GameClient.RedM` mapping borrado (no lo pide la spec). TestsREAL contra el real — seam inyectable `Func<string,bool>` ctor — sin novedades del filesystem real.
+**What to build:** spec fix: real `ClientInstallLocator.GetExecutablePathAsync` must return null if not installed (it should not return the expected path if the file doesn't exist). Remove scope creep: `GameClient.RedM` mapping deleted (the spec doesn't ask for it). Tests against the real one — injectable `Func<string,bool>` ctor seam — with no real filesystem involvement.
 
 **Blocked by:** None
 
 **Status:** resolved
 
-- [x] `ClientInstallLocator` con ctor inyectable `Func<string,bool>` (default: `File.Exists`).
-- [x] `GetExecutablePathAsync` devuelve null cuando no instalado.
-- [x] `IsInstalledAsync` usa `File.Exists` (no `Path.Exists`).
-- [x] RedM mapping borrado (scope creep).
-- [x] Suite verde (117).
+- [x] `ClientInstallLocator` with injectable `Func<string,bool>` ctor (default: `File.Exists`).
+- [x] `GetExecutablePathAsync` returns null when not installed.
+- [x] `IsInstalledAsync` uses `File.Exists` (not `Path.Exists`).
+- [x] RedM mapping deleted (scope creep).
+- [x] Suite green (117).
 
 ## Comments

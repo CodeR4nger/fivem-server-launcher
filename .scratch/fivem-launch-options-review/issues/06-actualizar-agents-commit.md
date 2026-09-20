@@ -1,13 +1,13 @@
-# 06: Actualizar AGENTS.md y commitear la fase
+# 06: Update AGENTS.md and commit the phase
 
-**What to build:** `AGENTS.md` refleja el estado real tras la fase `FiveMLaunchOptions` (seam único en Domain, serializaciones `ToUri`/`ToCommandLineArgs`, restricción FiveM Enhanced, suite con el nuevo conteo de tests) y la fase se commitea al branch actual con conventional commits en inglés. También valida que los criterios de aceptación de los tickets 02-03 de `.scratch/fivem-launch-options/` y los de esta fase quedan marcados como `[x]`.
+**What to build:** `AGENTS.md` reflects the real state after the `FiveMLaunchOptions` phase (single seam in Domain, `ToUri`/`ToCommandLineArgs` serializations, FiveM Enhanced restriction, suite with the new test count) and the phase is committed to the current branch with English conventional commits. It also validates that the acceptance criteria of tickets 02-03 in `.scratch/fivem-launch-options/` and of this phase are marked as `[x]`.
 
 **Blocked by:** 01, 02, 03, 04, 05
 
 **Status:** resolved
 
-- [x] `AGENTS.md` describe `FiveMLaunchOptions` (seam, serializaciones, Enhanced en `Current state`/`Architecture`)
-- [x] `AGENTS.md` refleja el número real de tests verdes (60)
-- [x] Los tickets de la fase quedan con sus casillas `[x]` verificadas contra el código
-- [x] La fase se commitea con mensaje(s) conventional commit en inglés (`feat(domain)` 6f57c0a, `docs(agents)` 959f4d2)
-- [x] La suite completa sigue verde en el punto commiteado
+- [x] `AGENTS.md` describes `FiveMLaunchOptions` (seam, serializations, Enhanced in `Current state`/`Architecture`)
+- [x] `AGENTS.md` reflects the real number of green tests (60)
+- [x] The phase tickets have their `[x]` boxes verified against the code
+- [x] The phase is committed with English conventional commit message(s) (`feat(domain)` 6f57c0a, `docs(agents)` 959f4d2)
+- [x] The full suite stays green at the committed point

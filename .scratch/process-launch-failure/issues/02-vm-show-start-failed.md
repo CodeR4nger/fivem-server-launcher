@@ -1,12 +1,12 @@
-# 02: VM muestra "No se puede lanzar" ante StartFailed
+# 02: VM shows "No se puede lanzar" on StartFailed
 
-**What to build:** `MainViewModel.ConnectAsync` switch gana un caso para `LaunchResult.StartFailed` + tests.
+**What to build:** `MainViewModel.ConnectAsync` switch gains a case for `LaunchResult.StartFailed` + tests.
 
 **Blocked by:** 01
 
 **Status:** resolved
 
-- [x] Test: `StartFailed` → status text "No se puede lanzar", IsBusy=false, 0 process launch.
-- [x] Suite verde (110).
+- [x] Test: `StartFailed` → status text "No se puede lanzar", IsBusy=false, 0 process launches.
+- [x] Suite green (110).
 
 ## Comments

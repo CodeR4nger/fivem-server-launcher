@@ -1,16 +1,16 @@
-# 02: MainViewModel muestra error con dirección inválida y abre cliente para Enhanced
+# 02: MainViewModel shows error on invalid address and opens client for Enhanced
 
-**What to build:** dos comportamientos:
-1. `ConnectAsync` con una dirección inválida (p.ej. whitespace, unknown) captura `InvalidAddressException` y muestra `StatusText="Dirección inválida"` sin lanzar nada; `IsBusy` vuelve a false.
-2. `ConnectAsync` cuando `GameLauncher` devuelve `OpenClient(GameClient)` (servidor Enhanced) muestra `StatusText="Abriendo ..."` sin lanzar proceso.
+**What to build:** two behaviors:
+1. `ConnectAsync` with an invalid address (e.g. whitespace, unknown) catches `InvalidAddressException` and shows `StatusText="Dirección inválida"` without launching anything; `IsBusy` returns to false.
+2. `ConnectAsync` when `GameLauncher` returns `OpenClient(GameClient)` (Enhanced server) shows `StatusText="Abriendo ..."` without launching a process.
 
 **Blocked by:** 01
 
 **Status:** resolved
 
-- [x] Test: dirección inválida → `StatusText="Dirección inválida"`, `IsBusy=false`, fake proceso sin calls.
-- [x] Test: `OpenClient` Enhanced → `StatusText="Abriendo FiveMEnhanced..."`, fake proceso sin calls.
-- [x] `IsBusy=false` incluso si `ConnectAsync` lanza (`finally`).
-- [x] Suite completa verde (109).
+- [x] Test: invalid address → `StatusText="Dirección inválida"`, `IsBusy=false`, fake process with no calls.
+- [x] Test: Enhanced `OpenClient` → `StatusText="Abriendo FiveMEnhanced..."`, fake process with no calls.
+- [x] `IsBusy=false` even if `ConnectAsync` throws (`finally`).
+- [x] Full suite green (109).
 
 ## Comments

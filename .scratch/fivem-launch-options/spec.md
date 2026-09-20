@@ -1,76 +1,76 @@
 Status: ready-for-agent
 Type: spec
 
-# FiveMLaunchOptions — preparar el lanzamiento a partir de los requisitos del servidor
+# FiveMLaunchOptions — preparing the launch from server requirements
 
 ## Problem Statement
 
-`ServerProfile` ya resuelve un servidor y deriva sus `Requirements` (Game Build, Pure Mode, Steam ticket) desde lo que CFX publica. El launcher todavía no puede traducir esa información a lo que FiveM necesita al lanzarse: qué args de línea de comandos pasar (`-b`, `-pure_`, `-cl2`) o qué URI de conexión abrir (`fivem://connect/<addr>`). Hoy no existe representación de esas opciones de lanzamiento, así que la capa que conecta los requisitos con la ejecución de FiveM no puede testearse ni implementarse de forma controlada.
+`ServerProfile` already resolves a server and derives its `Requirements` (Game Build, Pure Mode, Steam ticket) from what CFX publishes. The launcher still cannot translate that information into what FiveM needs at launch: which command-line args to pass (`-b`, `-pure_`, `-cl2`) or which connection URI to open (`fivem://connect/<addr>`). Today there is no representation of those launch options, so the layer connecting requirements to FiveM execution cannot be tested or implemented in a controlled way.
 
 ## Solution
 
-Aparece `FiveMLaunchOptions`: un valor inmutable del dominio que describe cómo lanzar FiveM para una intención dada (conectar a un servidor o abrir el cliente directamente). Se construye a partir de un `ServerProfile` (conectando) o de preferencias/Dev Mode (abriendo directamente), y sabe serializarse a una URI `fivem://` o a una lista de argumentos de línea de comandos. No lanza procesos ni toca archivos: solo modela y serializa, para que la futura capa de lanzamiento consuma algo ya probado.
+`FiveMLaunchOptions` appears: an immutable domain value that describes how to launch FiveM for a given intent (connect to a server or open the client directly). It is built from a `ServerProfile` (connecting) or from preferences/Dev Mode (opening directly), and knows how to serialize itself to a `fivem://` URI or to a list of command-line arguments. It launches no processes and touches no files: it only models and serializes, so the future launch layer consumes something already proven.
 
 ## User Stories
 
-1. Como jugador, quiero que al conectar a un servidor el launcher genere una URI `fivem://connect/<addr>` a partir del `ServerProfile`, para que el cliente se abra apuntando directamente al servidor.
-2. Como jugador, quiero que la URI incluya el `GameBuild` del servidor (`-b<build>`) cuando CFX lo publica, para arrancar en el build correcto y evitar el reinicio del cross-build.
-3. Como jugador, quiero que la URI incluya el `PureMode` del servidor (`-pure_<nivel>`) cuando CFX lo publica, para arrancar en el pure mode exigido.
-4. Como jugador, quiero que la URI **no** incluya args para requisitos ausentes (`null`), para no asumir valores que el servidor no publica.
-5. Como jugador, quiero que los args de línea de comandos (`-b`, `-pure_`, `-cl2`) se serialicen para abrir FiveM directamente (Dev Mode / abrir cliente), de forma independiente de la URI de conexión.
-6. Como jugador, quiero que la serialización distinga **conectar** (address presente → URI) de **abrir directo** (sin address → args), para conservar la separación conectar-vs-abrir de DOC.md.
-7. Como jugador, quiero que `-cl2` (segunda instancia) aparezca solo cuando el usuario lo pide explícitamente (Dev Mode), para no lanzar siempre una instancia adicional.
-8. Como jugador con **FiveM Enhanced**, quiero que el launcher **no** genere URI `fivem://connect` ni args `-b`/`-pure_`/`-cl2`, ya que ese cliente no los soporta (verificado), y conectarse ocurre dentro de su propia UI.
-9. Como jugador, quiero que cuando no hay requisitos y no hay flags de Dev Mode, la serialización devuelva una URI/args vacíos o sin extras, para reflejar "lanzar normal, sin modificar nada".
-10. Como desarrollador, quiero que `FiveMLaunchOptions` dependa solo de tipos de dominio (`ServerProfile`, `ServerRequirements`, `GameClient`) y no de la UI ni de servicios, para poder testearlo sin procesos ni filesystem.
-11. Como desarrollador, quiero que el modelo valide su estado (p.ej. address malformada o GameClient inválido) al construirse, para no serializar lanzamientos imposibles en silencio.
-12. Como desarrollador, quiero que la fuente de `GameBuild`/`PureMode` al conectar sea siempre `ServerRequirements` (CFX-published), para que los requisitos del servidor ganen sobre cualquier manual.
-13. Como desarrollador, quiero que un `FiveMLaunchOptions` construido directamente con pocos campos siga siendo serializable, para servir en pruebas y en casos simples (abrir cliente sin servidor).
+1. As a player, I want the launcher to generate a `fivem://connect/<addr>` URI from the `ServerProfile` when connecting to a server, so the client opens pointing directly at the server.
+2. As a player, I want the URI to include the server's `GameBuild` (`-b<build>`) when CFX publishes it, to boot into the correct build and avoid the cross-build restart.
+3. As a player, I want the URI to include the server's `PureMode` (`-pure_<level>`) when CFX publishes it, to boot into the required pure mode.
+4. As a player, I want the URI to **not** include args for absent (`null`) requirements, so it doesn't assume values the server doesn't publish.
+5. As a player, I want command-line args (`-b`, `-pure_`, `-cl2`) serialized for opening FiveM directly (Dev Mode / open client), independent of the connection URI.
+6. As a player, I want the serialization to distinguish **connecting** (address present → URI) from **opening directly** (no address → args), preserving DOC.md's connect-vs-open separation.
+7. As a player, I want `-cl2` (second instance) to appear only when the user explicitly asks (Dev Mode), so an extra instance is not always launched.
+8. As a **FiveM Enhanced** player, I want the launcher **not** to generate a `fivem://connect` URI nor `-b`/`-pure_`/`-cl2` args, since that client doesn't support them (verified), and connecting happens inside its own UI.
+9. As a player, I want the serialization to return an empty URI/args with no extras when there are no requirements and no Dev Mode flags, to reflect "launch normally, modify nothing".
+10. As a developer, I want `FiveMLaunchOptions` to depend only on domain types (`ServerProfile`, `ServerRequirements`, `GameClient`) and not on UI or services, so I can test it without processes or filesystem.
+11. As a developer, I want the model to validate its state (e.g. malformed address or invalid GameClient) at construction, to avoid silently serializing impossible launches.
+12. As a developer, I want the source of `GameBuild`/`PureMode` when connecting to always be `ServerRequirements` (CFX-published), so server requirements win over any manual ones.
+13. As a developer, I want a `FiveMLaunchOptions` constructed directly with few fields to still be serializable, to serve tests and simple cases (opening the client without a server).
 
 ## Implementation Decisions
 
-- **Seam único (confirmado con el usuario): módulo `FiveMLaunchOptions`** en `Domain`. Un valor inmutable con fábrica estática y dos serializaciones (`ToUri()` y `ToCommandLineArgs()`), testeado directamente. No se crean seams de Service ni de Configuration para esta fase.
-- **Forma del modelo** (decisiones ricas de un prototipo; se trunca a lo esencial):
+- **Single seam (confirmed with the user): `FiveMLaunchOptions` module** in `Domain`. An immutable value with a static factory and two serializations (`ToUri()` and `ToCommandLineArgs()`), tested directly. No Service or Configuration seams are created for this phase.
+- **Model shape** (rich decisions from a prototype; trimmed to the essentials):
 ```csharp
 public sealed record FiveMLaunchOptions
 {
-    public string? Address;        // cfx.re/join/<cfxId> al conectar; null al abrir directo
-    public GameClient? GameClient; // FiveM | FiveMEnhanced | RedM; del ServerProfile o PreferredClient
+    public string? Address;        // cfx.re/join/<cfxId> when connecting; null when opening directly
+    public GameClient? GameClient; // FiveM | FiveMEnhanced | RedM; from ServerProfile or PreferredClient
     public int? GameBuild;         // -b<build>
-    public int? PureMode;          // -pure_<nivel>
+    public int? PureMode;          // -pure_<level>
     public bool SecondClient;      // -cl2 (Dev Mode)
 
-    public Uri? ToUri();                        // null si Address o GameClient es FiveMEnhanced
+    public Uri? ToUri();                        // null if Address or GameClient is FiveMEnhanced
     public IReadOnlyList<string> ToCommandLineArgs();
 }
 ```
-- **`ToUri()`**: `fivem://connect/<address>`; añade `?-b<build>` y `?-pure_<nivel>` según los requisitos presentes (formato de parámetros con `?` como separador, verificado en doc/código: `fivem://connect/<servidor>?<params>`). Devuelve `null` cuando no hay `Address` o cuando `GameClient` es `FiveMEnhanced`.
-- **`ToCommandLineArgs()`**: lista de args para abrir el cliente directamente: `-b<build>`, `-pure_<nivel>`, `-cl2` (solo si `SecondClient`). **No** incluye dirección de servidor. Para `FiveMEnhanced` devuelve lista vacía (sin `-b`/`-pure_`/`-cl2`, verificado).
-- **`GameClient` se incluye** en el modelo (confirmado con el usuario) para poder negar la serialización compatible con Enhanced. Al conectar se toma del `ServerProfile.GameClient`; al abrir directo lo **decide el llamador** (p.ej. la UI, leyendo `LauncherSettings.PreferredClient` a su nivel, y pasándolo al modelo). Esta fase no introduce fábricas ni código que lean `LauncherSettings`.
-- **Construcción**: fábrica estática que valida el estado (address malformada, `GameClient` inválido) y un constructor/record que acepta los campos; los requisitos se copian desde `ServerRequirements` con nulos ausentes. Nada de IO ni procesos.
-- **Conectar vs abrir**: dos intenciones del mismo modelo, distinguidas por la presencia de `Address`: con `Address` se usa `ToUri()`; sin `Address`, `ToCommandLineArgs()`. Coincide con el uso doble de la forma ya acordado.
-- **Vocabulario según DOC.md**: `FiveMLaunchOptions`, `ServerProfile`, `Requirements`, `GameClient`. No se toca `LauncherSettings`; no se añaden campos per-server.
-- Restricciones DOC.md respetadas: RSC nunca lo maneja el launcher, Steam/Discord no entran aquí, los requisitos del servidor ganan al conectar, y Dev Mode solo aplica al abrir directamente.
+- **`ToUri()`**: `fivem://connect/<address>`; adds `?-b<build>` and `?-pure_<level>` for present requirements (parameter format with `?` as separator, verified in docs/code: `fivem://connect/<server>?<params>`). Returns `null` when there is no `Address` or when `GameClient` is `FiveMEnhanced`.
+- **`ToCommandLineArgs()`**: list of args to open the client directly: `-b<build>`, `-pure_<level>`, `-cl2` (only if `SecondClient`). Does **not** include a server address. For `FiveMEnhanced` returns an empty list (no `-b`/`-pure_`/`-cl2`, verified).
+- **`GameClient` is included** in the model (confirmed with the user) to be able to deny serialization incompatible with Enhanced. When connecting it comes from `ServerProfile.GameClient`; when opening directly the **caller decides** it (e.g. the UI, reading `LauncherSettings.PreferredClient` at its level, and passing it to the model). This phase introduces no factories or code that read `LauncherSettings`.
+- **Construction**: a static factory that validates state (malformed address, invalid `GameClient`) and a constructor/record accepting the fields; requirements are copied from `ServerRequirements` with absent nulls. No IO or processes.
+- **Connect vs open**: two intents of the same model, distinguished by the presence of `Address`: with `Address` use `ToUri()`; without `Address`, `ToCommandLineArgs()`. Matches the already-agreed dual use of the shape.
+- **Vocabulary per DOC.md**: `FiveMLaunchOptions`, `ServerProfile`, `Requirements`, `GameClient`. `LauncherSettings` is untouched; no per-server fields are added.
+- DOC.md constraints respected: the launcher never manages RSC, Steam/Discord do not enter here, server requirements win when connecting, and Dev Mode applies only when opening directly.
 
 ## Testing Decisions
 
-- Un buen test verifica **comportamiento externo observable**: dado un estado conocido, `ToUri()` devuelve la URI esperada (o `null` para Enhanced / sin address) y `ToCommandLineArgs()` devuelve los args esperados (o vacíos). Nunca expone detalles de implementación ni hace IO.
-- **Módulo a testear:** `FiveMLaunchOptions` (seam único, testeable directo sin HTTP ni filesystem). No hay seams de Service involucrados en esta fase.
-- **Prior art en el repo:** `tests/.../Domain/ServerRequirementsResolverTests.cs` (mapping directo de valores, estilo Given/When/Then, nulos ausentes) y `tests/.../Domain/ServerResolverTests.cs`. Los nuevos tests siguen ese patrón; casos por intención: conectar (URI) y abrir directo (args), más el caso Enhanced (negación).
-- Naming: `<Método>_Should<Expectativa>` con comentarios Given/When/Then (convención del repo).
+- A good test verifies **observable external behavior**: given a known state, `ToUri()` returns the expected URI (or `null` for Enhanced / no address) and `ToCommandLineArgs()` returns the expected args (or empty). It never exposes implementation details or does IO.
+- **Module to test:** `FiveMLaunchOptions` (single seam, directly testable with no HTTP or filesystem). No Service seams involved in this phase.
+- **Prior art in the repo:** `tests/.../Domain/ServerRequirementsResolverTests.cs` (direct value mapping, Given/When/Then style, absent nulls) and `tests/.../Domain/ServerResolverTests.cs`. New tests follow that pattern; cases per intent: connect (URI) and open directly (args), plus the Enhanced case (negation).
+- Naming: `<Method>_Should<Expectation>` with Given/When/Then comments (repo convention).
 
 ## Out of Scope
 
-- **Lanzar procesos**: `Process.Start`/ejecutar FiveM, `IProcessRunner` o equivalentes. Esta spec modela y serializa únicamente.
-- **`fivem://connect` hacia Enhanced**: verificado que no aplica; solo se abre el cliente.
-- **Resolución IP:puerto / dominio:puerto** (TODO abierto de `ServerResolver`).
+- **Launching processes**: `Process.Start`/running FiveM, `IProcessRunner` or equivalents. This spec only models and serializes.
+- **`fivem://connect` toward Enhanced**: verified not applicable; only the client is opened.
+- **IP:port / domain:port resolution** (open `ServerResolver` TODO).
 - **CitizenFX.ini**, pool sizes, Steam/Discord, RSC.
-- **UI/MVVM**: `MainView.xaml` sigue estático y sin binding.
-- **Steam ticket**: `RequestSteamTicket` no participa en la serialización de lanzamiento (es preparación de Steam, otra fase).
-- **Validación de `CfxId`** (TODO abierto): este modelo valida su propio estado, no el de la entrada de `ServerResolver`.
+- **UI/MVVM**: `MainView.xaml` stays static and unbound.
+- **Steam ticket**: `RequestSteamTicket` does not participate in launch serialization (it's Steam preparation, another phase).
+- **`CfxId` validation** (open TODO): this model validates its own state, not that of `ServerResolver`'s input.
 
 ## Further Notes
 
-- DOC.md:523: "Si una decisión técnica depende de información actual de FiveM/CFX, investigarla antes de asumirla". Esta spec incorpora la investigación verificada de CLI args, `PureModeState.h`, `CrossBuildSwitch.cpp`, `CitizenFX.ini` y el estado de FiveM Enhanced (sin `-cl2`, sin `+set moo`, pure mode siempre activo, solo último gamebuild, conexión rediseñada sin reinicio).
-- `ServerResolver` aún expone `ExtractCfxId` (prefijo `cfx.re/join/`); la address de conexión para la URI se deriva del `CfxId` del `ServerProfile`, no de `EndPoint` (eliminado en la fase anterior).
-- Tras implementar: actualizar `AGENTS.md`, marcar casillas como `[x]` y commitear con conventional commits en inglés.
+- DOC.md:523: "If a technical decision depends on current FiveM/CFX information, research it before assuming." This spec incorporates verified research on CLI args, `PureModeState.h`, `CrossBuildSwitch.cpp`, `CitizenFX.ini` and the FiveM Enhanced state (no `-cl2`, no `+set moo`, pure mode always on, latest gamebuild only, redesigned restart-free connection).
+- `ServerResolver` still exposes `ExtractCfxId` (`cfx.re/join/` prefix); the connection address for the URI derives from the `ServerProfile`'s `CfxId`, not from `EndPoint` (removed in the previous phase).
+- After implementing: update `AGENTS.md`, check boxes as `[x]` and commit with English conventional commits.

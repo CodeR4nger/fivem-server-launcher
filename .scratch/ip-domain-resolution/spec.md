@@ -1,76 +1,76 @@
 Status: resolved
 Type: spec
 
-# Resolución de direcciones IP:puerto y dominio:puerto en ServerResolver (con validación)
+# Resolution of IP:port and domain:port addresses in ServerResolver (with validation)
 
 ## Problem Statement
 
-Hoy `ServerResolver.ResolveAsync` solo soporta una dirección CFX (`cfx.re/join/<id>`, con o sin esquema, o un `cfxId` pelado). El TODO en el código (`//TODO: Implement IP and domain filter`) y DOC.md (sección Address, líneas 111-127) exigen soportar también `IP:puerto` y `dominio:puerto` (p.ej. `149.56.120.52:30320`, `play.example.com:30120`). Además, la extracción actual (`ServerAddress.ExtractCfxId`) no valida la forma de la dirección (TODO explícito en AGENTS.md), y `HasServerFormWithNonEmptyId` solo cubre la forma `cfx.re/join/`. DOC.md:530-534 obliga a investigar antes de asumir decisiones técnicas; esta spec incorpora lo investigado sobre cómo CFX identifica servidores por endpoint.
+Today `ServerResolver.ResolveAsync` only supports a CFX address (`cfx.re/join/<id>`, with or without scheme, or a bare `cfxId`). The TODO in the code (`//TODO: Implement IP and domain filter`) and DOC.md (Address section, lines 111-127) require also supporting `IP:port` and `domain:port` (e.g. `149.56.120.52:30320`, `play.example.com:30120`). Also, the current extraction (`ServerAddress.ExtractCfxId`) does not validate the address form (explicit TODO in AGENTS.md), and `HasServerFormWithNonEmptyId` only covers the `cfx.re/join/` form. DOC.md:530-534 requires researching before assuming technical decisions; this spec incorporates what was researched about how CFX identifies servers by endpoint.
 
 ## Solution
 
-`ServerResolver.ResolveAsync` acepta las **cuatro formas** de DOC.md (CFX ID, URL CFX, IP:puerto, dominio:puerto) y devuelve un `ServerProfile` o lanza `InvalidAddressException`. La clasificación y validación de la dirección viven en `ServerAddress` (ya es el dueño de la forma CFX; se extiende como fuente única). Para `IP:puerto`/`dominio:puerto` el launcher intenta resolver el servidor a través de CFX; si el servidor **no está publicado/validado en CFX**, conecta directo igual pero el `ServerProfile` queda marcado como **no validado** para que la UI (en una fase posterior) muestre una advertencia, sin bloquear la conexión.
+`ServerResolver.ResolveAsync` accepts the **four forms** from DOC.md (CFX ID, CFX URL, IP:port, domain:port) and returns a `ServerProfile` or throws `InvalidAddressException`. Address classification and validation live in `ServerAddress` (already the owner of the CFX form; extended as the single source). For `IP:port`/`domain:port` the launcher tries to resolve the server through CFX; if the server **is not published/validated on CFX**, it still connects directly but the `ServerProfile` is marked as **unvalidated** so the UI (in a later phase) can show a warning, without blocking the connection.
 
 ## User Stories
 
-1. Como jugador, quiero ingresar una dirección `CFX ID` pelada (`8e8xxv`) y que se resuelva como hoy, para no romper el flujo existente.
-2. Como jugador, quiero ingresar una URL `cfx.re/join/<id>` (con o sin esquema) y que se resuelva como hoy.
-3. Como jugador, quiero ingresar `IP:puerto` (`149.56.120.52:30320`) y que el launcher la resuelva a un perfil de servidor, para conectarme a servidores no accesibles por CFX.
-4. Como jugador, quiero ingresar `dominio:puerto` (`play.example.com:30120`) y que se resuelva igual que IP:puerto, para no depender de recordar la IP.
-5. Como jugador, quiero que si el `IP:puerto`/`dominio:puerto` **no aparece publicado en CFX**, aún así se pueda conectar (perfil con dirección directa), para entrar a servidores privados o no listados.
-6. Como jugador, quiero que un servidor no publicado en CFX quede **marcado como no validado** (pero conectable), para que la UI más adelante me lo advierta sin impedir la conexión.
-7. Como jugador, quiero que una dirección inválida (vacía, formato roto, puerto fuera de rango, `IP` mal formada) lance `InvalidAddressException`, para fallar rápido y claro.
-8. Como desarrollador, quiero que la clasificación/validación de direcciones sea código testeable puro en `ServerAddress` (sin HTTP, sin filesystem), para cubrir todas las formas con unit tests rápidos.
-9. Como desarrollador, quiero no romper los tests existentes de `ServerResolver`/`ServerAddress` (CFX-only), manteniendo compatibilidad con la forma CFX.
+1. As a player, I want to enter a bare `CFX ID` (`8e8xxv`) and have it resolve as today, so the existing flow isn't broken.
+2. As a player, I want to enter a `cfx.re/join/<id>` URL (with or without scheme) and have it resolve as today.
+3. As a player, I want to enter `IP:port` (`149.56.120.52:30320`) and have the launcher resolve it to a server profile, so I can connect to servers not reachable via CFX.
+4. As a player, I want to enter `domain:port` (`play.example.com:30120`) and have it resolve the same as IP:port, so I don't depend on remembering the IP.
+5. As a player, I want to still be able to connect when the `IP:port`/`domain:port` **is not published on CFX** (profile with direct address), to join private or unlisted servers.
+6. As a player, I want a server not published on CFX to be **marked as unvalidated** (but connectable), so the UI can warn me later without preventing the connection.
+7. As a player, I want an invalid address (empty, broken format, out-of-range port, malformed `IP`) to throw `InvalidAddressException`, to fail fast and clearly.
+8. As a developer, I want address classification/validation to be pure testable code in `ServerAddress` (no HTTP, no filesystem), to cover all forms with fast unit tests.
+9. As a developer, I want not to break the existing `ServerResolver`/`ServerAddress` tests (CFX-only), keeping compatibility with the CFX form.
 
 ## Implementation Decisions
 
-- **`ServerAddress` se extiende como fuente única de la forma de la dirección.** Añade (a) clasificación de la dirección en un enum (`CfxId`, `CfxJoinUrl`, `IpPort`, `DomainPort`, desconocida/inválida) y (b) validación/extracción por forma. `ExtractCfxId` y `HasServerFormWithNonEmptyId` continúan existiendo y se reexpresan sobre el nuevo clasificador (sin romper call-sites existentes).
-- **`ServerResolver.ResolveAsync` ramifica por forma:**
-  - `CfxId` / `CfxJoinUrl` → comportamiento actual (buscar en CFX por id; `null` → `InvalidAddressException`).
-  - `IpPort` / `DomainPort` → intentar resolver vía CFX; si la resolución devuelve un perfil → perfil validado; si no → **perfil conectable no validado** con la dirección tal cual, sin requisitos derivados (no inventar `ProjectName`/`GameClient`/`Requirements`).
-  - Forma desconocida/inválida → `InvalidAddressException`.
-- **`ServerProfile` gana un marcador de validación** (p.ej. `bool IsCfxValidated`) para distinguir "perfil completo desde CFX" de "perfil conectable directo sin validar". En esta fase se usa como salida del resolver; el consumo en UI (advertencia) es de otra fase.
-- **Mecanismo de búsqueda IP/dominio en CFX (investigado y verificado):**
-  - No existe un lookup ligero por endpoint. El catálogo completo se sirve en `https://frontend.cfx-services.net/api/servers/streamRedir/` como un **stream binario de frames** (uint32 LE length prefix + mensaje protobuf `master.Server`), que supera 5MB y **ignora query params** (no hay paginación/filtros server-side: `?limit=` sigue devolviendo todo). Los filtros son 100% client-side.
-  - **`master.Server`** (`EndPoint` + `ServerData`) expone `vars` (map string→string, incl. `gamename`, `sv_projectName`, `sv_enforceGameBuild`, `sv_pureLevel`, `requestSteamTicket`), `connectEndPoints` (IP:port o host con `sv_listingHostOverride`), `server`, `clients`, `svMaxclients`... (schema completo verificado en `cfx-api`/`fivem-server-api`).
-  - Buscar un endpoint = **descargar el stream completo, decodificar todos los frames, y matchear** `connectEndPoints` contra `ip:port` (o contra el host resuelto) o `EndPoint` contra un cfx id. Es lo que hacen ambas librerías comunitarias.
-  - **Decode protobuf con `Google.Protobuf`** (decisión confirmada con el usuario): schema `.proto` propio del repo basado en el verificado; fixtures de prueba en binario.
-  - **Cache con TTL** (p.ej. 5 min) para no re-descargar los MB por cada resolución: la descarga del catálogo es cara y el set de servidores cambia lento.
-  - **`dominio:puerto`**: resolver DNS → IP, y matchear contra `connectEndPoints` (IP:port o host publicado).
-- El resolver **intenta** esta vía y degrade a "conectable no validado" sin lanzar excepción si el endpoint no aparece en el catálogo (o el catálogo no está disponible).
-- **Validación mínima estricta:**
-  - `IP:puerto` → 4 octetos decimales (0-255) separados por `.` + `:` + puerto (1-65535).
-  - `dominio:puerto` → 1+ labels alfanuméricas con `-` unidas por `.` (sin esquema, sin path, sin usuario@) + `:` + puerto (1-65535).
-  - Sin whitespace en ningún formato.
-- **Dominio/IP y el detalle de `gamename`/requisitos:** si la forma es IP/dominio y CFX no devuelve perfil, no se derivan requisitos (YAGNI: no adivinar build/pure/steam de una dirección cruda).
-- **`ServerAddress` sigue siendo el único lugar que conoce la forma `cfx.re/join/<id>`** (`Domain/ServerAddress` ya es "single owner" según AGENTS.md); la nueva clasificación convive ahí.
-- En esta fase **no hay UI**: la advertencia de "servidor no validado" es solo un estado del perfil listo para consumo futuro.
+- **`ServerAddress` is extended as the single source of address form.** It adds (a) address classification into an enum (`CfxId`, `CfxJoinUrl`, `IpPort`, `DomainPort`, unknown/invalid) and (b) per-form validation/extraction. `ExtractCfxId` and `HasServerFormWithNonEmptyId` keep existing and are re-expressed on top of the new classifier (without breaking existing call-sites).
+- **`ServerResolver.ResolveAsync` branches by form:**
+  - `CfxId` / `CfxJoinUrl` → current behavior (look up in CFX by id; `null` → `InvalidAddressException`).
+  - `IpPort` / `DomainPort` → try resolving via CFX; if resolution returns a profile → validated profile; if not → **connectable unvalidated profile** with the address as-is, without derived requirements (do not invent `ProjectName`/`GameClient`/`Requirements`).
+  - Unknown/invalid form → `InvalidAddressException`.
+- **`ServerProfile` gains a validation marker** (e.g. `bool IsCfxValidated`) to distinguish "full profile from CFX" from "direct unvalidated connectable profile". In this phase it is used as resolver output; UI consumption (warning) is another phase.
+- **IP/domain lookup mechanism on CFX (researched and verified):**
+  - There is no lightweight endpoint lookup. The full catalog is served at `https://frontend.cfx-services.net/api/servers/streamRedir/` as a **binary frame stream** (uint32 LE length prefix + protobuf `master.Server` message), exceeding 5MB and **ignoring query params** (no server-side pagination/filters: `?limit=` still returns everything). Filters are 100% client-side.
+  - **`master.Server`** (`EndPoint` + `ServerData`) exposes `vars` (string→string map, incl. `gamename`, `sv_projectName`, `sv_enforceGameBuild`, `sv_pureLevel`, `requestSteamTicket`), `connectEndPoints` (IP:port or host with `sv_listingHostOverride`), `server`, `clients`, `svMaxclients`... (full schema verified in `cfx-api`/`fivem-server-api`).
+  - Looking up an endpoint = **downloading the full stream, decoding all frames, and matching** `connectEndPoints` against `ip:port` (or against the resolved host) or `EndPoint` against a cfx id. It is what both community libraries do.
+  - **Protobuf decode with `Google.Protobuf`** (decision confirmed with the user): repo-owned `.proto` schema based on the verified one; binary test fixtures.
+  - **TTL cache** (e.g. 5 min) to avoid re-downloading the MBs on every resolution: the catalog download is expensive and the server set changes slowly.
+  - **`domain:port`**: resolve DNS → IP, and match against `connectEndPoints` (IP:port or published host).
+- The resolver **tries** this path and degrades to "connectable unvalidated" without throwing if the endpoint doesn't appear in the catalog (or the catalog is unavailable).
+- **Strict minimal validation:**
+  - `IP:port` → 4 decimal octets (0-255) separated by `.` + `:` + port (1-65535).
+  - `domain:port` → 1+ alphanumeric labels with `-` joined by `.` (no scheme, no path, no user@) + `:` + port (1-65535).
+  - No whitespace in any format.
+- **Domain/IP and the `gamename`/requirements detail:** if the form is IP/domain and CFX returns no profile, no requirements are derived (YAGNI: don't guess build/pure/steam from a raw address).
+- **`ServerAddress` remains the only place knowing the `cfx.re/join/<id>` form** (`Domain/ServerAddress` is already the "single owner" per AGENTS.md); the new classification lives there.
+- In this phase **there is no UI**: the "unvalidated server" warning is just a profile state ready for future consumption.
 
 ## Testing Decisions
 
-- **Módulos a testear:** `ServerAddress` (clasificación + validación/extracción por las 4 formas y casos inválidos), `ServerResolver` (ramificación por forma: CFX resuelve, IP/dominio con perfil CFX devuelto, IP/dominio sin perfil CFX → no validado conectable, forma inválida → excepción) y el **servicio de catálogo** (fetch stream + decode frames + matcheo por `connectEndPoints`/`EndPoint`, con fixtures binarios protobuf).
-- **Prior art en el repo:** `tests/.../Domain/ServerResolverTests.cs` (HTTP fake con `FakeHttpMessageHandler`, Given/When/Then, `CreateResolver` helper) y `tests/.../Domain/ServerAddressTests.cs` (puro, sin HTTP). Nuevos tests siguen ese patrón, sin librerías de mocking.
-- La respuesta HTTP se fakea con `FakeHttpMessageHandler` y fixtures JSON como raw strings C# (convención del repo); para el catálogo binario, los fixtures son secuencias de bytes/frames protobuf generados en el test (helper de construcción de frames).
-- Naming: `<Método>_Should<Expectativa>` con comentarios Given/When/Then.
-- El estado "no validado conectable" se verifica por el campo nuevo de `ServerProfile` (comportamiento observable del resolver), no por detalles internos de cómo se intentó CFX.
+- **Modules to test:** `ServerAddress` (classification + validation/extraction across the 4 forms and invalid cases), `ServerResolver` (branching by form: CFX resolves, IP/domain with CFX profile returned, IP/domain without CFX profile → connectable unvalidated, invalid form → exception) and the **catalog service** (stream fetch + frame decode + matching by `connectEndPoints`/`EndPoint`, with binary protobuf fixtures).
+- **Prior art in the repo:** `tests/.../Domain/ServerResolverTests.cs` (fake HTTP with `FakeHttpMessageHandler`, Given/When/Then, `CreateResolver` helper) and `tests/.../Domain/ServerAddressTests.cs` (pure, no HTTP). New tests follow that pattern, with no mocking libraries.
+- The HTTP response is faked with `FakeHttpMessageHandler` and JSON fixtures as C# raw strings (repo convention); for the binary catalog, fixtures are sequences of protobuf bytes/frames generated in the test (frame-building helper).
+- Naming: `<Method>_Should<Expectation>` with Given/When/Then comments.
+- The "connectable unvalidated" state is verified via the new `ServerProfile` field (observable resolver behavior), not via internal details of how CFX was attempted.
 
 ## Out of Scope
 
-- **UI/advertencia visual** de "servidor no validado": fase posterior que consume `IsCfxValidated`.
-- **Cache del catálogo en disco** y políticas de refresco avanzadas (solo TTL en memoria por ahora; persistencia/refresco en background es iteración futura).
-- **Detallado completo del catálogo** (íconos, upvotes, players): se mapea solo lo que `ServerResolver` necesita (`gamename`, requisitos, endpoints).
-- **`/api/servers/top/{language}`** y otros endpoints de catálogo: no necesarios para lookup por endpoint.
-- **IPv6 (`[::1]:30120`)** y otros formatos exóticos: no pedidos por DOC.md.
-- **Steam/Discord** como requisitos manuales del perfil (sigue fuera).
-- **Modificar `LauncherSettings`** o cualquier config global.
-- **Refactor ruidoso de `ServerAddress`**: el clasificador nuevo debe convivir con las APIs actuales sin cambiar firmas existentes salvo donde el comportamiento lo exija (y se testea).
+- **UI/visual warning** for "unvalidated server": later phase consuming `IsCfxValidated`.
+- **On-disk catalog cache** and advanced refresh policies (in-memory TTL only for now; persistence/background refresh is a future iteration).
+- **Full catalog detail** (icons, upvotes, players): only what `ServerResolver` needs is mapped (`gamename`, requirements, endpoints).
+- **`/api/servers/top/{language}`** and other catalog endpoints: not needed for endpoint lookup.
+- **IPv6 (`[::1]:30120`)** and other exotic formats: not requested by DOC.md.
+- **Steam/Discord** as manual profile requirements (still out).
+- **Modifying `LauncherSettings`** or any global config.
+- **Noisy `ServerAddress` refactor**: the new classifier must coexist with current APIs without changing existing signatures except where behavior demands it (and it is tested).
 
 ## Further Notes
 
-- DOC.md:516-517, 530-534: la resolución IP/domain y el mecanismo de búsqueda dependen de info actual de CFX → investigación antes de implementar el mecanismo; **investigación realizada y reflejada en Implementation Decisions** (streamRedir, protobuf con Google.Protobuf, cache TTL).
-- La librería comunitaria `fivem-server-api` y `cfx-api` (ambas mantenidas) ya implementan el patrón "stream completo + filtro local"; son la referencia de comportamiento para el servicio de catálogo (schema `master.Server` idéntico en ambas).
-- DOC.md:127-128 ("Cuando sea posible, una dirección CFX debe poder resolverse mediante la API de CFX") refuerza el diseño "intentar CFX → degradar a conectable".
-- DOC.md:514 ("No asumir que proceso iniciado = listo") y 434-435 ("no asumir requisitos") apoyan no inventar requisitos/GameClient en el perfil no validado.
-- `GameClient` nullable en `ServerProfile` ya cubre "no publicado"; el perfil no validado sencillamente lo deja `null`.
-- Tras implementar: actualizar `AGENTS.md` (estado actual, quitar TODOs de IP/domain y validación) y commitear con conventional commits en inglés.
+- DOC.md:516-517, 530-534: IP/domain resolution and the lookup mechanism depend on current CFX info → research before implementing the mechanism; **research done and reflected in Implementation Decisions** (streamRedir, protobuf with Google.Protobuf, TTL cache).
+- The community libraries `fivem-server-api` and `cfx-api` (both maintained) already implement the "full stream + local filter" pattern; they are the behavior reference for the catalog service (identical `master.Server` schema in both).
+- DOC.md:127-128 ("When possible, a CFX address must be resolvable via the CFX API") reinforces the "try CFX → degrade to connectable" design.
+- DOC.md:514 ("Don't assume process started = ready") and 434-435 ("don't assume requirements") support not inventing requirements/GameClient in the unvalidated profile.
+- Nullable `GameClient` in `ServerProfile` already covers "not published"; the unvalidated profile simply leaves it `null`.
+- After implementing: update `AGENTS.md` (current state, remove IP/domain and validation TODOs) and commit with English conventional commits.

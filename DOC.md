@@ -1,26 +1,26 @@
-Estoy desarrollando FiveMServerLauncher, un launcher de Windows para FiveM escrito en C#/.NET 10 con WPF, utilizando una arquitectura desacoplada y TDD con xUnit.
+I am developing FiveMServerLauncher, a Windows launcher for FiveM written in C#/.NET 10 with WPF, using decoupled architecture and TDD with xUnit.
 
-Quiero que continúes el desarrollo desde el estado actual del proyecto, respetando las decisiones de diseño que ya están tomadas. No quiero que reconstruyas ni cambies decisiones ya establecidas salvo que exista una razón técnica concreta y la discutamos primero.
+I want you to continue development from the current project state, respecting design decisions already made. I do not want you to rebuild or change established decisions unless there is a concrete technical reason and we discuss it first.
 
-# Objetivo del proyecto
-El objetivo es crear un launcher sencillo y rápido para Windows que permita:
-- Entrar directamente a un servidor de FiveM.
-- Abrir FiveM o FiveM Enhanced manualmente.
-- Seleccionar el cliente preferido.
-- Preparar automáticamente los requisitos específicos de un servidor.
-- Detectar y lanzar aplicaciones externas cuando sean necesarias.
-- Obtener información del servidor desde CFX.
-- Aplicar las opciones de ejecución que el servidor requiera.
-- Tener un modo de desarrollo con opciones adicionales.
-- Actualizarse automáticamente en el futuro.
-- Mantener la lógica completamente separada de la UI.
-- No requerir permisos de administrador.
-- La filosofía de UX es: si todo está preparado, no molestar al usuario. Si algo requiere intervención o espera, mostrar una pantalla de carga/progreso explicativa.
+# Project goal
+The goal is to create a simple, fast launcher for Windows that allows:
+- Entering a FiveM server directly.
+- Opening FiveM or FiveM Enhanced manually.
+- Selecting the preferred client.
+- Automatically preparing server-specific requirements.
+- Detecting and launching external applications when needed.
+- Getting server information from CFX.
+- Applying the execution options the server requires.
+- Having a dev mode with additional options.
+- Auto-update itself in the future.
+- Keeping logic completely separated from the UI.
+- Requiring no administrator privileges.
+- UX philosophy: if everything is ready, don't bother the user. If something requires intervention or waiting, show an explanatory loading/progress screen.
 
-# Arquitectura actual
-El proyecto está organizado alrededor de responsabilidades independientes.
+# Current architecture
+The project is organised around independent responsibilities.
 
-La configuración ya tiene una separación entre:
+Configuration is already separated into:
 ```
 Configuration
 ├── LauncherSettings
@@ -29,33 +29,33 @@ Configuration
 ├── InMemorySettingsStorage
 └── FileSettingsStorage
 ```
-``InMemorySettingsStorage`` existe en el proyecto de tests para evitar depender del filesystem durante las pruebas.
+``InMemorySettingsStorage`` lives in the tests project to avoid depending on the filesystem during tests.
 
-``FileSettingsStorage`` es la implementación real y persiste mediante JSON.
+``FileSettingsStorage`` is the real implementation and persists via JSON.
 
-La persistencia utiliza ``System.Text.Json`` y ``JsonStringEnumConverter``.
+Persistence uses ``System.Text.Json`` and ``JsonStringEnumConverter``.
 
-### Seams intencionales (ConfigurationRepository y ServerRequirementsResolver)
+### Intentional seams (ConfigurationRepository and ServerRequirementsResolver)
 
-Aunque ``ConfigurationRepository`` y ``ServerRequirementsResolver`` mayormente delegan, se mantienen a propósito como seams. Su frontera:
+Although ``ConfigurationRepository`` and ``ServerRequirementsResolver`` mostly delegate, they are kept deliberately as seams. Their boundary:
 
-- ``ConfigurationRepository`` es la API no-nula del módulo Configuration: ``Load()`` devuelve siempre un ``LauncherSettings`` (aplica ``?? new LauncherSettings()``) y valida la entrada en ``Save``. Aísla a la UI de la nulabilidad del storage y es sustituible en tests por ``InMemorySettingsStorage``.
-- ``ServerRequirementsResolver`` traduce ``CfxServerInfo`` (Service, shape de CFX) a ``ServerRequirements`` (Domain). Mantiene el Domain sin conocer las convenciones de CFX (``sv_enforceGameBuild``, ``sv_pureLevel``, ``requestSteamTicket``) y es testeable directo sin HTTP.
+- ``ConfigurationRepository`` is the non-null API of the Configuration module: ``Load()`` always returns a ``LauncherSettings`` (applies ``?? new LauncherSettings()``) and validates input in ``Save``. It isolates the UI from storage nil-ness and is substitutable in tests with ``InMemorySettingsStorage``.
+- ``ServerRequirementsResolver`` translates ``CfxServerInfo`` (Service, CFX shape) into ``ServerRequirements`` (Domain). Keeps Domain free of CFX conventions (``sv_enforceGameBuild``, ``sv_pureLevel``, ``requestSteamTicket``) and is directly testable without HTTP.
 
-Inlinearlos acoplaría Domain o UI al detalle de CFX/storage. Decisión registrada en ``docs/adr/0001-intentional-middle-men-seams.md``.
+Inlining them would couple Domain or UI to CFX/storage details. Decision recorded in `docs/adr/0001-intentional-middle-men-seams.md`.
 
-La suite de tests utiliza ``xUnit`` y actualmente está completamente verde.
+The test suite uses xUnit and is currently fully green.
 
-El último estado conocido es:
+The last known state was:
 ```shell
-Resumen de pruebas: total: 15; con errores: 0; correcto: 15; omitido: 0; duración: 1,2 s
-Compilación realizado correctamente en 3,4s
+Test summary: total: 15; errors: 0; correct: 15; skipped: 0; duration: 1.2 s
+Compilation succeeded in 3.4s
 ```
-Por lo tanto, no rompas los tests existentes y continúa aplicando TDD.
+So don't break existing tests and continue applying TDD.
 
-## LauncherSettings actual
-Después de revisar el diseño inicial, LauncherSettings fue simplificado.
-Actualmente debe representar únicamente preferencias globales del launcher:
+## Current LauncherSettings
+After reviewing the initial design, LauncherSettings was simplified.
+Today it must represent only global launcher preferences:
 ```
 public class LauncherSettings
 {
@@ -63,7 +63,7 @@ public class LauncherSettings
     public bool AutoLaunch { get; set; } = false;
 }
 ```
-Los enums actuales son:
+Current enums:
 ```
 public enum GameClient
 {
@@ -71,30 +71,30 @@ public enum GameClient
     FiveMEnhanced
 }
 ```
-La razón para eliminar Platform es que FiveM/Rockstar gestionan la plataforma del juego y no queremos que el launcher dependa de Steam/Epic para autenticar o arrancar FiveM.
+The reason to drop Platform is FiveM/Rockstar manage the game platform and we don't want the launcher to depend on Steam/Epic to authenticate or start FiveM.
 
-La razón para eliminar ServerPort es que el puerto pertenece al servidor/perfil y no a la configuración global.
+The reason for dropping ServerPort: the port belongs to the server/profile, not global config.
 
 ### Rockstar / Steam / Epic / Discord
-Una decisión importante del diseño:
+An early design decision:
 
-**RSC no será gestionado por el launcher.**
+**RSC never managed by the launcher.**
 
-FiveM necesita Rockstar Social Club para iniciar sesión y FiveM ya se encarga de ello.
+FiveM needs Rockstar Social Club for sign-in and FiveM handles that itself.
 
-Steam y Discord son diferentes:
-- No son necesariamente necesarios para arrancar FiveM.
-- Algunos servidores utilizan scripts propios que requieren Steam o Discord.
-- Si esos requisitos no están preparados, el usuario puede entrar a FiveM y ser rechazado posteriormente.
-- Queremos detectar/preparar esos requisitos antes de lanzar/conectar FiveM.
-Por eso Steam y Discord serán requisitos configurables por ``ServerProfile``.
+Steam and Discord are different:
+- Neither is required to start FiveM.
+- Some servers run custom scripts requiring Steam or Discord.
+- If those aren't ready, the user can get in FiveM and be rejected later.
+- We want to detect/prepare those requirements before launching/connecting to FiveM.
+So Steam and Discord are per-server ``ServerProfile`` requirements.
 
-Tampoco asumir que basta con que el proceso exista para considerar que el servicio está completamente preparado: inicialmente podemos comprobar procesos, pero la arquitectura debe permitir posteriormente implementar estados más precisos como "iniciado", "listo" o "autenticado".
+Nor do we assume that a process exist means the service is fully ready: initially we can check processes, but the architecture must allow later to implement more precise states like "started", "ready" or "authenticated".
 
 ## ServerProfile
-Queremos separar completamente la configuración global del launcher de la configuración específica de cada servidor.
+We want to completely separate the launcher's global config from per-server config.
 
-El concepto actual es:
+The current concept is:
 ```
 ServerProfile
 ├── Name
@@ -103,33 +103,33 @@ ServerProfile
 └── FiveMLaunchOptions
 ```
 ### Name
-Nombre amigable del servidor.
+Friendly name of the server.
 
 ### Address
-Debe ser flexible.
+Must be flexible.
 
-Queremos poder trabajar con:
+We want to be able to work with:
 ```
 CFX ID
-URL de CFX
-IP:puerto
-dominio:puerto
+CFX URL
+IP:port
+domain:port
 ```
-Ejemplos conceptuales:
+Conceptual examples:
 ```
 8e8xxv
 cfx.re/join/xxxxx
 149.56.120.52:30320
 play.example.com:30120
 ```
-No queremos acoplar el launcher a un único formato.
+We don't want to couple the launcher to a single format.
 
-Cuando sea posible, una dirección CFX debe poder resolverse mediante la API de CFX y obtener información del servidor.
+Where possible, a CFX address must resolve via the CFX API to get the server back.
 
-# API de CFX
-Hemos investigado la API utilizada por CFX.
+# CFX API
+We investigated the CFX API.
 
-Endpoints relevantes:
+Relevant endpoints:
 ```
 https://frontend.cfx-services.net/api/servers
 https://frontend.cfx-services.net/api/servers/single/
@@ -137,13 +137,13 @@ https://frontend.cfx-services.net/api/servers/streamRedir/
 https://frontend.cfx-services.net/api/servers/icon/
 https://gss.cfx-services.net/v1/public/featured-servers
 ```
-También existen endpoints públicos de estado:
+Public status endpoints:
 ```
 https://citizenfx.statuspage.io/api/v2/status.json
 https://citizenfx.statuspage.io/api/v2/components.json
 https://citizenfx.statuspage.io/api/v2/incidents/unresolved.json
 ```
-Un ``/single/{CFX_ID}`` puede devolver información como:
+A ``/single/{CFX_ID}`` can return:
 ```
 EndPoint
 Data {
@@ -157,7 +157,7 @@ Data {
     connectEndPoints
     ...}
 ```
-Dentro de ``vars`` puede aparecer información muy importante:
+Inside ``vars`` can appear very important info:
 ```
 sv_defaultGameBuild
 sv_enforceGameBuild
@@ -167,59 +167,58 @@ sv_enforceSteamAuth
 sv_enhancedHostSupport
 requestSteamTicket
 ```
-Por ejemplo, un servidor real que investigamos devuelve:
+An example, a real server we looked at returns:
 ```
 sv_defaultGameBuild = 3258
 sv_enforceGameBuild = 3258
 sv_pureLevel = 1
 ```
-y:
+and:
 ```
 sv_poolSizesIncrease = "{...}"
 ```
 
-No queremos duplicar manualmente en ServerProfile información que el servidor ya publica.
+We don't want to duplicate in ServerProfile info the server already publishes.
 
 # FiveMLaunchOptions
-El concepto ``FiveMLaunchOptions`` debe representar las opciones necesarias para preparar/lanzar FiveM.
+``FiveMLaunchOptions`` must represent the options needed to prepare/launch FiveM.
 
-## Investigación verificada (fuentes: docs oficiales y código ciudadano citizenfx/fivem)
+## Verified investigation (sources: official docs and citizenfx/fivem source code)
 
-Argumentos de línea de comandos documentados oficialmente (FiveM Shortcut):
+Command line arguments documented officially (FiveM Shortcut):
 ```
--b<build>        → lanzar directamente en un game build (ej: -b1604)
--pure_<nivel>    → lanzar directamente en un pure mode 0-2 (ej: -pure_1)
--cl2             → segunda instancia
-```
-
-Conexión directa:
-```
-fivem://connect/<servidor>
-fivem://connect/<servidor>?<params>
+-b<build>        → launch directly in a game build (ex: -b1604)
+-pure_<level>    → launch directly in a pure mode 0-2 (ex: -pure_1)
+-cl2             → second instance
 ```
 
-### Cómo los lee FiveM (código fuente)
-- ``PureModeState.h``: `GetPureLevel()` parsea la línea de comandos (`pure_`) vía `CommandLineToArgvW` sobre `CfxState::initCommandLine`. **El pure mode nunca se lee de CitizenFX.ini.**
-- ``CrossBuildSwitch.cpp``: al conectar a un servidor, el cliente orquesta el switch él mismo: `RestartGameToOtherBuild(build, pureLevel, poolSizesIncreaseSetting, defaultBuild)`.
+Direct connection:
+```
+fivem://connect/<server>
+fivem://connect/<server>?<params>
+```
 
-### El problema del cross-build
-El flujo de switch a tiempo de conexión es: el cliente ya está abierto (build X) → pide `connect` a un servidor con build distinto → diálogo de confirmación → **`RestartGameToOtherBuild` cierra y vuelve a abrir el juego** para cargar el build requerido.
+### How FiveM reads them (source code)
+- ``PureModeState.h``: `GetPureLevel()` parses command line (`pure_`) via `CommandLineToArgvW` against `CfxState::initCommandLine`. **Pure mode is never persisted to CitizenFX.ini.**
+- ``CrossBuildSwitch.cpp``: on connection to a server, the client orchestrates the switch itself: `RestartGameToOtherBuild(build, pureLevel, poolSizesIncreaseSetting, defaultBuild)` — handles the cross-build state.
 
-Es un ciclo lento y molesto. La doc oficial de `-b`/`-pure_` lo resume: lanzan FiveM *directamente* al build/pure pedido para **evitar la transición**.
+### The cross-build problem
+The connection-time switch flow is: the client is already open (build X) → prompts to join a server with different build → confirm dialog → **`RestartGameToOtherBuild` closes and re-opens the game**, making the required build.
+This is a long, awkward cycle. The official `-b`/`-pure_` doc hedges: launch FiveM **directly** to the build/pure requested to **avoid the transition**.
 
-### Rol de ServerRequirements al lanzar
-Como FiveM ya aplica por sí solo los requisitos del servidor al conectar, el deber del launcher no es forzarlos sino **pre-cargarlos**: si lanzamos con `-b<serverBuild> -pure_<nivel>`, el cliente arranca en el estado correcto y no hay reinicio al conectar.
+### Role of ServerRequirements at launch
+FiveM applies server requirements itself at connect, so the launcher's job isn't to to impose it, it's to **pre-load** it: launching with `-b<serverBuild> -pure_<level>` gets the client in the right state with no restart on connect.
 
-Los requisitos del servidor gana sobre la config manual (incluido Dev Mode) cuando se conecta a un servidor.
+Server-provided requirements win over manual config (including Dev Mode) when connected to a server.
 
 # CitizenFX.ini
-También investigamos cómo FiveM persiste parte de esta configuración.
+We also investigated how FiveM persists part of this configuration.
 
-El archivo está junto al ejecutable de FiveM (normalmente ``%localappdata%\FiveM\FiveM.app\CitizenFX.ini``).
+The file lives next to the FiveM executable (usually ``%localappdata%\FiveM\FiveM.app\CitizenFX.ini``).
 
-## Estado verificado
-- La **única key documentada oficialmente** bajo ``[Game]`` además de ``IVPath`` es ``SavedBuildNumber=<build>``: lanza FiveM directamente en ese build (mismo efecto que ``-b``, pero persistente).
-- Ejemplo de lo que vimos en un ini real:
+## Verified state
+- The **only officially documented key** under ``[Game]`` besides ``IVPath`` is ``SavedBuildNumber=<build>``: launches FiveM directly in that build (same effect as ``-b`` but persistent).
+- Example from a real ini:
 ```ini
 [Game]
 IVPath=D:\SteamLibrary\steamapps\common\Grand Theft Auto V
@@ -229,35 +228,33 @@ ReplaceExecutable=0
 UpdateChannel=beta
 DefaultBuild=3258
 ```
-- ``PoolSizesIncrease``, ``DefaultBuild``, ``ReplaceExecutable`` **existen de facto pero no son API pública documentada**. El pure mode **no** se persiste aquí (se lee solo de la línea de comandos).
+- ``PoolSizesIncrease``, ``DefaultBuild``, ``ReplaceExecutable`` **exist de facto but are not a documented public API**. Pure mode is **not** persisted here (only read from the command line).
 
-## Consecuencia para el diseño
-- La vía principal y consistente para pre-cargar build/pure es **argumentos de línea de comandos** (además, el UIT-level ``fivem://connect`` acepta parámetros).
-- ``CitizenFX.ini`` queda fuera del alcance de esta fase: se descarta modificar el ini del usuario salvo que investigaciones futuras lo justifiquen (p.ej. PoolSizesIncrease, que hoy **de hecho se gestiona por el propio cliente** vía `IncreasePoolSize` / PoolSizeManager al conectar).
+## Design consequence
+- The primary and consistent way to pre-load build/pure is **command-line arguments**(the UIT-level ``fivem://connect`` also accepts params).
+- ``CitizenFX.ini`` is out of scope for this phase: we won't touch the user's ini unless future investigations justify it (e.g., PoolSizesIncrease, which in fact the client manages itself via `IncreasePoolSize` / PoolSizeManager on connect).
 
 
 # Dev Mode
-Queremos un Dev Mode separado de la experiencia normal.
+We want a Dev Mode separate from the normal experience.
 
-Debe permitir opciones que no deberían formar parte de la configuración normal del usuario.
+It must allow options that shouldn't belong in the user's normal configuration:
 
-Entre ellas:
+- Second FiveM client (-cl2)
+- Configure Game Build manually
+- Configure Pure Mode manually
 
-- Segundo cliente FiveM (-cl2)
-- Configurar manualmente Game Build
-- Configurar manualmente Pure Mode
+Important clarification:
+The ``Game Build`` and ``Pure Mode`` configurable in Dev Mode are for opening FiveM directly, not for forcing those values upon connection to a server.
 
-Una precisión importante:
-El ``Game Build`` y ``Pure Mode`` configurables en Dev Mode son para abrir FiveM directamente, no para forzar esos valores al conectarse a un servidor.
-
-Cuando se conecta a un servidor, deben prevalecer las necesidades/configuración del servidor.
+When connecting to a server, the server's requirements/settings prevail.
 
 # Pool Sizes
-Hemos confirmado que algunos servidores publican:
+We've confirmed some servers publish:
 
 sv_poolSizesIncrease
 
-con un JSON de pools, por ejemplo:
+with a pool JSON, e.g.:
 ```
 {
   "AnimStore": 20480,
@@ -267,94 +264,95 @@ con un JSON de pools, por ejemplo:
   "EntityDescPool": 20480
 }
 ```
-No queremos tratar este JSON como una configuración arbitraria del launcher.
+We don't want to treat this JSON as arbitrary launcher configuration.
 
-## Estado verificado
-- FiveM gestiona los pool sizes **internamente al conectar**: el cliente recibe la petición y aplica vía ``PoolSizeManager`` / ``IncreasePoolSize``, sin intervención del launcher ni del ini (ver ``CrossBuildSwitch.cpp`` y ``PoolSizesState.h`` en citizenfx/fivem).
-- Limites de pool permitidos se servan desde ``content.cfx.re``.
+## Verified state
+- FiveM manages pool sizes **internally at connect**: the client receives the request and applies it via ``PoolSizeManager`` / ``IncreasePoolSize``, without launcher or ini intervention (see ``CrossBuildSwitch.cpp`` and ``PoolSizesState.h`` in citizenfx/fivem).
+- Pool limits are served from ``content.cfx.re``.
 
-## Consecuencia para el diseño
-Los pool sizes **quedan fuera de FiveMLaunchOptions**: el launcher no necesita a aplicarlos; preservamos el JSON solo si en el futuro queremos mostrarlo/validarlo en el dominio, pero no para modificar configuración de FiveM.
+## Design consequence
+Pool sizes **stay out of FiveMLaunchOptions**: the launcher doesn't need to apply them; we keep the JSON only if we want later to display/validate it in domain, not to modify FiveM config.
 
-# Cliente FiveM / Enhanced
-El launcher soporta:
+# FiveM / Enhanced client
+The launcher supports:
 - FiveM
 - FiveM Enhanced
 
-La preferencia global es:
+Global preference:
 - PreferredClient
 
-La UI principal tendrá:
-- Entrar al servidor como acción principal.
-- Un botón secundario con dropdown para:
-- Abrir FiveM
-- Abrir FiveM Enhanced
-Conceptualmente:
+Main UI will have:
+- Enter a server as primary action.
+- A secondary button with dropdown for:
+- Open FiveM
+- Open FiveM Enhanced
+Conceptually:
 ```
 ┌───────────────────────────────┐
-│     ENTRAR AL SERVIDOR        │
+│          ENTER SERVER         │
 └───────────────────────────────┘
 
 ┌───────────────────────────────┐
-│       ABRIR FIVEM          ▼  │
+│         OPEN FIVEM       ▼    │
 └───────────────────────────────┘
 ```
-El dropdown permite seleccionar el cliente.
+The dropdown lets you select the client.
 
-## FiveM Enhanced: estado verificado (investigado antes de asumir)
-- **Es un cliente y launcher separados**: se descarga aparte (fivem.net), se instala en su propia carpeta y **no documenta** `fivem://connect`, `-b`, `-pure_` ni `-cl2`.
-- **`-cl2` no existe en Enhanced** (doc oficial "Running two FiveM clients"): una segunda instancia requiere `sv_devMode true` server-side y luego "Launch Additional Client" desde las devtools (F8) del cliente. No hay argumento CLI.
-- **`+set moo 31337` fue removido**: el devmode de Enhanced es server-side (`sv_devMode true`), no por línea de comandos.
-- **Pure mode siempre activo** en Enhanced ("can no longer be turned off"); sin `-pure_X`.
-- **Solo soporta el último gamebuild** (Kortz Center Heist); sin builds que pinear con `-b`.
-- **El proceso de conexión se rediseñó** (Development Update #2): ya no arranca el juego en background y **se eliminó el reinicio del cliente** al unirse a un servidor con distinta configuración. El problema del cross-build restart de Legacy no existe en Enhanced.
+## FiveM Enhanced: verified state (investigated before assuming)
+- **It's a separate client and launcher**: downloaded separately (fivem.net), installed in its own folder and does **not** document `fivem://connect`, `-b`, `-pure_` or `-cl2`.
+- **`-cl2` doesn't exist in Enhanced** (official doc "Running two FiveM clients"): a second instance needs server side `sv_devMode true` and then "Launch Additional Client" from devtools (F8). No CLI argument.
+- **`+set moo 31337` was removed**: Enhanced devmode is server side (`sv_devMode true`), not command line.
+- **Pure mode always on** in Enhanced ("can no longer be turned off"); no `-pure_X`.
+- **Supports only the latest gamebuild** (Kortz Center Heist); no builds to pin with `-b`.
+- **The connection flow was redesigned** (Development Update #2): no longer starts the game in background and **the client restart is removed** on joining a server with different config. The Legacy cross-build restart problem doesn't exist on Enhanced.
 
-## Consecuencia para el diseño
-- La serialización de conexión directa (`fivem://connect/<addr>`) y los args `-b`/`-pure_`/`-cl2` aplican a **FiveM (Legacy) y RedM**. Para **FiveM Enhanced** el launcher solo puede **abrir el cliente**; conectarse ocurre dentro de la UI del propio cliente. Un `FiveMLaunchOptions` con `GameClient = FiveMEnhanced` no serializa URI ni args de conexión.
+## Design consequence
+- Direct connection serialization (`fivem://connect/<addr>`) and `-b`/`-pure_`/`-cl2` args apply to **FiveM (Legacy) and RedM**. For **FiveM Enhanced**, the launcher can only **open the client**; connecting happens inside its own UI. A `FiveMLaunchOptions` with `GameClient = FiveMEnhanced` doesn't serialize a URI nor connection args.
 
 # UX
-La filosofía principal es: No molestar si todo está listo.
+The main philosophy is: don't bother if everything is ready.
 
-Si Steam y Discord ya están preparados:
+If Steam and Discord are ready:
 ```
-JUGAR
+PLAY
  ↓
 Steam ✓
 Discord ✓
 FiveM ✓
  ↓
-Conectar
+Connect
 ```
-sin mostrar ventanas innecesarias.
+without showing unnecessary windows.
 
-Si algo necesita intervención:
+If something needs intervention:
 ```
-Preparando el juego...
+Preparing the game...
 
 Steam
-██████████████░░░░
+█████████████░░░░
 
-Iniciando Steam...
+Starting Steam...
 ```
-Después:
+Then:
 ```
 Steam ✓
 Discord ✓
 FiveM ✓
-Conectando...
+Connecting...
 ```
-Queremos una pantalla de carga/splash ligera porque actualmente las operaciones son rápidas, pero en el futuro pueden incluir:
+We want a light splash screen because our current operations are fast, but in the future they could include:
 ```
-actualización del launcher,
-consulta CFX,
-detección,
-preparación de FiveM,
-validaciones,
-otras operaciones.
-Arquitectura deseada
-No queremos poner lógica directamente en MainWindow.xaml.cs.
+launcher update,
+CFX query,
+detection,
+FiveM preparation,
+validations,
+other operations.
 ```
-El flujo debe parecerse conceptualmente a:
+Desired architecture:
+Don't put logic directly in MainWindow.xaml.cs.
+
+The flow belongs conceptually to:
 ```
 UI
  ↓
@@ -364,7 +362,7 @@ Domain services
  ↓
 Infrastructure
 ```
-Queremos responsabilidades separadas para:
+We want separate responsibilities:
 ```
 GameLauncher
 ProcessManager
@@ -377,83 +375,83 @@ Settings storage
 Detection
 Updates
 ```
-La arquitectura debe permitir testear la lógica sin lanzar procesos reales ni depender del filesystem real cuando no sea necesario.
+The architecture must let us test logic without launching real processes or depending on the real filesystem when not needed.
 
 # TDD
-Estamos desarrollando mediante TDD.
+We're developing with TDD.
 
-La regla de trabajo es:
+The working rule is:
 ```
 RED
  ↓
-Implementación mínima
+Minimal implementation
  ↓
 GREEN
  ↓
 Refactor
 ```
-Actualmente los tests de configuración/storage están verdes.
+Config/storage tests are currently green.
 
-Cuando propongas el siguiente paso:
-- primero explica brevemente qué comportamiento vamos a introducir;
-- indica qué test debemos crear;
-- deja que el test falle;
-- luego implementamos lo mínimo;
-- ejecutamos dotnet test;
-- corregimos hasta GREEN;
-- después hacemos refactor si corresponde.
-No avances múltiples capas de arquitectura de golpe.
+When you propose the next step:
+- first explain briefly what behavior we're adding;
+- tell me which test we should create;
+- let it fail;
+- implement the minimum;
+- run dotnet test;
+- fix until GREEN;
+- then refactor if needed.
+Don't advance multiple architecture layers at once.
 
-Queremos construir incrementalmente.
+We want to build incrementally.
 
-# Estado conceptual del proyecto
-Actualmente estamos dejando atrás el diseño inicial que trataba Steam/Epic como plataformas globales.
+# Project's actual design
+We dropped the old design that treated Steam/Epic as global platforms.
 
-El diseño actualizado es:
+The current design is:
 ```
 LauncherSettings
-    ↓
-preferencias globales
+ ↓
+global preferences
 
 ServerProfile
-    ↓
-configuración/requisitos del servidor
+ ↓
+server config/requirements
 
 CFX API
-    ↓
-información dinámica del servidor
+ ↓
+dynamic server info
 
 FiveM preparation
-    ↓
-aplicar lo que necesita el servidor
+ ↓
+apply what the server needs
 
 FiveM
-    ↓
-conexión
+ ↓
+connection
 ```
-El launcher no debe asumir que el servidor necesita Steam, Discord, un Game Build específico, Pure Mode o Pool Sizes.
+The launcher doesn't assume the server needs Steam, Discord, a specific Game Build, Pure Mode or Pool Sizes.
 
-Debe determinarlo cuando sea posible a partir de la información del servidor.
+It must determine that from the server info wherever possible.
 
-# Diseño inicial de UI
-La pantalla principal inicialmente debe ser minimalista:
+# Initial UI design
+The initial main screen must be minimalist:
 ```
 ┌─────────────────────────────────────────┐
 │                                         │
 │          FiveMServerLauncher             │
 │                                         │
 │                                         │
-│       [ ENTRAR AL SERVIDOR ]            │
+│       [ ENTER THE SERVER ]              │
 │                                         │
-│       [ ABRIR FIVEM             ▼ ]     │
+│       [ OPEN FIVEM              ▼ ]     │
 │                                         │
-│       ☑ Abrir automáticamente           │
-│          la próxima vez                  │
+│       ☑ Open automatically               │
+│          next time                       │
 │                                         │
-│                           ⚙ Ajustes     │
+│                           ⚙ Settings      │
 └─────────────────────────────────────────┘
 ```
-**Colores:**
+**Colors:**
 ```
 Background: #FFFFFF
 Primary:    #000000
@@ -463,22 +461,22 @@ Secondary:  #777777
 Error:      #D32F2F
 Success:    #2E7D32
 ```
-El diseño debe ser limpio, con mucho espacio vacío, botones grandes y animaciones discretas.
+Design must be clean, with plenty of white space, large buttons and restrained animations.
 
-Más adelante puede evolucionar para mostrar:
-- banner del servidor,
-- estado online,
-- jugadores,
-- noticias,
+It may evolve to show:
+- server banner,
+- online status,
+- players,
+- news,
 - Discord,
-- web,
-- información CFX,
-sin tener que modificar la arquitectura de negocio.
+- website,
+- CFX info,
+without modifying the business architecture.
 
-# Actualizaciones
-El sistema de actualización del launcher debe estar desacoplado.
+# Updates
+The launcher update system must be decoupled.
 
-Conceptualmente:
+Conceptually:
 ```
 IUpdateService
     CheckForUpdates()
@@ -486,38 +484,38 @@ IUpdateService
     InstallUpdate()
     RestartLauncher()
 ```
-La actualización del launcher es independiente de:
+Launcher update is independent of:
 ```
 FiveM update
 Server update
 Game update
 ```
-No mezclar estos conceptos.
+Don't mix these concepts.
 
-El actualizador eventualmente necesitará ser capaz de actualizar/reemplazar el launcher sin que el ejecutable principal intente reemplazarse mientras está en ejecución.
+The updater will eventually need to update/replace the launcher without the main executable trying to replace itself while running.
 
-# Restricciones
+# Constraints
 - Windows.
 - .NET 10.
 - WPF.
 - MVVM.
-- No permisos de administrador.
-- No acoplar lógica a la UI.
-- Mantener tests rápidos.
-- No depender de procesos reales en tests unitarios.
-- No introducir abstracciones únicamente "por si acaso".
-- Mantener las abstracciones que aporten testabilidad o separen responsabilidades reales.
-- No volver a introducir Platform.
-- ServerPort no pertenece a LauncherSettings.
-- RSC no será gestionado por el launcher.
-- Steam/Discord son requisitos potenciales del servidor, no requisitos universales de FiveM.
-- No asumir que "proceso iniciado" equivale necesariamente a "servicio autenticado/listo".
-- No forzar Game Build/Pure Mode del perfil del servidor cuando el usuario simplemente abre FiveM en Dev Mode.
-- Priorizar información proporcionada por CFX sobre configuración manual duplicada.
-# Próximo objetivo
-A partir de este estado, quiero continuar diseñando e implementando el sistema de ServerProfile y su relación con la información de CFX, pero sin saltar directamente a la UI.
+- No administrator privileges.
+- No coupling to UI.
+- Keep tests fast.
+- Don't run real processes in unit tests.
+- Don't add abstractions "just in case".
+- Keep abstractions that bring testability or separate real responsibilities.
+- Don't re-introduce Platform.
+- ServerPort doesn't belong in LauncherSettings.
+- RSC not managed by the launcher.
+- Steam/Discord are per-server, not universal FiveM requirements.
+- Don't conflate "process started" with "service authenticated/ready".
+- Don't force server-type Game Build/Pure Mode when the user just opens FiveM in Dev Mode.
+- Prefer CFX-provided info to duplicated manual config.
+# Next objective
+Given the current state, continue designing and implementing the ServerProfile system and its relation to CFX info, without jumping to UI.
 
-La siguiente fase debe centrarse en el dominio y en las pruebas:
+The next phase focuses on domain and tests:
 ```
 ServerProfile
     ↓
@@ -527,8 +525,8 @@ FiveMLaunchOptions
     ↓
 CFX server information
 ```
-Antes de implementar, analiza qué modelos/abstracciones son realmente necesarios y cuáles serían sobreingeniería.
+Before implementing, analyze the models/abstractions really needed and which is over-engineering.
 
-Mantén el enfoque TDD y avanza de forma incremental.
+Keep the TDD focus and advance incrementally.
 
-Si una decisión técnica depende de información actual de FiveM/CFX, investigarla antes de asumirla.
+If a technical decision depends on current FiveM/CFX info, investigate before assuming.

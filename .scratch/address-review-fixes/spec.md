@@ -1,58 +1,58 @@
 Status: resolved
 Type: spec
 
-# Fixes de post-review de la fase ip-domain-resolution
+# Post-review fixes for the ip-domain-resolution phase
 
 ## Problem Statement
 
-El code review del diff `5dc7b7f...HEAD` (ejes Standards y Spec, skill `code-review`) encontró hallazgos de código, de spec y de documentación tras la fase `ip-domain-resolution`. No hay bugs funcionales críticos (todas las casillas de los 5 tickets originales se cumplen), pero hay: (a) una discrepancia spec↔código en validación de dominios (spec.md:44 "1+ labels" vs implementación `labels >= 2` + TLD-con-letra), (b) `InvalidAddressException` recibe el `cfxId` extraído en vez de la dirección original (spec.md:30 no fija el contrato), (c) duplicación en la split host:port y en el acceso a `gamename`, (d) código muerto (`IsCfxJoinUrl`), (e) `catch (Exception)` que enmascara errores de programación, (f) contradicción documental: AGENTS.md dice que `EndPoint` es "connection endpoint, no el id" pero `ServerResolver.BuildValidatedProfile` usa `EndPoint` del frame del catálogo como `CfxId`.
+The code review of the diff `5dc7b7f...HEAD` (Standards and Spec axes, `code-review` skill) found code, spec, and documentation findings after the `ip-domain-resolution` phase. There are no critical functional bugs (all checkboxes of the 5 original tickets are met), but there are: (a) a spec↔code discrepancy in domain validation (spec.md:44 "1+ labels" vs implementation `labels >= 2` + TLD-with-letter), (b) `InvalidAddressException` receives the extracted `cfxId` instead of the original address (spec.md:30 does not fix the contract), (c) duplication in the host:port split and in `gamename` access, (d) dead code (`IsCfxJoinUrl`), (e) `catch (Exception)` that masks programming errors, (f) documentation contradiction: AGENTS.md says `EndPoint` is a "connection endpoint, not the id" but `ServerResolver.BuildValidatedProfile` uses `EndPoint` from the catalog frame as `CfxId`.
 
-Esta spec resuelve primero las decisiones de alcance (validación de dominios, contrato de excepción, semántica de `EndPoint` en catálogo) y luego los tickets de código que las implementan.
+This spec first settles the scope decisions (domain validation, exception contract, `EndPoint` semantics in the catalog) and then the code tickets that implement them.
 
 ## Solution
 
-- **Validación de dominios (decidido):** se aceptan **1+ labels** (alinea con spec.md:44). Los casos de 1 label (`localhost:30120`) se clasifican como `DomainPort` si el label es válido. La regla "TLD con letra" aplica solo cuando hay 2+ labels (evita que `999.56.120.52:30320`, una IP con octeto inválido, pase como dominio numérico). Esta regla queda **escrita en spec.md** (hoy vive solo en un comentario de ticket).
-- **Contrato de excepción (decidido):** `InvalidAddressException` se construye siempre con la **dirección original** que ingresó el usuario (no con el id extraído). Todos los call sites del resolver pasan la dirección de entrada sin transformar.
-- **Semántica de `EndPoint` en catálogo (decidido):** en los frames de `streamRedir`, `EndPoint` es el **id canónico del servidor** (cfx id); AGENTS.md describe el `EndPoint` de la **respuesta `/single/`** (que sí es un connection endpoint y NO se usa como id). Se reconcilia la documentación de AGENTS.md para distinguir ambos, sin cambiar `CfxId = server.EndPoint` en el resolver.
-- **Otros hallazgos de código** pasan a tickets de refactor/fix listados abajo, todos con TDD (RED→GREEN→REFACTOR) y sin cambiar comportamiento externo salvo donde lo pide una decisión.
+- **Domain validation (decided):** **1+ labels** are accepted (aligns with spec.md:44). Single-label cases (`localhost:30120`) are classified as `DomainPort` if the label is valid. The "TLD with a letter" rule applies only when there are 2+ labels (prevents `999.56.120.52:30320`, an IP with an invalid octet, from passing as a numeric domain). This rule is **written into spec.md** (today it lives only in a ticket comment).
+- **Exception contract (decided):** `InvalidAddressException` is always constructed with the **original address** the user entered (not the extracted id). All resolver call sites pass the input address untransformed.
+- **`EndPoint` semantics in the catalog (decided):** in `streamRedir` frames, `EndPoint` is the **canonical server id** (cfx id); AGENTS.md describes the `EndPoint` of the **`/single/` response** (which IS a connection endpoint and is NOT used as an id). AGENTS.md documentation is reconciled to distinguish both, without changing `CfxId = server.EndPoint` in the resolver.
+- **Other code findings** become the refactor/fix tickets listed below, all with TDD (RED→GREEN→REFACTOR) and without changing external behavior except where a decision requires it.
 
 ## User Stories
 
-1. Como jugador, quiero poder entrar a `localhost:30120` cuando levanto un server local, para no depender de un dominio de 2+ labels (relajación de validación).
-2. Como jugador, quiero que el error de una dirección inválida muestre o conserve la dirección tal como la escribí, para diagnosticar el fallo rápido.
-3. Como desarrollador, quiero que el código del resolver/catálogo no duplique la split `host:port` ni el acceso a `gamename`, para mantener DRY.
-4. Como desarrollador, quiero que los errores de red inesperados (no de CFX) no se silencien, para no ocultar bugs.
+1. As a player, I want to be able to join `localhost:30120` when I run a local server, so I don't depend on a 2+ label domain (validation relaxation).
+2. As a player, I want an invalid-address error to show or preserve the address exactly as I typed it, so I can diagnose the failure quickly.
+3. As a developer, I want the resolver/catalog code not to duplicate the `host:port` split or `gamename` access, to keep it DRY.
+4. As a developer, I want unexpected network errors (non-CFX) not to be silenced, so bugs are not hidden.
 
 ## Implementation Decisions
 
-- `ServerAddress.IsValidDomain` se relaja a 1+ labels: `labels.Length >= 1`, cada label válida, y si `labels.Length >= 2` el TLD debe contener una letra. Tests nuevos en `ServerAddressTests` para `localhost:30120` (DomainPort) y para IP inválida de 4 octetos tipo `999.56.120.52:30320` (sigue Unknown → excepción).
-- `ServerResolver`: `InvalidAddressException` con la dirección original en los 3 caminos que hoy la lanzan (whitespace, forma unknowna, CFX null). Test verifica que el mensaje/excepción usa la entrada original.
-- **DOCUMENTACIÓN:** `AGENTS.md` "Current state" distingue: `EndPoint` en respuesta `/single/` = connection endpoint (no se usa como id); `EndPoint` en frames de catálogo = cfx id canónico. Se actualiza la línea del resolver y la de `CfxService` según corresponda.
-- Refactor DRY 1 (ticket 02): método compartido `SplitHostPort` en `ServerAddress` o helper, usado por `IsIpPort`/`IsDomainPort` y por `ServerResolver` (reemplaza `GetHost`/`GetPort`).
-- Refactor DRY 2 (ticket 03): `CfxVars.TryGetGameClient(IDictionary<string,string>? vars)` — devuelve `(bool found, GameClient? gameClient)` o patrón equivalente — usado por `CfxService` y `ServerResolver`, centralizando la clave `"gamename"` y el null-guard.
-- Dead code (ticket 04): eliminar `ServerAddress.IsCfxJoinUrl` (sin callers). `LookupByEndPointAsync` se **conserva** (documentado en AGENTS.md como parte del seam del catálogo; usado por tests); se deja claro por qué se expone (parte del contrato del catálogo, lista para futura UI/búsqueda por id).
-- Catch fino (ticket 05): `ServerCatalog.GetServersAsync` captura solo `HttpRequestException` y `TaskCanceledException` (outage/red); cualquier otra excepción se propaga. No cambia la API pública (sigue devolviendo sin-match en outage).
-- Sin cambios de UI, sin Cambiar contratos públicos existentes (firmas de `ServerAddress`, `ServerProfile`, `ServerCatalog` se mantienen salvo refactors internos).
-- Los tickets 02-05 no cambian comportamiento observable salvo el 05 (propagar errores de programación); el 01 sí cambia clasificación (localhost) y el contrato de excepción (dirección original). Tests correspondientes en cada ticket.
+- `ServerAddress.IsValidDomain` is relaxed to 1+ labels: `labels.Length >= 1`, each label valid, and if `labels.Length >= 2` the TLD must contain a letter. New tests in `ServerAddressTests` for `localhost:30120` (DomainPort) and for an invalid 4-octet IP like `999.56.120.52:30320` (still Unknown → exception).
+- `ServerResolver`: `InvalidAddressException` with the original address in the 3 paths that currently throw it (whitespace, unknown form, CFX null). Test verifies the message/exception uses the original input.
+- **DOCUMENTATION:** `AGENTS.md` "Current state" distinguishes: `EndPoint` in the `/single/` response = connection endpoint (not used as id); `EndPoint` in catalog frames = canonical cfx id. The resolver line and the `CfxService` line are updated as appropriate.
+- DRY refactor 1 (ticket 02): shared `SplitHostPort` method in `ServerAddress` or a helper, used by `IsIpPort`/`IsDomainPort` and by `ServerResolver` (replaces `GetHost`/`GetPort`).
+- DRY refactor 2 (ticket 03): `CfxVars.TryGetGameClient(IDictionary<string,string>? vars)` — returns `(bool found, GameClient? gameClient)` or an equivalent pattern — used by `CfxService` and `ServerResolver`, centralizing the `"gamename"` key and the null-guard.
+- Dead code (ticket 04): remove `ServerAddress.IsCfxJoinUrl` (no callers). `LookupByEndPointAsync` is **kept** (documented in AGENTS.md as part of the catalog seam; used by tests); it is made clear why it is exposed (part of the catalog contract, ready for future UI/id lookup).
+- Narrow catch (ticket 05): `ServerCatalog.GetServersAsync` catches only `HttpRequestException` and `TaskCanceledException` (outage/network); any other exception propagates. The public API does not change (still returns no-match on outage).
+- No UI changes, no changes to existing public contracts (signatures of `ServerAddress`, `ServerProfile`, `ServerCatalog` remain except for internal refactors).
+- Tickets 02-05 do not change observable behavior except 05 (propagating programming errors); 01 does change classification (localhost) and the exception contract (original address). Corresponding tests in each ticket.
 
 ## Testing Decisions
 
-- TDD por slice: cada ticket en `RED → GREEN → REFACTOR` con suite completa verde al final.
-- Tests para el ticket 01 en `ServerAddressTests` (clasificación localhost + IP inválida persiste como Unknown) y `ServerResolverTests` (excepción con dirección original).
-- Tests para ticket 02: refactor de extracción, la suite existente es la red de seguridad (sin tests nuevos salvo que el refactor lo amerite).
-- Ticket 03: tests de `CfxServiceTests` y los del resolver siguen verdes tras la consolidación; opcional un test directo de `CfxVars.TryGetGameClient`.
-- Ticket 04: eliminar test que no exista; la suite completa cubre la no-regresión.
-- Ticket 05: `ServerCatalogTests` con `FakeHttpMessageHandler(throwOnSend: true)` (HttpRequestException → sin match) y un nuevo caso: un handler que lanza `InvalidOperationException` → la excepción se propaga (no se traga).
+- TDD per slice: each ticket in `RED → GREEN → REFACTOR` with the full suite green at the end.
+- Tests for ticket 01 in `ServerAddressTests` (localhost classification + invalid IP persists as Unknown) and `ServerResolverTests` (exception with original address).
+- Tests for ticket 02: extraction refactor, the existing suite is the safety net (no new tests unless the refactor warrants it).
+- Ticket 03: `CfxServiceTests` and resolver tests stay green after consolidation; optionally a direct test of `CfxVars.TryGetGameClient`.
+- Ticket 04: remove no test; the full suite covers non-regression.
+- Ticket 05: `ServerCatalogTests` with `FakeHttpMessageHandler(throwOnSend: true)` (HttpRequestException → no match) and a new case: a handler that throws `InvalidOperationException` → the exception propagates (not swallowed).
 
 ## Out of Scope
 
-- Cualquier funcionamiento nuevo (UI, advertencia de servidor no validado, favicons/players del catálogo).
-- Reabrir la fase `ip-domain-resolution` (spec y tickets ya resueltos se mantienen como están).
-- Cambiar `ServerProfile.Address`/`IsCfxValidated` o el contrato del catálogo.
-- Refactor ruidoso de `ServerAddress` más allá de la split host:port y la dead code.
+- Any new functionality (UI, unvalidated-server warning, catalog favicons/players).
+- Reopening the `ip-domain-resolution` phase (already-resolved specs and tickets stay as they are).
+- Changing `ServerProfile.Address`/`IsCfxValidated` or the catalog contract.
+- Noisy refactor of `ServerAddress` beyond the host:port split and the dead code.
 
 ## Further Notes
 
-- Doc del review (hallazgos): `.scratch/...` no; el review vive en la conversación. Referencias de código: `src/FiveMServerLauncher/Domain/ServerAddress.cs` (`IsCfxJoinUrl`, `IsIpPort`, `IsDomainPort`), `Domain/ServerResolver.cs` (`GetHost`, `GetPort`, `BuildValidatedProfile`), `Service/CfxVars.cs`, `Service/CfxService.cs`, `Service/ServerCatalog.cs` (`GetServersAsync` catch), `src/FiveMServerLauncher/AGENTS.md`.
-- Original spec de la fase: `.scratch/ip-domain-resolution/spec.md`; tickets 01-05 resueltos.
-- Tras cerrar: actualizar AGENTS.md (Statement actual: nota de EndPoint, si aplica) y commitear con conventional commits en inglés.
+- Review doc (findings): `.scratch/...` no; the review lives in the conversation. Code references: `src/FiveMServerLauncher/Domain/ServerAddress.cs` (`IsCfxJoinUrl`, `IsIpPort`, `IsDomainPort`), `Domain/ServerResolver.cs` (`GetHost`, `GetPort`, `BuildValidatedProfile`), `Service/CfxVars.cs`, `Service/CfxService.cs`, `Service/ServerCatalog.cs` (`GetServersAsync` catch), `src/FiveMServerLauncher/AGENTS.md`.
+- Original phase spec: `.scratch/ip-domain-resolution/spec.md`; tickets 01-05 resolved.
+- After closing: update AGENTS.md (current Statement: EndPoint note, if applicable) and commit with English conventional commits.

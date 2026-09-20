@@ -1,15 +1,15 @@
-# 05: Estrchar el catch de ServerCatalog a fallos de red
+# 05: Narrow ServerCatalog's catch to network failures
 
-**What to build:** `ServerCatalog.GetServersAsync` captura `catch (Exception)` completo: correcto para "outage → sin match" (requisito de la fase), pero también enmascara errores de programación (bugs del handler, JSON corrupto de otro origen, etc.). Estrchar a las excepciones de red esperadas: `HttpRequestException` y `TaskCanceledException`. Cualquier otra excepción se propaga al llamador (degradación NO aplica: es un bug, debe ser visible).
+**What to build:** `ServerCatalog.GetServersAsync` catches a full `catch (Exception)`: correct for "outage → no match" (phase requirement), but it also masks programming errors (handler bugs, corrupt JSON from another origin, etc.). Narrow it to the expected network exceptions: `HttpRequestException` and `TaskCanceledException`. Any other exception propagates to the caller (degradation does NOT apply: it's a bug, it must be visible).
 
 **Blocked by:** None (can start immediately)
 
 **Status:** resolved
 
-- [x] `GetServersAsync` captura solo `HttpRequestException` y `TaskCanceledException` → devuelve sin match (comportamiento de outage intacto).
-- [x] Una excepción inesperada (p.ej. `InvalidOperationException` en el handler) se propaga, no se traga.
-- [x] Test nuevo en `ServerCatalogTests`: handler que lanza una excepción no-red → `LookupByEndPointAsync`/`LookupByIpPortAsync` lanza (no devuelve null).
-- [x] Test existente de outage (`throwOnSend: true` → HttpRequestException) sigue verde.
-- [x] Suite completa verde.
+- [x] `GetServersAsync` catches only `HttpRequestException` and `TaskCanceledException` → returns no match (outage behavior intact).
+- [x] An unexpected exception (e.g. `InvalidOperationException` in the handler) propagates, not swallowed.
+- [x] New test in `ServerCatalogTests`: handler that throws a non-network exception → `LookupByEndPointAsync`/`LookupByIpPortAsync` throws (does not return null).
+- [x] Existing outage test (`throwOnSend: true` → HttpRequestException) stays green.
+- [x] Full suite green.
 
 ## Comments

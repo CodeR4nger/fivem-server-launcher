@@ -1,15 +1,15 @@
-# 04: Quitar código muerto y aclarar contrato del catálogo
+# 04: Remove dead code and clarify the catalog contract
 
-**What to build:** dos hallazgos del eje Standards:
-1. `ServerAddress.IsCfxJoinUrl` (método privado) no tiene callers — eliminarlo. Solo queda `IsCfxJoinUrlWithValidId`, que sí se usa.
-2. `ServerCatalog.LookupByEndPointAsync` solo lo usan los tests; el resolver usa `LookupByIpPortAsync`. DECISIÓN de la spec: se conserva como parte del contrato del seam del catálogo (buscar un server por su cfx id), pero se documenta el porqué en AGENTS.md para que no parezca dead weight (p.ej. futura UI por id).
+**What to build:** two findings from the Standards axis:
+1. `ServerAddress.IsCfxJoinUrl` (private method) has no callers — remove it. Only `IsCfxJoinUrlWithValidId` remains, which is used.
+2. `ServerCatalog.LookupByEndPointAsync` is used only by tests; the resolver uses `LookupByIpPortAsync`. Spec DECISION: it is kept as part of the catalog seam contract (look up a server by its cfx id), but the rationale is documented in AGENTS.md so it doesn't look like dead weight (e.g. future id-based UI).
 
 **Blocked by:** None (can start immediately)
 
 **Status:** resolved
 
-- [x] `IsCfxJoinUrl` eliminado (sin callers en producción ni tests).
-- [x] `LookupByEndPointAsync` se conserva y su razón se documenta en AGENTS.md (contrato del catálogo; lista para consulta por cfx id).
-- [x] Suite completa verde (ningún test depende del método borrado).
+- [x] `IsCfxJoinUrl` removed (no callers in production or tests).
+- [x] `LookupByEndPointAsync` is kept and its rationale documented in AGENTS.md (catalog contract; ready for cfx-id lookup).
+- [x] Full suite green (no test depends on the deleted method).
 
 ## Comments

@@ -5,12 +5,12 @@ Type: spec
 
 ## Problem Statement
 
-El review `71669ab...HEAD` encontró el issue principal: `Process.Start(...)` puede fallar silenciosamente — la excepción se propaga del hilo de UI sin manejo. El `GameLauncher.ConnectAsync` no cubre ese caso y el usuario queda viendo "Lanzando..." sin éxito.
+The `71669ab...HEAD` review found the main issue: `Process.Start(...)` can fail silently — the exception propagates off the UI thread unhandled. `GameLauncher.ConnectAsync` doesn't cover that case and the user is left staring at "Lanzando..." with no success.
 
 ## Solution
 
-Minimal, sin cambio a seams:
+Minimal, no seam changes:
 
-1. `LaunchResult` (sealed hierarchy) gana `StartFailed` como tercero.
-2. `GameLauncher.ConnectAsync` captura la excepción de proceso (sin especificar tipo, un `catch (Exception)` en el launcher debe confiar en Process.Start; el dominio no lo filtra aquí) → devuelve `StartFailed`.
-3. `MainViewModel.ConnectAsync` switch gana `case LaunchResult.StartFailed => "No se puede lanzar"`.
+1. `LaunchResult` (sealed hierarchy) gains `StartFailed` as a third case.
+2. `GameLauncher.ConnectAsync` catches the process exception (without specifying a type, a `catch (Exception)` in the launcher must trust Process.Start; the domain doesn't filter it here) → returns `StartFailed`.
+3. `MainViewModel.ConnectAsync` switch gains `case LaunchResult.StartFailed => "No se puede lanzar"`.

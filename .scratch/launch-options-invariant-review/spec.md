@@ -1,60 +1,60 @@
 Status: ready-for-agent
 Type: spec
 
-# Cierre de hallazgos del code review — invariantes de FiveMLaunchOptions y DRY en UI/tests
+# Closing code-review findings — FiveMLaunchOptions invariants and DRY in UI/tests
 
 ## Problem Statement
 
-El code review de `6f67ba8...HEAD` (31 commits) dejó dos hallazgos del eje Spec que incumplen criterios de aceptación ya marcados como resueltos, y tres del eje Standards (judgement calls). Resumen:
+The code review of `6f67ba8...HEAD` (31 commits) left two Spec-axis findings that violate acceptance criteria already marked as resolved, and three Standards-axis ones (judgement calls). Summary:
 
-1. **Invariante bypasseable con `with` (Spec, alto)**: `FiveMLaunchOptions` es `sealed record` con props `init` y ctor privado. `options with { Address = "garbage" }` o `{ GameClient = (GameClient)99 }` construye estado inválido sin pasar por `Create`; `ToUri()` lo serializaría como `fivem://connect/garbage` en silencio. Así se violan `01-endurecer-validacion-factory.md:13` ("No es posible construir `FiveMLaunchOptions` con estado inválido fuera de la fábrica (bloqueado en diseño/compilación)") y "Ningún estado inválido se serializa en silencio".
-2. **`ToCommandLineArgs` no es inmutable de verdad (Spec, alto)**: devuelve `string[]` (`args.ToArray()`); `((IList<string>)args)[0] = "x"` muta por índice. El test actual solo cubre que `Add` lanze. Viola `03-serializaciones-robustas.md:9` ("colección inmutable de verdad (no mutables por cast)").
-3. **Duplicación en `MainView.xaml` (Standards, DRY)**: `DropdownButtonStyle` y `ArrowButtonStyle` re-declaran ~9 setters compartidos que `SecondaryButtonStyle` demuestra que pueden heredar con `BasedOn`.
-4. **Duplicación en `MainWindow.xaml` (Standards, DRY)**: los botones Minimizar/Cerrar repiten el mismo conjunto de atributos; `Height="40"` recursa en caption/row/botones.
-5. **Duplicación en `ServerResolverTests` (Standards, DRY, menor)**: `new ServerResolver(cfxService, new ServerRequirementsResolver())` se repite 10×.
+1. **Invariant bypassable with `with` (Spec, high)**: `FiveMLaunchOptions` is a `sealed record` with `init` props and a private ctor. `options with { Address = "garbage" }` or `{ GameClient = (GameClient)99 }` builds invalid state without going through `Create`; `ToUri()` would silently serialize it as `fivem://connect/garbage`. This violates `01-endurecer-validacion-factory.md:13` ("It is not possible to construct `FiveMLaunchOptions` with invalid state outside the factory (blocked at design/compile time)") and "No invalid state is serialized silently".
+2. **`ToCommandLineArgs` is not truly immutable (Spec, high)**: it returns `string[]` (`args.ToArray()`); `((IList<string>)args)[0] = "x"` mutates by index. The current test only covers that `Add` throws. Violates `03-serializaciones-robustas.md:9` ("truly immutable collection (not mutable via cast)").
+3. **Duplication in `MainView.xaml` (Standards, DRY)**: `DropdownButtonStyle` and `ArrowButtonStyle` re-declare ~9 shared setters that `SecondaryButtonStyle` shows can be inherited with `BasedOn`.
+4. **Duplication in `MainWindow.xaml` (Standards, DRY)**: the Minimize/Close buttons repeat the same set of attributes; `Height="40"` recurs across caption/row/buttons.
+5. **Duplication in `ServerResolverTests` (Standards, DRY, minor)**: `new ServerResolver(cfxService, new ServerRequirementsResolver())` is repeated 10×.
 
 ## Solution
 
-- **`FiveMLaunchOptions` pasa de `sealed record` a `sealed class`** (decisión confirmada con el usuario): ctor privado + get-only props. Al no ser record no existe `with`, el invariante queda **bloqueado en compilación** (no hay forma de construir estado inválido fuera de `Create`). Se pierde value-equality (no usado por nadie). `ToUri()`/`ToCommandLineArgs()` siguen igual de forma.
-- **`ToCommandLineArgs()` devuelve `ImmutableArray<string>`** (BCL de .NET 10, sin dependencia nueva): inmutable de verdad, inmune a cast por índice y a mutadores. Firma pública pasa de `IReadOnlyList<string>` a `ImmutableArray<string>` (add `using System.Collections.Immutable;`).
-- **Estilos heredables en `MainView.xaml`**: `DropdownButtonStyle` y `ArrowButtonStyle` usan `BasedOn` sobre un estilo base común (p.ej. `MainButtonStyle` o un nuevo base) y solo declaran sus diferencias; se aprovecha que `SecondaryButtonStyle` ya demuestra el patrón.
-- **Botones de ventana en `MainWindow.xaml`**: un `Style` compartido para Minimizar/Cerrar (mismo ancho, alto, fondo, primer plano, borde, cursor y `Template`/chrome) + convertir las dimensiones repetidas en el layout del `WindowChrome` en un recurso estático (`CaptionHeight`/`GridLength`/`Width`).
-- **Arrange helper en `ServerResolverTests`**: método privado (o variable local de fábrica) `CreateResolver(cfxService)` que arma `new ServerResolver(cfxService, new ServerRequirementsResolver())`, eliminando la repetición 10×.
+- **`FiveMLaunchOptions` moves from `sealed record` to `sealed class`** (decision confirmed with the user): private ctor + get-only props. Not being a record, `with` does not exist; the invariant is **blocked at compile time** (no way to build invalid state outside `Create`). Value-equality is lost (unused by anyone). `ToUri()`/`ToCommandLineArgs()` stay the same in form.
+- **`ToCommandLineArgs()` returns `ImmutableArray<string>`** (.NET 10 BCL, no new dependency): truly immutable, immune to index-cast and mutators. Public signature changes from `IReadOnlyList<string>` to `ImmutableArray<string>` (add `using System.Collections.Immutable;`).
+- **Inheritable styles in `MainView.xaml`**: `DropdownButtonStyle` and `ArrowButtonStyle` use `BasedOn` on a common base style (e.g. `MainButtonStyle` or a new base) and only declare their differences; takes advantage of `SecondaryButtonStyle` already demonstrating the pattern.
+- **Window buttons in `MainWindow.xaml`**: a shared `Style` for Minimize/Close (same width, height, background, foreground, border, cursor and `Template`/chrome) + turn the repeated dimensions in the `WindowChrome` layout into static resources (`CaptionHeight`/`GridLength`/`Width`).
+- **Arrange helper in `ServerResolverTests`**: a private method (or local factory variable) `CreateResolver(cfxService)` that builds `new ServerResolver(cfxService, new ServerRequirementsResolver())`, eliminating the 10× repetition.
 
 ## User Stories
 
-1. Como desarrollador, quiero que no exista ninguna forma de construir `FiveMLaunchOptions` con estado inválido (ni `with`, ni ctor público, ni mutadores), para que el invariante esté garantizado por el compilador.
-2. Como desarrollador, quiero que `ToCommandLineArgs()` devuelva una colección inmutable de verdad (sin mutación por cast), para que ningún consumidor corrompa los args de lanzamiento.
-3. Como desarrollador, quiero que la serialización (`ToUri`/`ToCommandLineArgs`) tenga el mismo comportamiento observable de hoy (formato, negación Enhanced, orden `-b` antes de `-pure_`, `-cl2` condicional), para no romper lo ya verificado.
-4. Como mantenimiento, quiero que los estilos de botón de `MainView.xaml` y `MainWindow.xaml` centralicen las propiedades comunes (via `BasedOn`/`Style` compartido), para que un cambio de aspecto toque un solo lugar.
-5. Como mantenimiento, quiero que los tests de `ServerResolver` reduzcan la repetición de arrange mediante un helper, sin tocar la lógica probada.
+1. As a developer, I want there to be no way to build `FiveMLaunchOptions` with invalid state (no `with`, no public ctor, no mutators), so the invariant is guaranteed by the compiler.
+2. As a developer, I want `ToCommandLineArgs()` to return a truly immutable collection (no mutation via cast), so no consumer corrupts the launch args.
+3. As a developer, I want the serialization (`ToUri`/`ToCommandLineArgs`) to have the same observable behavior as today (format, Enhanced negation, `-b` before `-pure_` order, conditional `-cl2`), so nothing already verified breaks.
+4. As maintenance, I want the `MainView.xaml` and `MainWindow.xaml` button styles to centralize common properties (via `BasedOn`/shared `Style`), so an appearance change touches a single place.
+5. As maintenance, I want the `ServerResolver` tests to reduce arrange repetition via a helper, without touching the tested logic.
 
 ## Implementation Decisions
 
-- **`sealed class` con ctor privado y get-only props** (decisión del usuario, confirmada en conversación). Los `init` se eliminan: props ge-only asignadas en el ctor privado. `Create`/`FromServerProfile` siguen siendo las únicas fábricas públicas.
-- **`ImmutableArray<string>`** como tipo de retorno de `ToCommandLineArgs()`. `Array.Empty<string>().ToImmutableArray()` o el builder según el caso; `IsDefaultOrEmpty` no aplica (siempre devolvemos no-default). Tests existentes que hacían `Assert.Equal(new[] { ... }, args)` siguen funcionando (comparación por contenido).
-- Las **casillas de los tickets 01 y 03 de `.scratch/fivem-launch-options-review/`** volverán a tomar sentido: el ticket 01 exigía "no inválido fuera de fábrica (bloqueado en diseño/compilación)" que hoy está incumplido, y el 03 "inmutable de verdad". Esta fase cierra ambos; al terminar deben reflejarlo (los tickets ya están `resolved`; el estado real ahora sí coincide con su `[x]`).
-- Puerta TDD estricta: cada ticket RED → GREEN → **REFACTOR obligatorio** (DRY/KISS/SOLID/YAGNI) con suite verde, antes del siguiente test (regla de AGENTS.md).
-- Los hallazgos Standards 3-5 son DRY/refactor puros: se validan por refactor (suite verde + diff de mejoras) sin tests RED obligatorios, porque no hay cambio de comportamiento — solo se mantiene verde antes y después. Si un refactor XAML/test helper cambia comportamiento observable, el ticket correspondiente añade su test RED.
+- **`sealed class` with private ctor and get-only props** (user decision, confirmed in conversation). The `init`s are removed: get-only props assigned in the private ctor. `Create`/`FromServerProfile` remain the only public factories.
+- **`ImmutableArray<string>`** as the return type of `ToCommandLineArgs()`. `Array.Empty<string>().ToImmutableArray()` or the builder depending on the case; `IsDefaultOrEmpty` does not apply (we always return non-default). Existing tests doing `Assert.Equal(new[] { ... }, args)` keep working (content comparison).
+- The **checkboxes of tickets 01 and 03 in `.scratch/fivem-launch-options-review/`** will make sense again: ticket 01 required "no invalid state outside the factory (blocked at design/compile time)" which is currently unmet, and 03 required "truly immutable". This phase closes both; when done they must reflect it (the tickets are already `resolved`; the real state now actually matches their `[x]`).
+- Strict TDD gate: each ticket RED → GREEN → **mandatory REFACTOR** (DRY/KISS/SOLID/YAGNI) with green suite, before the next test (AGENTS.md rule).
+- Standards findings 3-5 are pure DRY/refactors: they are validated by refactor (green suite + improvement diff) without mandatory RED tests, because there is no behavior change — it just stays green before and after. If a XAML/test-helper refactor changes observable behavior, the corresponding ticket adds its RED test.
 
 ## Testing Decisions
 
-- **Ticket 01 (sealed class)**: RED — test que compruebe por reflexión que `with` ya no es posible (cero `init` accessors públicos y sin método sintético de clone, test implementado como `Type_ShouldHaveNoMutatingAccessors`) y se ajusta `Value_ShouldBeImmutableAfterConstruction` (ya no hay `with`; verifica ausencia de mutadores y que dos instancias independientes con igual estado exponen exactamente los mismos valores).
-- **Ticket 02 (ImmutableArray)**: RED — test que casté a `IList<string>` y escriba por índice (`args[0] = "x"`) esperando que NO mute la colección devuelta (con `string[]` muta/compila; con `ImmutableArray` no hay indexador de escritura públicamente → el test cambia a comprobar inmutabilidad vía `IsDefaultOrEmpty`/contenido estable, y que un segundo llamada devuelve la misma secuencia). Más importante: verificar mediante reflexión o por tipo que el retorno NO es `string[]` (RED sobre el tipo concreto). Vecindad con test existente `ToCommandLineArgs_ShouldReturnReadOnlyList` (Add lanza) → se adapta al nuevo tipo.
-- **Ticket 03 (MainView XAML)**: sin test de comportamiento (refactor visual); comprobar que `dotnet build` sigue verde y la UI arranca/mock no cambia visualmente de forma estructural. Si se sospecha pérdida de look, el review posterior lo captura.
-- **Ticket 04 (MainWindow XAML)**: ídem, build verde.
-- **Ticket 05 (ServerResolver tests)**: RED no aplica; refactor de arrange; suite verde igual.
-- Suite completa verde (60 hoy) al final de cada ticket y al cierre del esfuerzo.
+- **Ticket 01 (sealed class)**: RED — a test that verifies via reflection that `with` is no longer possible (zero public `init` accessors and no synthetic clone method, test implemented as `Type_ShouldHaveNoMutatingAccessors`) and adjusts `Value_ShouldBeImmutableAfterConstruction` (no more `with`; verifies absence of mutators and that two independent instances with equal state expose exactly the same values).
+- **Ticket 02 (ImmutableArray)**: RED — a test that casts to `IList<string>` and writes by index (`args[0] = "x"`) expecting it NOT to mutate the returned collection (with `string[]` it mutates/compiles; with `ImmutableArray` there is no publicly writable indexer → the test changes to check immutability via `IsDefaultOrEmpty`/stable content, and that a second call returns the same sequence). More important: verify via reflection or by type that the return is NOT `string[]` (RED on the concrete type). Neighbor of the existing `ToCommandLineArgs_ShouldReturnReadOnlyList` test (Add throws) → adapted to the new type.
+- **Ticket 03 (MainView XAML)**: no behavior test (visual refactor); check that `dotnet build` stays green and the UI starts/the mock does not change structurally in appearance. If a look regression is suspected, the later review catches it.
+- **Ticket 04 (MainWindow XAML)**: ditto, green build.
+- **Ticket 05 (ServerResolver tests)**: RED not applicable; arrange refactor; suite equally green.
+- Full suite green (60 today) at the end of each ticket and at the close of the effort.
 
 ## Out of Scope
 
-- **Cambiar el comportamiento de serialización** (formatos, Enhanced, orden `-b`/`-pure_`, `-cl2`): se conserva exactamente igual.
-- **Añadir validación en runtime** (`ToUri()`/`ToCommandLineArgs()` re-validando): innecesario una vez el invariante está en compilación.
-- **Extraer `ServerRequirements`-y-fábrica en un adaptador con tipo nuevo** (Data Clumps / `Create` 5-arity): se desprioriza por YAGNI hasta que exista un consumidor real de Dev Mode.
-- **IP:port/domain resolution**, CitizenFX.ini, Steam/Discord, RSC (TODOs de otras fases).
+- **Changing serialization behavior** (formats, Enhanced, `-b`/`-pure_` order, `-cl2`): kept exactly the same.
+- **Adding runtime validation** (`ToUri()`/`ToCommandLineArgs()` re-validating): unnecessary once the invariant is at compile time.
+- **Extracting `ServerRequirements`-and-factory into an adapter with a new type** (Data Clumps / `Create` 5-arity): deprioritized per YAGNI until a real Dev Mode consumer exists.
+- **IP:port/domain resolution**, CitizenFX.ini, Steam/Discord, RSC (TODOs of other phases).
 
 ## Further Notes
 
-- Fuente: code review de `6f67ba8...HEAD`, hallazgos consolidados en conversación; decisión `sealed class` confirmada por el usuario (alternativa descartada: mantener record + revalidar en runtime).
-- `ImmutableArray<string>` requiere `using System.Collections.Immutable;`; está en la BCL de .NET 10 (sin NuGet nuevo).
-- Tras implementar: actualizar `AGENTS.md` (forma de `FiveMLaunchOptions`, tipo de retorno y conteo de tests), marcar casillas `[x]` y commitear con conventional commits en inglés.
+- Source: code review of `6f67ba8...HEAD`, findings consolidated in conversation; `sealed class` decision confirmed by the user (discarded alternative: keep record + revalidate at runtime).
+- `ImmutableArray<string>` requires `using System.Collections.Immutable;`; it is in the .NET 10 BCL (no new NuGet).
+- After implementing: update `AGENTS.md` (`FiveMLaunchOptions` shape, return type and test count), mark `[x]` boxes and commit with English conventional commits.

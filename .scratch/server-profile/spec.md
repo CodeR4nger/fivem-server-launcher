@@ -1,63 +1,63 @@
 Status: ready-for-agent
 Type: spec
 
-# ServerProfile — preparación de requisitos desde información CFX
+# ServerProfile — preparing requirements from CFX information
 
 ## Problem Statement
 
-Hoy el launcher solo resuelve una dirección CFX a un `CfxId` (`ServerResolver.ResolveAsync`). DOC.md plantea la fase `ServerProfile → Requirements → FiveMLaunchOptions ↔ CFX server information`: al apuntar a un servidor, el launcher debe conocer qué requisitos publica ese servidor (Game Build, Pure Mode, Steam ticket) para preparar FiveM antes de conectar, **sin duplicar manualmente** en configuración lo que el servidor ya publica y **sin forzar** requisitos al usuario (la filosofía es "no molestar si todo está listo", pero tampoco asumir nada que el servidor no diga).
+Today the launcher only resolves a CFX address to a `CfxId` (`ServerResolver.ResolveAsync`). DOC.md lays out the `ServerProfile → Requirements → FiveMLaunchOptions ↔ CFX server information` phase: when pointing at a server, the launcher must know what requirements that server publishes (Game Build, Pure Mode, Steam ticket) to prepare FiveM before connecting, **without manually duplicating** in configuration what the server already publishes and **without forcing** requirements on the user (the philosophy is "don't bother if everything is ready", but also don't assume anything the server doesn't state).
 
 ## Solution
 
-Al resolver una dirección, `ServerResolver.ResolveAsync` devuelve un `ServerProfile` que agrupa la identidad del servidor y sus `Requirements` derivados **exclusivamente** de la información que CFX publica (`sv_enforceGameBuild`, `sv_pureLevel`, `requestSteamTicket`). El usuario podrá conectar a un servidor con la seguridad de que el launcher prepara lo que ese servidor pide, sin campos duplicados ni override manual en esta fase.
+When resolving an address, `ServerResolver.ResolveAsync` returns a `ServerProfile` that groups the server's identity and its `Requirements` derived **exclusively** from what CFX publishes (`sv_enforceGameBuild`, `sv_pureLevel`, `requestSteamTicket`). The user will be able to connect to a server confident that the launcher prepares what that server asks for, with no duplicated fields or manual override in this phase.
 
 ## User Stories
 
-1. Como jugador, quiero que al ingresar una dirección CFX se resuelva el servidor y su estado, para poder decidir si entrar.
-2. Como jugador, quiero que el launcher determine el Game Build que el servidor **impone** (`sv_enforceGameBuild`), para lanzar FiveM con el build correcto sin que yo lo configure manualmente.
-3. Como jugador, quiero que el launcher determine el Pure Mode que el servidor pide (`sv_pureLevel`), para que mi sesión cumpla con el modo del servidor.
-4. Como jugador, quiero que el launcher detecte si el servidor requiere ticket de Steam (`requestSteamTicket`), para saber si hace falta preparar Steam antes de conectar.
-5. Como jugador, quiero que los requisitos vengan de lo que el servidor publica y no de una copia manual mía, para que la info no quede desactualizada ni duplicada.
-6. Como jugador, quiero que cuando un servidor **no** publique un requisito (vars ausentes), ese requisito quede ausente/indeterminado, para que el launcher no asuma un valor arbitrario.
-7. Como jugador, quiero que el resultado de resolver una dirección incluya el nombre del servidor, para poder mostrarlo en la UI más adelante.
-8. Como jugador, quiero conservar el comportamiento existente de validación de direcciones (vacías, no encontradas), para que la resolución siga siendo robusta.
-9. Como jugador, quiero que `cfx.re/join/<id>` (con o sin esquema) siga resolviéndose igual, para no romper el flujo actual de entrada.
-10. Como desarrollador, quiero que la lógica de requisitos esté en el dominio y no en la UI/XAML, para poder testearla sin procesos ni filesystem.
-11. Como desarrollador, quiero que el mapping CFX→requisitos tenga una fuente única de verdad, para no duplicar parsing entre capas.
-12. Como jugador, quiero que al abrir FiveM **directamente** (Dev Mode, sin servidor) no se apliquen requisitos de ningún servidor, para conservar la separación conectar-vs-abrir.
-13. Como jugador, quiero que los requisitos derivados no se mezclen con la configuración global del launcher (`LauncherSettings`), para mantener `Configuration` solo con preferencias globales.
+1. As a player, I want entering a CFX address to resolve the server and its state, so I can decide whether to join.
+2. As a player, I want the launcher to determine the Game Build the server **enforces** (`sv_enforceGameBuild`), so FiveM launches with the correct build without me configuring it manually.
+3. As a player, I want the launcher to determine the Pure Mode the server asks for (`sv_pureLevel`), so my session complies with the server's mode.
+4. As a player, I want the launcher to detect whether the server requires a Steam ticket (`requestSteamTicket`), so I know whether Steam needs preparing before connecting.
+5. As a player, I want the requirements to come from what the server publishes and not from my own manual copy, so the info doesn't go stale or get duplicated.
+6. As a player, I want a requirement to stay absent/indeterminate when a server does **not** publish it (absent vars), so the launcher doesn't assume an arbitrary value.
+7. As a player, I want the result of resolving an address to include the server name, so it can be shown in the UI later.
+8. As a player, I want to keep the existing address-validation behavior (empty, not found), so resolution stays robust.
+9. As a player, I want `cfx.re/join/<id>` (with or without scheme) to keep resolving the same, so the current input flow isn't broken.
+10. As a developer, I want the requirements logic in the domain and not in UI/XAML, so I can test it without processes or filesystem.
+11. As a developer, I want the CFX→requirements mapping to have a single source of truth, so parsing isn't duplicated across layers.
+12. As a player, I want opening FiveM **directly** (Dev Mode, no server) to apply no server requirements, preserving the connect-vs-open separation.
+13. As a player, I want the derived requirements not to mix with the launcher's global configuration (`LauncherSettings`), to keep `Configuration` to global preferences only.
 
 ## Implementation Decisions
 
-- **`ServerResolver` se extiende como seam principal** (confirmado con el usuario): `ResolveAsync` pasa a devolver un `ServerProfile` en lugar de `ResolvedServer`. Internamente compone `CfxService` + `ServerRequirementsResolver` (o la pieza que derive requisitos). Se mantiene la validación actual de dirección (vacía → excepción; no encontrado → excepción).
-- **`ResolvedServer` se sustituye/evoluciona a `ServerProfile`** en `Domain`: agrupa identidad (`CfxId`, `ProjectName`) y `Requirements`. Un único modelo de salida del resolver.
-- **`ServerRequirementsResolver` se amplía** (building block, seam testable directo): `Resolve(CfxServerInfo)` produce todos los requisitos que CFX publica. Hoy solo existía `GameBuild`; se añaden los demás campos derivados.
-- **`ServerRequirements` cubre solo CFX-derived**: `GameBuild` ← `sv_enforceGameBuild`, `PureMode` ← `sv_pureLevel`, `RequestSteamTicket` ← `requestSteamTicket`. Cada campo continúa siendo nullable: ausente = no publicado = indeterminado (evita asumir valores arbitrarios).
-- **`CfxServerInfo` ya expone** `EnforceGameBuild`, `PureLevel`, `RequestSteamTicket`; `CfxService` ya los parsea. No cambia `Service`.
-- **`LauncherSettings` no se toca**: sigue siendo solo `PreferredClient` + `AutoLaunch`.
-- **Sin dev-mode en esta fase**: abrir FiveM directamente no usa requisitos de servidor (constraint de DOC.md); se especifica como comportamiento de usuario pero no se añade UI ni comandos.
-- Vocabulario del dominio conforme a DOC.md: `ServerProfile`, `Requirements`, `FiveMLaunchOptions` (este último aún no se construye en esta spec; solo `Requirements`).
+- **`ServerResolver` is extended as the main seam** (confirmed with the user): `ResolveAsync` now returns a `ServerProfile` instead of `ResolvedServer`. Internally it composes `CfxService` + `ServerRequirementsResolver` (or the piece that derives requirements). Current address validation is preserved (empty → exception; not found → exception).
+- **`ResolvedServer` is replaced/evolves into `ServerProfile`** in `Domain`: groups identity (`CfxId`, `ProjectName`) and `Requirements`. A single resolver output model.
+- **`ServerRequirementsResolver` is extended** (building block, directly testable seam): `Resolve(CfxServerInfo)` produces all the requirements CFX publishes. Today only `GameBuild` existed; the other derived fields are added.
+- **`ServerRequirements` covers only CFX-derived**: `GameBuild` ← `sv_enforceGameBuild`, `PureMode` ← `sv_pureLevel`, `RequestSteamTicket` ← `requestSteamTicket`. Each field stays nullable: absent = not published = indeterminate (avoids assuming arbitrary values).
+- **`CfxServerInfo` already exposes** `EnforceGameBuild`, `PureLevel`, `RequestSteamTicket`; `CfxService` already parses them. `Service` doesn't change.
+- **`LauncherSettings` is untouched**: still just `PreferredClient` + `AutoLaunch`.
+- **No dev-mode in this phase**: opening FiveM directly doesn't use server requirements (DOC.md constraint); specified as user behavior but no UI or commands are added.
+- Domain vocabulary per DOC.md: `ServerProfile`, `Requirements`, `FiveMLaunchOptions` (the latter is not built in this spec; only `Requirements`).
 
 ## Testing Decisions
 
-- Un buen test aquí verifica **comportamiento externo observable**, no detalles de implementación: dado un `CfxServerInfo` (o una respuesta HTTP fakesca), el perfil resultante expone los requisitos esperados; cuando una var está ausente, el requisito queda `null`.
-- **Módulos a testear:** `ServerResolver` (seam alto: identidad + composición + validación de dirección) y `ServerRequirementsResolver` (mapping var→requisito, incl. caso ausente).
-- **Prior art en el repo:** `tests/.../Domain/ServerResolverTests.cs` (fakes HTTP vía `FakeHttpMessageHandler`, estilo Given/When/Then, excepciones) y `tests/.../Domain/ServerRequirementsResolverTests.cs` (mapping directo). Los nuevos tests siguen ese patrón, sin librería de mocking.
-- La respuesta HTTP se fakea con `FakeHttpMessageHandler` y fixtures JSON como raw strings C# (convención del repo).
-- Naming: `<Método>_Should<Expectativa>` con comentarios Given/When/Then.
+- A good test here verifies **observable external behavior**, not implementation details: given a `CfxServerInfo` (or a fake HTTP response), the resulting profile exposes the expected requirements; when a var is absent, the requirement is `null`.
+- **Modules to test:** `ServerResolver` (high-level seam: identity + composition + address validation) and `ServerRequirementsResolver` (var→requirement mapping, incl. the absent case).
+- **Prior art in the repo:** `tests/.../Domain/ServerResolverTests.cs` (HTTP fakes via `FakeHttpMessageHandler`, Given/When/Then style, exceptions) and `tests/.../Domain/ServerRequirementsResolverTests.cs` (direct mapping). New tests follow that pattern, with no mocking library.
+- The HTTP response is faked with `FakeHttpMessageHandler` and JSON fixtures as C# raw strings (repo convention).
+- Naming: `<Method>_Should<Expectation>` with Given/When/Then comments.
 
 ## Out of Scope
 
-- **Resolución IP:puerto / dominio:puerto** en `ServerResolver` (TODO abierto; requiere investigación antes de asumir).
-- **Campos manuales de `ServerProfile.Requirements`** (Steam/Discord como requisitos manuales per-server): otra iteración.
-- **`FiveMLaunchOptions`** (argumentos de línea de comandos, CitizenFX.ini, `-cl2`, `fivem://connect`): fase posterior; requiere investigar aplicación final antes de modelarla.
-- **UI/MVVM**: `MainView.xaml` sigue estático y sin binding.
-- **Dev Mode** y sus overrides de build/pure al abrir FiveM directamente.
-- Steam/Discord como detección de procesos o preparación de apps externas.
+- **IP:port / domain:port resolution** in `ServerResolver` (open TODO; requires research before assuming).
+- **Manual `ServerProfile.Requirements` fields** (Steam/Discord as manual per-server requirements): another iteration.
+- **`FiveMLaunchOptions`** (command-line arguments, CitizenFX.ini, `-cl2`, `fivem://connect`): later phase; requires researching the final application before modeling it.
+- **UI/MVVM**: `MainView.xaml` stays static and unbound.
+- **Dev Mode** and its build/pure overrides when opening FiveM directly.
+- Steam/Discord as process detection or external-app preparation.
 
 ## Further Notes
 
-- DOC.md:516-517: "Si una decisión técnica depende de información actual de FiveM/CFX, investigarla antes de asumirla". La resolución IP/domain y las opciones de lanzamiento son exactamente ese caso y por eso quedan fuera.
-- `GameClient` (FiveM | FiveMEnhanced | RedM) ya viaja en `CfxServerInfo`; no se expande en esta spec pero el `ServerProfile` no debe perderlo (podría usarse en `Requirements` más adelante).
-- ADRs del repo en `docs/adr/` importados por `docs/agents/domain.md`; al no existir ADR aún para este área, esta spec es la base para futura decisión ADR.
-- Tras implementar, actualizar `AGENTS.md` (estado actual) y commmitear con mensajes conventional commits en inglés.
+- DOC.md:516-517: "If a technical decision depends on current FiveM/CFX information, research it before assuming." IP/domain resolution and launch options are exactly that case, which is why they are out.
+- `GameClient` (FiveM | FiveMEnhanced | RedM) already travels in `CfxServerInfo`; it is not expanded in this spec but the `ServerProfile` must not lose it (it could be used in `Requirements` later).
+- Repo ADRs in `docs/adr/` imported by `docs/agents/domain.md`; since there's no ADR for this area yet, this spec is the basis for a future ADR decision.
+- After implementing, update `AGENTS.md` (current state) and commit with English conventional commit messages.

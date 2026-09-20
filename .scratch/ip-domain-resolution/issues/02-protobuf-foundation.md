@@ -1,24 +1,24 @@
-# 02: Fundación protobuf para el catálogo (schema master.Server + frames)
+# 02: Protobuf foundation for the catalog (master.Server schema + frames)
 
-**What to build:** el repo aprende a decodificar el formato binario del catálogo CFX. Se añade la dependencia `Google.Protobuf` (con codegen en build vía `Grpc.Tools`), se define el schema `.proto` de `master.Server`/`ServerData`/`Player` (verificado contra las librerías comunitarias `cfx-api`/`fivem-server-api`: frame = uint32 LE length + mensaje protobuf) y se entrega un helper que recibe el stream binario y devuelve la secuencia de mensajes `master.Server` decodificados. Es la base de la ticket 03 y la primera dependencia NuGet del proyecto.
+**What to build:** the repo learns to decode the CFX catalog's binary format. The `Google.Protobuf` dependency is added (with build-time codegen via `Grpc.Tools`), the `.proto` schema for `master.Server`/`ServerData`/`Player` is defined (verified against the community libraries `cfx-api`/`fivem-server-api`: frame = uint32 LE length + protobuf message) and a helper is delivered that takes the binary stream and returns the sequence of decoded `master.Server` messages. It is the base for ticket 03 and the project's first NuGet dependency.
 
-**Nota:** `Player` queda **fuera de scope** (spec.md línea 62: "Detallado completo del catálogo (íconos, upvotes, players) ... se mapea solo lo que `ServerResolver` necesita"). El schema solo cubre `Server` + `ServerData`.
+**Note:** `Player` is **out of scope** (spec.md line 62: "Full catalog detail (icons, upvotes, players) ... only what `ServerResolver` needs is mapped"). The schema only covers `Server` + `ServerData`.
 
 **Blocked by:** None (can start immediately)
 
 **Status:** resolved
 
-- [x] `Google.Protobuf` + codegen de build integrados en el proyecto principal (sin romper el build).
-- [x] Schema `.proto` con `master.Server` (EndPoint + Data) y `ServerData` (vars map string→string, connectEndPoints repeated string, server, clients, svMaxclients, hostname, gametype, mapname...) acorde a lo verificado. `Player` fuera de scope (spec.md:62).
-- [x] Helper de parsing: lee uint32 LE length prefix por frame, corta el frame y lo decodifica con el tipo `master.Server`; frames corruptos/truncados se ignoran sin tirar el resto.
-- [x] Un frame binario de fixture (construido en el test con el escritor protobuf) decodifica al modelo esperado (EndPoint y campos relevantes de Data).
-- [x] Suite existente sigue verde (esta ticket no cambia comportamiento de dominio).
-- [x] Naming/tests estilo Given/When/Then; fixtures binarios construidos en el test, no archivos sueltos.
+- [x] `Google.Protobuf` + build codegen integrated into the main project (without breaking the build).
+- [x] `.proto` schema with `master.Server` (EndPoint + Data) and `ServerData` (vars map string→string, connectEndPoints repeated string, server, clients, svMaxclients, hostname, gametype, mapname...) per what was verified. `Player` out of scope (spec.md:62).
+- [x] Parsing helper: reads uint32 LE length prefix per frame, slices the frame and decodes it with the `master.Server` type; corrupt/truncated frames are skipped without dropping the rest.
+- [x] A binary fixture frame (built in the test with the protobuf writer) decodes into the expected model (EndPoint and relevant Data fields).
+- [x] Existing suite stays green (this ticket changes no domain behavior).
+- [x] Naming/tests in Given/When/Then style; binary fixtures built in the test, no loose files.
 
 ## Comments
 
-- TDD RED→GREEN→REFACTOR completado con 6 tests nuevos en `tests/.../Service/ServerCatalogDecoderTests.cs`. Suite completa 81 verdes (62 previos + 13 de ticket 01 + 6 nuevos).
-- `Google.Protobuf 3.36.2` + `Grpc.Tools 2.84.0` (codegen en build) agregados al `.csproj` principal; `Proto/master.proto` registrado vía `<Protobuf>`. Generado: `obj/.../Proto/Master.cs` (namespace `Master`).
-- El decoder (`Service/ServerCatalogDecoder.Decode`) tolera: frame truncado al final (bounds-check → corta), frame corrupto entre válidos (catch `InvalidProtocolBufferException` → salta y sigue). Endianness LE asumida explícita (Windows-only).
-- Propiedad generada del codegen: `connectEndPoints` → `ConnectEndPoints`; `svMaxclients` → `SvMaxclients`; `gamename`/`sv_enforceGameBuild`/`sv_pureLevel`/`requestSteamTicket` viajan en `vars` (map).
-- El schema es "solo lo que el resolver usa" (spec.md:62): sin `Player`, sin campos de íconos/upvotes.
+- TDD RED→GREEN→REFACTOR completed with 6 new tests in `tests/.../Service/ServerCatalogDecoderTests.cs`. Full suite 81 green (62 previous + 13 from ticket 01 + 6 new).
+- `Google.Protobuf 3.36.2` + `Grpc.Tools 2.84.0` (build-time codegen) added to the main `.csproj`; `Proto/master.proto` registered via `<Protobuf>`. Generated: `obj/.../Proto/Master.cs` (namespace `Master`).
+- The decoder (`Service/ServerCatalogDecoder.Decode`) tolerates: truncated frame at the end (bounds-check → stops), corrupt frame between valid ones (catch `InvalidProtocolBufferException` → skip and continue). Explicit LE endianness assumed (Windows-only).
+- Generated codegen property: `connectEndPoints` → `ConnectEndPoints`; `svMaxclients` → `SvMaxclients`; `gamename`/`sv_enforceGameBuild`/`sv_pureLevel`/`requestSteamTicket` travel in `vars` (map).
+- The schema is "only what the resolver uses" (spec.md:62): no `Player`, no icon/upvote fields.

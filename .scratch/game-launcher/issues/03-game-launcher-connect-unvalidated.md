@@ -1,15 +1,15 @@
-# 03: GameLauncher conecta un perfil no validado (IP:port/dominio) directo
+# 03: GameLauncher connects an unvalidated profile (IP:port/domain) directly
 
-**What to build:** un perfil no publicado en CFX (`IsCfxValidated=false`) tiene `CfxId` vacío y `Address` crudo (`149.56.120.52:30320`). `FiveMLaunchOptions.FromServerProfile` hoy fuerza `FromCfxId(CfxId)` → falla. La decisión de la spec: `FromServerProfile` elige `CfxId` si existe, si no `Address` (si clasifica como IpPort/DomainPort), y `FiveMLaunchOptions.Create` acepta direcciones IpPort/DomainPort (además de join). Resultado: `fivem://connect/149.56.120.52:30320`.
+**What to build:** a profile not published on CFX (`IsCfxValidated=false`) has an empty `CfxId` and a raw `Address` (`149.56.120.52:30320`). `FiveMLaunchOptions.FromServerProfile` today forces `FromCfxId(CfxId)` → fails. The spec decision: `FromServerProfile` picks `CfxId` if it exists, otherwise `Address` (if it classifies as IpPort/DomainPort), and `FiveMLaunchOptions.Create` accepts IpPort/DomainPort addresses (in addition to join). Result: `fivem://connect/149.56.120.52:30320`.
 
 **Blocked by:** 02
 
 **Status:** resolved
 
-- [x] `FiveMLaunchOptions.Create` acepta `Address` IP:port/dominio válido (vía `ServerAddress.Classify`); cadenas basura siguen lanzando `InvalidAddressException`.
-- [x] `FromServerProfile` (`ProfileAddress`): `CfxId` no vacío → join; si no y `Address` IpPort/DomainPort → directo.
-- [x] `ConnectAsync` con perfil no validado IpPort → seam recibe `fivem://connect/149.56.120.52:30320`; resultado `Connect`.
-- [x] Tests de regresión de `FiveMLaunchOptions` (join, basura) siguen verdes; se añaden `Create_WithIpPortAddress_ShouldAccept`, `Create_WithDomainPortAddress_ShouldAccept`, `Create_WithMalformedIpPort_ShouldThrow`.
-- [x] Suite completa verde (106).
+- [x] `FiveMLaunchOptions.Create` accepts a valid IP:port/domain `Address` (via `ServerAddress.Classify`); garbage strings still throw `InvalidAddressException`.
+- [x] `FromServerProfile` (`ProfileAddress`): non-empty `CfxId` → join; otherwise `Address` IpPort/DomainPort → direct.
+- [x] `ConnectAsync` with an unvalidated IpPort profile → seam receives `fivem://connect/149.56.120.52:30320`; result `Connect`.
+- [x] `FiveMLaunchOptions` regression tests (join, garbage) stay green; `Create_WithIpPortAddress_ShouldAccept`, `Create_WithDomainPortAddress_ShouldAccept`, `Create_WithMalformedIpPort_ShouldThrow` are added.
+- [x] Full suite green (106).
 
 ## Comments

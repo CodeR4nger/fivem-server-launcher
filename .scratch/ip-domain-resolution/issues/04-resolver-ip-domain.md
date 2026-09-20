@@ -1,29 +1,29 @@
-# 04: Resolver IP/dominio en ServerResolver con degradación a no validado
+# 04: Resolve IP/domain in ServerResolver with degradation to unvalidated
 
-**What to build:** `ServerResolver.ResolveAsync` acepta las 4 formas del clasificador (ticket 01). Para `CfxId`/`CfxJoinUrl` mantiene el flujo actual. Para `IpPort`/`DomainPort` usa el servicio de catálogo (ticket 03): si el endpoint aparece publicado, devuelve un `ServerProfile` **validado** con los datos del catálogo (incl. requisitos y gamename); si no aparece (o el DNS del dominio falla), devuelve un **perfil conectable no validado** con la dirección tal cual, sin inventar requisitos, marcado con el nuevo `IsCfxValidated = false`. Las formas inválidas (clasificador) lanzan `InvalidAddressException`. El DNS del dominio se resuelve a IP para el matcheo contra `connectEndPoints` vía un seam inyectable (real + fake en tests).
+**What to build:** `ServerResolver.ResolveAsync` accepts the classifier's 4 forms (ticket 01). For `CfxId`/`CfxJoinUrl` it keeps the current flow. For `IpPort`/`DomainPort` it uses the catalog service (ticket 03): if the endpoint appears published, it returns a **validated** `ServerProfile` with the catalog data (incl. requirements and gamename); if it doesn't appear (or domain DNS fails), it returns a **connectable unvalidated profile** with the address as-is, without inventing requirements, marked with the new `IsCfxValidated = false`. Invalid forms (classifier) throw `InvalidAddressException`. The domain's DNS is resolved to IP for matching against `connectEndPoints` via an injectable seam (real + fake in tests).
 
 **Blocked by:** 01, 03
 
 **Status:** resolved
 
-- [x] `ServerProfile` gana `IsCfxValidated` (true para perfiles resueltos desde CFX/catálogo; false para conectable directo degradado).
-- [x] `CfxId`/`CfxJoinUrl` → flujo actual intacto (buscar en CFX por id; null → `InvalidAddressException`).
-- [x] `IpPort` encontrado en catálogo → perfil validado con datos del catálogo (requirements + gamename cuando el catálogo los publica).
-- [x] `IpPort` no publicado → perfil conectable `IsCfxValidated=false`, `CfxId`/`ProjectName`/`GameClient`/`Requirements` sin datos inventados.
-- [x] `DomainPort` → DNS a IP (seam), matcheo por IP:port en catálogo; DNS fallido → perfil conectable no validado (no excepción).
-- [x] Formas inválidas/desconocidas del clasificador → `InvalidAddressException`.
-- [x] Sin catálogo disponible (fallo de red) en un IP/dominio → perfil conectable no validado (degradación, no excepción).
-- [x] Tests en `ServerResolverTests` con fakes (HTTP + DNS), estilo Given/When/Then; `CreateResolver` actualizado; suite completa verde.
+- [x] `ServerProfile` gains `IsCfxValidated` (true for profiles resolved from CFX/catalog; false for degraded direct connectable).
+- [x] `CfxId`/`CfxJoinUrl` → current flow intact (CFX lookup by id; null → `InvalidAddressException`).
+- [x] `IpPort` found in catalog → validated profile with catalog data (requirements + gamename when the catalog publishes them).
+- [x] `IpPort` not published → connectable profile `IsCfxValidated=false`, `CfxId`/`ProjectName`/`GameClient`/`Requirements` with no invented data.
+- [x] `DomainPort` → DNS to IP (seam), matching by IP:port in catalog; failed DNS → connectable unvalidated profile (no exception).
+- [x] Invalid/unknown forms from the classifier → `InvalidAddressException`.
+- [x] Without an available catalog (network failure) on an IP/domain → connectable unvalidated profile (degradation, not an exception).
+- [x] Tests in `ServerResolverTests` with fakes (HTTP + DNS), Given/When/Then style; `CreateResolver` updated; full suite green.
 
 ## Comments
 
-- TDD RED→GREEN→REFACTOR completado con 7 tests nuevos en `tests/.../Domain/ServerResolverTests.cs` (los 10 previos siguen verdes). Suite completa 97 verdes (90 previos + 7 nuevos).
-- `ServerResolver` ahora inyecta `ServerCatalog` + `IDnsResolver` (seam DNS nuevo en `Domain`, fake `FakeDnsResolver` en tests). `ResolveAsync` ramifica por `ServerAddressKind`:
-  - `CfxId`/`CfxJoinUrl` → flujo CFX existente + `IsCfxValidated=true`.
-  - `IpPort` → `LookupByIpPortAsync`; encontrado → validado; no → conectable no validado con la dirección cruda.
-  - `DomainPort` → DNS host→IP; `LookupByIpPortAsync` por `ip:port` y luego por el host crudo; DNS fallido o sin match → no validado (sin excepción).
-  - `Unknown` → `InvalidAddressException`. Whitespace y vacío también.
-- Perfil no validado: `Address` = dirección cruda, resto vacío/nulls. Perfil validado desde catálogo: `CfxId`=EndPoint, `Address`=primer connectEndPoints, ProjectName=`sv_projectName`→hostname, GameClient/Requirements desde vars.
-- `ServerProfile` ganó `Address` (para el flujo conectar-directo) y `IsCfxValidated`.
-- REFACTOR (DRY): mapeo de vars extraído a `Service/CfxVars` compartido por `CfxService` y `ServerResolver` (gamename→GameClient, int, steam ticket); `CfxService` quedó más delgado.
-- Fix en el camino: `LookupByIpPortAsync` era null-unsafe con `Data` ausente en entradas del catálogo sin `Data` (NRE en la predicción) → null-safe.
+- TDD RED→GREEN→REFACTOR completed with 7 new tests in `tests/.../Domain/ServerResolverTests.cs` (the previous 10 stay green). Full suite 97 green (90 previous + 7 new).
+- `ServerResolver` now injects `ServerCatalog` + `IDnsResolver` (new DNS seam in `Domain`, `FakeDnsResolver` fake in tests). `ResolveAsync` branches by `ServerAddressKind`:
+  - `CfxId`/`CfxJoinUrl` → existing CFX flow + `IsCfxValidated=true`.
+  - `IpPort` → `LookupByIpPortAsync`; found → validated; not → connectable unvalidated with the raw address.
+  - `DomainPort` → DNS host→IP; `LookupByIpPortAsync` by `ip:port` and then by the raw host; failed DNS or no match → unvalidated (no exception).
+  - `Unknown` → `InvalidAddressException`. Whitespace and empty too.
+- Unvalidated profile: `Address` = raw address, everything else empty/null. Validated profile from catalog: `CfxId`=EndPoint, `Address`=first connectEndPoints, ProjectName=`sv_projectName`→hostname, GameClient/Requirements from vars.
+- `ServerProfile` gained `Address` (for the connect-directly flow) and `IsCfxValidated`.
+- REFACTOR (DRY): vars mapping extracted into `Service/CfxVars` shared by `CfxService` and `ServerResolver` (gamename→GameClient, int, steam ticket); `CfxService` got slimmer.
+- Fix along the way: `LookupByIpPortAsync` was null-unsafe with missing `Data` in catalog entries without `Data` (NRE in the predicate) → null-safe.

@@ -1,11 +1,11 @@
-# 05: Resolver el conflicto de spec sobre PreferredClient
+# 05: Resolve the spec conflict over PreferredClient
 
-**What to build:** la spec de `FiveMLaunchOptions` se contradice a sí misma: dice que "al abrir directo, de `LauncherSettings.PreferredClient`" pero también que "no se toca `LauncherSettings`". Se documenta que el `GameClient` al abrir directamente lo decide el llamador (p.ej. la UI, leyendo `LauncherSettings` a su nivel) y que esta fase no presenta ninguna fábrica que lea `LauncherSettings`. Doc-only: se ajusta la spec y, si corresponde, DOC.md, sin cambios de código.
+**What to build:** the `FiveMLaunchOptions` spec contradicts itself: it says "when opening directly, from `LauncherSettings.PreferredClient`" but also that "`LauncherSettings` is untouched". It is documented that the `GameClient` when opening directly is decided by the caller (e.g. the UI, reading `LauncherSettings` at its level) and that this phase introduces no factory that reads `LauncherSettings`. Doc-only: the spec is adjusted and, if applicable, DOC.md, with no code changes.
 
 **Blocked by:** None (can start immediately)
 
 **Status:** resolved
 
-- [x] La spec de `.scratch/fivem-launch-options/spec.md` ya no se contradice sobre `PreferredClient` (queda claro quién decide el `GameClient` al abrir directo)
-- [x] No se introduce código que lea `LauncherSettings`
-- [x] La suite completa sigue verde
+- [x] The `.scratch/fivem-launch-options/spec.md` spec no longer contradicts itself about `PreferredClient` (it is clear who decides the `GameClient` when opening directly)
+- [x] No code is introduced that reads `LauncherSettings`
+- [x] The full suite stays green

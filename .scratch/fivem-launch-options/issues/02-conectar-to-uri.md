@@ -1,16 +1,16 @@
-# 02: Conectar — ServerProfile → opciones → URI fivem://
+# 02: Connect — ServerProfile → options → fivem:// URI
 
-**What to build:** la intención "conectar a un servidor". Dado un `ServerProfile` resuelto, se construye un `FiveMLaunchOptions` cuya address deriva del `CfxId` del perfil, cuyo `GameBuild`/`PureMode` vienen de sus `Requirements` (CFX-published: los requisitos del servidor ganan sobre cualquier manual) y cuyo `GameClient` es el del perfil. `ToUri()` produce `fivem://connect/<addr>` con `?-b<build>` y `?-pure_<nivel>` solo para requisitos presentes; devuelve `null` cuando no hay address o cuando `GameClient` es `FiveMEnhanced` (ese cliente no soporta conexión directa, verificado).
+**What to build:** the "connect to a server" intent. Given a resolved `ServerProfile`, a `FiveMLaunchOptions` is built whose address derives from the profile's `CfxId`, whose `GameBuild`/`PureMode` come from its `Requirements` (CFX-published: server requirements win over any manual ones) and whose `GameClient` is the profile's. `ToUri()` produces `fivem://connect/<addr>` with `?-b<build>` and `?-pure_<level>` only for present requirements; it returns `null` when there is no address or when `GameClient` is `FiveMEnhanced` (that client doesn't support direct connection, verified).
 
-**Blocked by:** 01 (Modelo base FiveMLaunchOptions con fábrica validada)
+**Blocked by:** 01 (Base FiveMLaunchOptions model with validated factory)
 
 **Status:** resolved
 
-- [x] Dado un `ServerProfile` válido, `ToUri()` devuelve `fivem://connect/cfx.re/join/<CfxId>`
-- [x] Con `GameBuild` publicado, la URI incluye `?-b<build>`
-- [x] Con `PureMode` publicado, la URI incluye `?-pure_<nivel>`
-- [x] Con requisitos ausentes, la URI no incluye esos args (no asume valores)
-- [x] Con ambos requisitos, el orden es estable (build antes de pure)
-- [x] Con `GameClient = FiveMEnhanced`, `ToUri()` devuelve `null`
-- [x] Sin address (intención abrir directo), `ToUri()` devuelve `null`
-- [x] Los requisitos provienen de `ServerRequirements` del perfil, sin override manual
+- [x] Given a valid `ServerProfile`, `ToUri()` returns `fivem://connect/cfx.re/join/<CfxId>`
+- [x] With published `GameBuild`, the URI includes `?-b<build>`
+- [x] With published `PureMode`, the URI includes `?-pure_<level>`
+- [x] With absent requirements, the URI doesn't include those args (assumes no values)
+- [x] With both requirements, order is stable (build before pure)
+- [x] With `GameClient = FiveMEnhanced`, `ToUri()` returns `null`
+- [x] Without an address (open-directly intent), `ToUri()` returns `null`
+- [x] Requirements come from the profile's `ServerRequirements`, with no manual override

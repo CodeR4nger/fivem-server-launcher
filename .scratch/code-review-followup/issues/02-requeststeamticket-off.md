@@ -1,12 +1,12 @@
-# 02: requestSteamTicket "off" no se trata como ausente
+# 02: requestSteamTicket "off" is not treated as absent
 
-**What to build:** el requisito de ticket de Steam distingue los tres estados que CFX permite: publicado `on` → `true`, publicado `off` → `false`, no publicado → `null`. Hoy un `"off"` explícito se confunde con ausencia (indeterminado), lo que podría engañar a un futuro consumidor de `Requirements`.
+**What to build:** the Steam ticket requirement distinguishes the three states CFX allows: published `on` → `true`, published `off` → `false`, not published → `null`. Today an explicit `"off"` is confused with absence (indeterminate), which could mislead a future consumer of `Requirements`.
 
 **Blocked by:** None (can start immediately)
 
 **Status:** resolved
 
-- [x] `CfxService` mapea `requestSteamTicket: "off"` → `RequestSteamTicket = false`
+- [x] `CfxService` maps `requestSteamTicket: "off"` → `RequestSteamTicket = false`
 - [x] `requestSteamTicket: "on"` → `true`
-- [x] var ausente → `null`
-- [x] Tests cubren los tres casos en `CfxServiceTests`
+- [x] absent var → `null`
+- [x] Tests cover all three cases in `CfxServiceTests`

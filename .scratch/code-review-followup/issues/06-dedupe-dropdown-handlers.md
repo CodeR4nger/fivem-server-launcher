@@ -1,12 +1,12 @@
-# 06: Deduplicar handlers del dropdown en MainView.xaml.cs
+# 06: Deduplicate dropdown handlers in MainView.xaml.cs
 
-**What to build:** `FiveMOption_Click` y `FiveMEnhancedOption_Click` son idénticos salvo el label que escriben en el botón principal. Se sustituyen por un único handler que recibe el label vía `CommandParameter` en el XAML.
+**What to build:** `FiveMOption_Click` and `FiveMEnhancedOption_Click` are identical except for the label they write to the main button. They are replaced by a single handler that receives the label via `CommandParameter` in the XAML.
 
 **Blocked by:** None (can start immediately)
 
 **Status:** resolved
 
-- [x] Un solo handler onClick para las opciones del dropdown
-- [x] El botón `FiveMButton` muestra el label correcto según la opción elegida
-- [x] El dropdown colapsa y la flecha vuelve a ▼ tras elegir
-- [x] MainView.xaml pasa el label como `CommandParameter`
+- [x] A single onClick handler for the dropdown options
+- [x] The `FiveMButton` button shows the correct label for the chosen option
+- [x] The dropdown collapses and the arrow returns to ▼ after choosing
+- [x] MainView.xaml passes the label as `CommandParameter`
