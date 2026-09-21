@@ -92,7 +92,7 @@ public class ClientInstallLocatorTests
     {
         // Given
         var exists = (string _) => false; // fake file system check: nothing on disk
-        var locator = new ClientInstallLocator(exists);
+        var locator = new ClientInstallLocator(exists, () => null);
 
         // When
         var result = await locator.GetExecutablePathAsync(GameClient.FiveMEnhanced);
@@ -106,7 +106,7 @@ public class ClientInstallLocatorTests
     {
         // Given
         var exists = (string _) => false;
-        var locator = new ClientInstallLocator(exists);
+        var locator = new ClientInstallLocator(exists, () => null);
 
         // When
         var result = await locator.IsInstalledAsync(GameClient.FiveM);
@@ -125,7 +125,7 @@ public class ClientInstallLocatorTests
             capturedPath = path;
             return true;
         };
-        var locator = new ClientInstallLocator(exists);
+        var locator = new ClientInstallLocator(exists, () => null);
 
         // When
         var result = await locator.GetExecutablePathAsync(GameClient.FiveM);
@@ -145,7 +145,7 @@ public class ClientInstallLocatorTests
             capturedPath = path;
             return true;
         };
-        var locator = new ClientInstallLocator(exists);
+        var locator = new ClientInstallLocator(exists, () => null);
 
         // When
         var result = await locator.GetInstallDirectoryAsync(GameClient.FiveM);
@@ -160,12 +160,85 @@ public class ClientInstallLocatorTests
     {
         // Given
         var exists = (string _) => false;
-        var locator = new ClientInstallLocator(exists);
+        var locator = new ClientInstallLocator(exists, () => null);
 
         // When
         var result = await locator.GetInstallDirectoryAsync(GameClient.FiveM);
 
         // Then
         Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetInstallDirectory_LegacyCustomInstall_ShouldReturnRegisteredDirectory()
+    {
+        // Given
+        const string registeredDirectory = @"D:\My Games\FiveM\FiveM.app";
+        var exists = (string path) => path.EndsWith("FiveM.exe");
+        var locator = new ClientInstallLocator(exists, () => registeredDirectory + @"\ ");
+
+        // When
+        var result = await locator.GetInstallDirectoryAsync(GameClient.FiveM);
+
+        // Then
+        Assert.Equal(registeredDirectory, result);
+    }
+
+    [Fact]
+    public async Task IsInstalled_LegacyPortableLayout_ShouldReturnTrueViaSiblingExecutable()
+    {
+        // Given
+        var exists = (string path) => path.Equals(@"D:\My Games\FiveM\FiveM.exe", StringComparison.OrdinalIgnoreCase);
+        var locator = new ClientInstallLocator(exists, () => @"D:\My Games\FiveM\FiveM.app");
+
+        // When
+        var result = await locator.IsInstalledAsync(GameClient.FiveM);
+
+        // Then
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task GetExecutablePath_LegacyPortableLayout_ShouldReturnSiblingExecutable()
+    {
+        // Given
+        var exists = (string path) => path.Equals(@"D:\My Games\FiveM\FiveM.exe", StringComparison.OrdinalIgnoreCase);
+        var locator = new ClientInstallLocator(exists, () => @"D:\My Games\FiveM\FiveM.app");
+
+        // When
+        var result = await locator.GetExecutablePathAsync(GameClient.FiveM);
+
+        // Then
+        Assert.Equal(@"D:\My Games\FiveM\FiveM.exe", result);
+    }
+
+    [Fact]
+    public async Task GetInstallDirectory_WhenRegisteredLocationBlank_ShouldFallbackToDefaultDirectory()
+    {
+        // Given
+        var exists = (string _) => true;
+        var locator = new ClientInstallLocator(exists, () => "   ");
+
+        // When
+        var result = await locator.GetInstallDirectoryAsync(GameClient.FiveM);
+
+        // Then
+        Assert.EndsWith(Path.Combine("FiveM", "FiveM.app"), result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task GetInstallDirectory_EnhancedOnDisk_ShouldReturnDirectoryWithoutAppSubfolder()
+    {
+        // Given
+        var exists = (string path) => path.EndsWith("FiveM.exe");
+        var locator = new ClientInstallLocator(exists, () => null);
+
+        // When
+        var result = await locator.GetInstallDirectoryAsync(GameClient.FiveMEnhanced);
+
+        // Then
+        Assert.Equal(
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FiveM for GTAV Enhanced"),
+            result);
     }
 }
