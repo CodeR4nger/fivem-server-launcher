@@ -20,32 +20,41 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly IServerRepository _serverRepository;
     private readonly ExternalAppPreparer _preparer;
     private readonly IClientInstallLocator _installLocator;
+    private readonly ConfigurationRepository _settingsRepository;
+
+    private LauncherSettings _settings;
 
     private string _serverAddress = string.Empty;
     private string _newServerName = string.Empty;
     private string _newServerAddress = string.Empty;
     private string _statusText = "Ready";
     private bool _isBusy;
+    private bool _isSettingsOpen;
     private SavedServerItem? _selectedServer;
     private InstalledClientOption? _selectedOpenClient;
+    private InstalledClientOption? _preferredClientOption;
 
     public MainViewModel(
         ServerResolver resolver,
         GameLauncher launcher,
         IServerRepository serverRepository,
         ExternalAppPreparer preparer,
-        IClientInstallLocator installLocator)
+        IClientInstallLocator installLocator,
+        ConfigurationRepository settingsRepository)
     {
         _resolver = resolver;
         _launcher = launcher;
         _serverRepository = serverRepository;
         _preparer = preparer;
         _installLocator = installLocator;
+        _settingsRepository = settingsRepository;
+        _settings = settingsRepository.Load();
         ConnectCommand = new AsyncRelayCommand(ConnectAsync, CanConnect);
         AddServerCommand = new RelayCommand(AddServer);
         DeleteServerCommand = new RelayCommand(DeleteServer, CanDeleteServer);
         OpenClientCommand = new AsyncRelayCommand(OpenClientAsync, CanOpenClient);
         SelectOpenClientCommand = new RelayCommand(SelectOpenClient);
+        SettingsCommand = new RelayCommand(() => IsSettingsOpen = !IsSettingsOpen);
 
         SavedServers = new ObservableCollection<SavedServerItem>(
             serverRepository.GetAll().Select(ToItem));
@@ -61,6 +70,14 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand OpenClientCommand { get; }
 
     public ICommand SelectOpenClientCommand { get; }
+
+    public ICommand SettingsCommand { get; }
+
+    public bool IsSettingsOpen
+    {
+        get => _isSettingsOpen;
+        set => SetProperty(ref _isSettingsOpen, value);
+    }
 
     public ObservableCollection<SavedServerItem> SavedServers { get; }
 
@@ -83,6 +100,39 @@ public class MainViewModel : INotifyPropertyChanged
     }
 
     public string SelectedOpenClientLabel => SelectedOpenClient?.DisplayName ?? string.Empty;
+
+    public bool AutoLaunch
+    {
+        get => _settings.AutoLaunch;
+        set
+        {
+            if (_settings.AutoLaunch == value)
+            {
+                return;
+            }
+
+            _settings.AutoLaunch = value;
+            SaveSettings();
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AutoLaunch)));
+        }
+    }
+
+    public InstalledClientOption? PreferredClientOption
+    {
+        get => _preferredClientOption;
+        set
+        {
+            if (ReferenceEquals(_preferredClientOption, value) || value is null)
+            {
+                return;
+            }
+
+            _preferredClientOption = value;
+            _settings.PreferredClient = value.Client;
+            SaveSettings();
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PreferredClientOption)));
+        }
+    }
 
     public SavedServerItem? SelectedServer
     {
@@ -222,6 +272,12 @@ public class MainViewModel : INotifyPropertyChanged
             var result = await _launcher.ConnectAsync(profile);
 
             StatusText = Describe(result);
+
+            if (result is LaunchResult.Connect or LaunchResult.OpenClient)
+            {
+                _settings.LastServerAddress = ServerAddress.Trim();
+                SaveSettings();
+            }
         }
         catch (InvalidAddressException)
         {
@@ -274,7 +330,16 @@ public class MainViewModel : INotifyPropertyChanged
 
         if (AvailableOpenClients.Count > 0)
         {
-            SelectedOpenClient = AvailableOpenClients[0];
+            var preferred = AvailableOpenClients.FirstOrDefault(o => o.Client == _settings.PreferredClient);
+            SelectedOpenClient = preferred ?? AvailableOpenClients[0];
+            _preferredClientOption = SelectedOpenClient;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PreferredClientOption)));
+        }
+
+        if (_settings.AutoLaunch && !string.IsNullOrWhiteSpace(_settings.LastServerAddress))
+        {
+            ServerAddress = _settings.LastServerAddress;
+            await ConnectAsync();
         }
     }
 
@@ -309,6 +374,11 @@ public class MainViewModel : INotifyPropertyChanged
         {
             SelectedOpenClient = installed;
         }
+    }
+
+    private void SaveSettings()
+    {
+        _settingsRepository.Save(_settings);
     }
 
     private static string Describe(LaunchResult result)

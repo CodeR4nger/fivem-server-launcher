@@ -61,8 +61,14 @@ public class LauncherSettings
 {
     public GameClient PreferredClient { get; set; } = GameClient.FiveM;
     public bool AutoLaunch { get; set; } = false;
+    public string? LastServerAddress { get; set; }
 }
 ```
+`LastServerAddress` is the "open automatically next time" memory: the launcher persists the
+address of the last successful connect and, when `AutoLaunch` is on, fills the box and connects to
+it automatically at startup. Failures (invalid address, start failed) never overwrite it.
+The settings surface is a small panel (gear button) with the preferred-client selector and the
+auto-launch toggle; changes persist immediately via `ConfigurationRepository`.
 Current enums:
 ```
 public enum GameClient

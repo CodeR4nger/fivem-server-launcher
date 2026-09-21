@@ -704,6 +704,238 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public async Task Initialize_WhenPreferredClientInstalled_ShouldSeedSelectionToPreferred()
+    {
+        // Given
+        var storage = new InMemorySettingsStorage();
+        storage.Save(new LauncherSettings { PreferredClient = GameClient.FiveMEnhanced });
+        var locator = new FakeClientInstallLocator();
+        locator.Executables[GameClient.FiveMEnhanced] = EnhancedExecutablePath;
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            installLocator: locator,
+            settings: new ConfigurationRepository(storage));
+
+        // When
+        await vm.InitializeAsync();
+
+        // Then
+        Assert.Equal(GameClient.FiveMEnhanced, vm.SelectedOpenClient?.Client);
+        Assert.Equal("FiveM Enhanced", vm.SelectedOpenClientLabel);
+    }
+
+    [Fact]
+    public async Task Initialize_WhenPreferredClientNotInstalled_ShouldFallBackToFirstInstalled()
+    {
+        // Given
+        var storage = new InMemorySettingsStorage();
+        storage.Save(new LauncherSettings { PreferredClient = GameClient.FiveMEnhanced });
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            settings: new ConfigurationRepository(storage));
+
+        // When
+        await vm.InitializeAsync();
+
+        // Then
+        Assert.Equal(GameClient.FiveM, vm.SelectedOpenClient?.Client);
+    }
+
+    [Fact]
+    public async Task SetAutoLaunch_ShouldPersistImmediately()
+    {
+        // Given
+        var storage = new InMemorySettingsStorage();
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            settings: new ConfigurationRepository(storage));
+        await vm.InitializeAsync();
+
+        // When
+        vm.AutoLaunch = true;
+
+        // Then
+        var reloaded = new ConfigurationRepository(storage).Load();
+        Assert.True(reloaded.AutoLaunch);
+    }
+
+    [Fact]
+    public async Task SetPreferredClientOption_ShouldPreserveOtherSettingsFields()
+    {
+        // Given
+        var storage = new InMemorySettingsStorage();
+        storage.Save(new LauncherSettings { LastServerAddress = "cfx.re/join/y4lg95" });
+        var locator = new FakeClientInstallLocator();
+        locator.Executables[GameClient.FiveMEnhanced] = EnhancedExecutablePath;
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            installLocator: locator,
+            settings: new ConfigurationRepository(storage));
+        await vm.InitializeAsync();
+
+        // When
+        vm.PreferredClientOption = vm.AvailableOpenClients[1];
+
+        // Then
+        var reloaded = new ConfigurationRepository(storage).Load();
+        Assert.Equal(GameClient.FiveMEnhanced, reloaded.PreferredClient);
+        Assert.Equal("cfx.re/join/y4lg95", reloaded.LastServerAddress);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_OnSuccessfulConnect_ShouldPersistLastServerAddress()
+    {
+        // Given
+        const string address = "cfx.re/join/y4lg95";
+        var storage = new InMemorySettingsStorage();
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            settings: new ConfigurationRepository(storage));
+        vm.ServerAddress = address;
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Equal(address, new ConfigurationRepository(storage).Load().LastServerAddress);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_WithInvalidAddress_ShouldNotPersistLastServerAddress()
+    {
+        // Given
+        var storage = new InMemorySettingsStorage();
+        storage.Save(new LauncherSettings { LastServerAddress = "cfx.re/join/known" });
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            settings: new ConfigurationRepository(storage));
+        vm.ServerAddress = "9 92";
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Equal("cfx.re/join/known", new ConfigurationRepository(storage).Load().LastServerAddress);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_OnStartFailed_ShouldNotPersistLastServerAddress()
+    {
+        // Given
+        const string address = "cfx.re/join/y4lg95";
+        var storage = new InMemorySettingsStorage();
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher { ThrowOnStart = true },
+            CfxJson("gta5"),
+            settings: new ConfigurationRepository(storage));
+        vm.ServerAddress = address;
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Null(new ConfigurationRepository(storage).Load().LastServerAddress);
+    }
+
+    [Fact]
+    public async Task Initialize_WithAutoLaunchAndLastServer_ShouldAutoConnect()
+    {
+        // Given
+        const string address = "cfx.re/join/y4lg95";
+        var storage = new InMemorySettingsStorage();
+        storage.Save(new LauncherSettings { AutoLaunch = true, LastServerAddress = address });
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(processLauncher, CfxJson("gta5"), settings: new ConfigurationRepository(storage));
+
+        // When
+        await vm.InitializeAsync();
+
+        // Then
+        Assert.Equal(address, vm.ServerAddress);
+        var request = Assert.Single(processLauncher.Requests);
+        Assert.Equal("fivem://connect/" + address, request.AbsoluteUri);
+        Assert.Equal("Launching FiveM...", vm.StatusText);
+        Assert.False(vm.IsBusy);
+    }
+
+    [Fact]
+    public async Task Initialize_WithoutAutoLaunch_ShouldNotAutoConnect()
+    {
+        // Given
+        var storage = new InMemorySettingsStorage();
+        storage.Save(new LauncherSettings { AutoLaunch = false, LastServerAddress = "cfx.re/join/y4lg95" });
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(processLauncher, CfxJson("gta5"), settings: new ConfigurationRepository(storage));
+
+        // When
+        await vm.InitializeAsync();
+
+        // Then
+        Assert.Empty(processLauncher.Requests);
+        Assert.Equal("Ready", vm.StatusText);
+    }
+
+    [Fact]
+    public async Task Initialize_WithAutoLaunchButNoLastServer_ShouldNotAutoConnect()
+    {
+        // Given
+        var storage = new InMemorySettingsStorage();
+        storage.Save(new LauncherSettings { AutoLaunch = true });
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(processLauncher, CfxJson("gta5"), settings: new ConfigurationRepository(storage));
+
+        // When
+        await vm.InitializeAsync();
+
+        // Then
+        Assert.Empty(processLauncher.Requests);
+        Assert.Equal("Ready", vm.StatusText);
+    }
+
+    [Fact]
+    public async Task SettingsCommand_ShouldToggleSettingsPanelOpen()
+    {
+        // Given
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+        await vm.InitializeAsync();
+
+        // When / Then
+        Assert.False(vm.IsSettingsOpen);
+        vm.SettingsCommand.Execute(null);
+        Assert.True(vm.IsSettingsOpen);
+        vm.SettingsCommand.Execute(null);
+        Assert.False(vm.IsSettingsOpen);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_OnClientNotInstalled_ShouldNotPersistLastServerAddress()
+    {
+        // Given
+        const string address = "cfx.re/join/Y4LG95";
+        var storage = new InMemorySettingsStorage();
+        storage.Save(new LauncherSettings { LastServerAddress = "cfx.re/join/known" });
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5enhanced"),
+            installLocator: new FakeClientInstallLocator { Executables = [] },
+            settings: new ConfigurationRepository(storage));
+        vm.ServerAddress = address;
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Equal("FiveM Enhanced is not installed", vm.StatusText);
+        Assert.Equal("cfx.re/join/known", new ConfigurationRepository(storage).Load().LastServerAddress);
+    }
+
+    [Fact]
     public async Task SelectingOpenClient_ShouldUpdateLabel()
     {
         // Given
@@ -786,7 +1018,8 @@ public class MainViewModelTests
         IRequirementReadiness? readiness = null,
         FakeExternalAppStarter? starter = null,
         ExternalAppPreparer? preparer = null,
-        IClientInstallLocator? installLocator = null)
+        IClientInstallLocator? installLocator = null,
+        ConfigurationRepository? settings = null)
     {
         var resolver = new ServerResolver(
             new CfxService(
@@ -812,6 +1045,7 @@ public class MainViewModelTests
             launcher,
             repository ?? new InMemoryServerRepository(),
             preparerValue,
-            installLocator);
+            installLocator,
+            settings ?? new ConfigurationRepository(new InMemorySettingsStorage()));
     }
 }

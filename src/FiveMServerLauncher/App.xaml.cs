@@ -43,7 +43,9 @@ public partial class App : Application
             new ExternalAppPreparer(
                 readiness,
                 new ExternalAppStarter(new ProcessStarter(), new UriSchemeRegistration())),
-            installLocator);
+            installLocator,
+            new ConfigurationRepository(
+                new FileSettingsStorage(Path.Combine(AppDataDirectory, "launcher-settings.json"))));
         viewModel.InitializeAsync().GetAwaiter().GetResult();
         window.DataContext = viewModel;
         window.Show();

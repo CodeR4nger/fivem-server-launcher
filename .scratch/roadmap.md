@@ -10,6 +10,8 @@ The roadmap is the plan of record; update the `Status:`/notes here as phases mov
 
 ## 1. Direct-open client (from the dropdown)
 
+**Status:** ✅ done (commits `9a6d040` + `8cfa35c`, manual E2E verified).
+
 **Spec:** `.scratch/direct-open/spec.md` (to write)
 
 **Current state:** the OPEN dropdown is visual-only — `ClientOption_Click`
@@ -27,6 +29,8 @@ no path at all.
 **Unblocks:** phases 2, 3 and 4 hook into this flow.
 
 ## 2. Settings + auto-launch
+
+**Status:** in-progress (tickets 01–05 implemented, suite green; code-review + commit + manual E2E pending).
 
 **Spec:** `.scratch/settings-and-autolaunch/spec.md` (to write)
 

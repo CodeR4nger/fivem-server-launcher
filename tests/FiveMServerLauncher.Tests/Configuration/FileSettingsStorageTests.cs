@@ -176,6 +176,58 @@ public class FileSettingsStorageTests
     }
 
     [Fact]
+    public void SaveAndLoad_ShouldPreserveLastServerAddress()
+    {
+        // Given
+        using var tempDir = new TempSettingsDirectory();
+
+        var settings = new LauncherSettings
+        {
+            PreferredClient = GameClient.FiveMEnhanced,
+            AutoLaunch = true,
+            LastServerAddress = "cfx.re/join/y4lg95",
+        };
+
+        var storage = new FileSettingsStorage(tempDir.FilePath);
+
+        // When
+        storage.Save(settings);
+        var result = storage.Load();
+
+        // Then
+        Assert.NotNull(result);
+        Assert.Equal(settings.LastServerAddress, result.LastServerAddress);
+    }
+
+    [Fact]
+    public void Load_WhenFileLacksLastServerAddress_ShouldReturnNullField()
+    {
+        // Given
+        using var tempDir = new TempSettingsDirectory();
+        Directory.CreateDirectory(tempDir.DirectoryPath);
+
+        var json = """
+                    {
+                        "PreferredClient": "FiveMEnhanced",
+                        "AutoLaunch": true
+                    }
+                    """;
+
+        File.WriteAllText(tempDir.FilePath, json);
+
+        var storage = new FileSettingsStorage(tempDir.FilePath);
+
+        // When
+        var result = storage.Load();
+
+        // Then
+        Assert.NotNull(result);
+        Assert.Equal(GameClient.FiveMEnhanced, result.PreferredClient);
+        Assert.True(result.AutoLaunch);
+        Assert.Null(result.LastServerAddress);
+    }
+
+    [Fact]
     public void SaveAndLoad_ShouldPreserveAllSettings()
     {
         // Given

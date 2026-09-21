@@ -4,6 +4,8 @@
 
     <UserControl.Resources>
 
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+
         <!-- COLORES -->
 
         <SolidColorBrush x:Key="BackgroundBrush" Color="#101010"/>
@@ -214,16 +216,66 @@
 
                 <Grid.RowDefinitions>
 
+                    <RowDefinition Height="Auto"/>
+
                     <RowDefinition Height="*"/>
+
+                    <RowDefinition Height="Auto"/>
 
                     <RowDefinition Height="Auto"/>
 
                 </Grid.RowDefinitions>
 
+                <!-- SETTINGS BAR -->
+
+                <DockPanel Grid.Row="0" Margin="14,14,14,0">
+
+                    <Button Content="⚙ SETTINGS"
+                            Height="32"
+                            Padding="12,0"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Command="{Binding SettingsCommand}"/>
+
+                </DockPanel>
+
+                <!-- SETTINGS PANEL -->
+
+                <Border Grid.Row="1"
+                        Margin="14,10,14,0"
+                        Padding="14"
+                        Background="{StaticResource PanelLightBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        Visibility="{Binding IsSettingsOpen,
+                                             Converter={StaticResource BoolToVisibility}}">
+
+                    <StackPanel VerticalAlignment="Top">
+
+                        <TextBlock Text="PREFERRED OPEN CLIENT"
+                                   Foreground="{StaticResource SecondaryTextBrush}"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"/>
+
+                        <ComboBox ItemsSource="{Binding AvailableOpenClients}"
+                                  DisplayMemberPath="DisplayName"
+                                  SelectedItem="{Binding PreferredClientOption}"
+                                  Height="30"
+                                  Margin="0,6,0,10"
+                                  VerticalContentAlignment="Center"/>
+
+                        <CheckBox IsChecked="{Binding AutoLaunch}"
+                                  Content="Auto-launch last server on startup"
+                                  Foreground="{StaticResource TextBrush}"
+                                  FontSize="12"/>
+
+                    </StackPanel>
+
+                </Border>
+
 
                 <!-- STATUS FIVEM -->
 
-                <StackPanel Grid.Row="0"
+                <StackPanel Grid.Row="2"
                             VerticalAlignment="Center"
                             HorizontalAlignment="Center"
                             Margin="30">
@@ -256,7 +308,7 @@
 
                 <!-- SPLIT BUTTON -->
 
-                <Grid Grid.Row="1"
+                <Grid Grid.Row="3"
                       Margin="20,0,20,20">
 
                     <Grid.RowDefinitions>
