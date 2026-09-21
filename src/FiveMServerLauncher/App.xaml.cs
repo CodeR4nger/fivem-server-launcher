@@ -31,12 +31,17 @@ public partial class App : Application
             new GameProcessLauncher(new ProcessStarter(), new UriSchemeRegistration()),
             new CitizenFxPreparer(new ClientInstallLocator(), new CitizenFxConfigWriter()));
 
+        var readiness = new ProcessReadinessChecker();
+
         var window = new MainWindow();
         window.DataContext = new MainViewModel(
             resolver,
             launcher,
             new FileServerRepository(Path.Combine(AppDataDirectory, "saved-servers.json")),
-            new ProcessReadinessChecker());
+            readiness,
+            new ExternalAppPreparer(
+                readiness,
+                new ExternalAppStarter(new ProcessStarter(), new UriSchemeRegistration())));
         window.Show();
     }
 }

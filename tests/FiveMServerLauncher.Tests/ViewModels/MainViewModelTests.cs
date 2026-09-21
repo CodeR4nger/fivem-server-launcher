@@ -2,14 +2,13 @@ using System.Net;
 using FiveMServerLauncher.Configuration;
 using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Domain;
+using FiveMServerLauncher.Launch;
 using FiveMServerLauncher.Service;
 using FiveMServerLauncher.Tests.Configuration;
 using FiveMServerLauncher.Tests.Launch;
 using FiveMServerLauncher.Tests.Service;
 using FiveMServerLauncher.Tests.Domain;
 using FiveMServerLauncher.ViewModels;
-using GameLauncherType = FiveMServerLauncher.Launch.GameLauncher;
-using IGameProcessLauncher = FiveMServerLauncher.Launch.IGameProcessLauncher;
 
 namespace FiveMServerLauncher.Tests.ViewModels;
 
@@ -88,98 +87,192 @@ public class MainViewModelTests
     }
 
     [Fact]
-    public async Task ConnectAsync_WhenSteamRequiredButNotRunning_ShouldShowRequirementStatusWithoutLaunching()
-    {
-        // Given
-        const string address = "cfx.re/join/y4lg95";
-        var processLauncher = new FakeGameProcessLauncher();
-        var readiness = new FakeRequirementReadiness { Running = false };
-        var vm = CreateViewModel(
-            processLauncher,
-            CfxJson("gta5", "\"sv_enforceSteamAuth\":\"true\""),
-            readiness: readiness);
-        vm.ServerAddress = address;
-
-        // When
-        await vm.ConnectAsync();
-
-        // Then
-        Assert.Equal("Requires Steam (not running)", vm.StatusText);
-        Assert.False(vm.IsBusy);
-        Assert.Empty(processLauncher.Requests);
-        Assert.Equal(1, readiness.SteamChecks);
-        Assert.Equal(0, readiness.DiscordChecks);
-    }
-
-    [Fact]
-    public async Task ConnectAsync_WhenSteamRequiredAndRunning_ShouldLaunchNormally()
+    public async Task ConnectAsync_WhenSteamRequiredAndRunning_ShouldLaunchWithoutStartingAnything()
     {
         // Given
         const string address = "cfx.re/join/y4lg95";
         var processLauncher = new FakeGameProcessLauncher();
         var readiness = new FakeRequirementReadiness { Running = true };
+        var starter = new FakeExternalAppStarter();
         var vm = CreateViewModel(
             processLauncher,
             CfxJson("gta5", "\"sv_enforceSteamAuth\":\"true\""),
-            readiness: readiness);
+            readiness: readiness,
+            starter: starter);
         vm.ServerAddress = address;
 
         // When
         await vm.ConnectAsync();
 
         // Then
+        Assert.Empty(starter.Starts);
         Assert.Single(processLauncher.Requests);
         Assert.Equal("Launching FiveM...", vm.StatusText);
         Assert.Equal(1, readiness.SteamChecks);
     }
 
     [Fact]
-    public async Task ConnectAsync_WhenTypedAddressMatchesSavedServer_ShouldApplyManualFlags()
+    public async Task ConnectAsync_WhenSteamRequiredAndMissing_ShouldStartSteamAndLaunch()
+    {
+        // Given
+        const string address = "cfx.re/join/y4lg95";
+        var processLauncher = new FakeGameProcessLauncher();
+        var starter = new FakeExternalAppStarter();
+        var readiness = new StatefulRequirementReadiness(app => starter.Starts.Contains(app));
+        var vm = CreateViewModel(
+            processLauncher,
+            CfxJson("gta5", "\"sv_enforceSteamAuth\":\"true\""),
+            readiness: readiness,
+            starter: starter);
+        vm.ServerAddress = address;
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Equal([ExternalApp.Steam], starter.Starts);
+        Assert.Single(processLauncher.Requests);
+        Assert.Equal("Launching FiveM...", vm.StatusText);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_WhenSteamRequiredAndMissing_ShouldShowStartingSteamWhilePreparing()
+    {
+        // Given
+        const string address = "cfx.re/join/y4lg95";
+        var processLauncher = new FakeGameProcessLauncher();
+        var starter = new FakeExternalAppStarter();
+        var checks = 0;
+        var readiness = new StatefulRequirementReadiness(_ => ++checks > 3);
+        var statusDuringPrepare = new List<string>();
+        MainViewModel? vm = null;
+        var preparer = new ExternalAppPreparer(
+            readiness,
+            starter,
+            () =>
+            {
+                statusDuringPrepare.Add(vm!.StatusText);
+                return Task.CompletedTask;
+            },
+            maxAttempts: 5);
+        vm = CreateViewModel(
+            processLauncher,
+            CfxJson("gta5", "\"sv_enforceSteamAuth\":\"true\""),
+            readiness: readiness,
+            preparer: preparer);
+        vm.ServerAddress = address;
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Equal(["Starting Steam..."], statusDuringPrepare);
+        Assert.Equal([ExternalApp.Steam], starter.Starts);
+        Assert.Single(processLauncher.Requests);
+        Assert.Equal("Launching FiveM...", vm.StatusText);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_WhenRequiredAppNeverBecomesRunning_ShouldShowCouldNotStartAndNotLaunch()
+    {
+        // Given
+        const string address = "cfx.re/join/y4lg95";
+        var processLauncher = new FakeGameProcessLauncher();
+        var readiness = new StatefulRequirementReadiness(_ => false);
+        var vm = CreateViewModel(
+            processLauncher,
+            CfxJson("gta5", "\"sv_enforceSteamAuth\":\"true\""),
+            readiness: readiness);
+        vm.ServerAddress = address;
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Equal("Could not start Steam", vm.StatusText);
+        Assert.False(vm.IsBusy);
+        Assert.Empty(processLauncher.Requests);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_WhenRequiredAppCannotBeStarted_ShouldShowCouldNotStartAndNotLaunch()
+    {
+        // Given
+        const string address = "cfx.re/join/y4lg95";
+        var processLauncher = new FakeGameProcessLauncher();
+        var readiness = new FakeRequirementReadiness { Running = false };
+        var starter = new FakeExternalAppStarter
+        {
+            ThrowOnStart = new System.ComponentModel.Win32Exception("no association")
+        };
+        var vm = CreateViewModel(
+            processLauncher,
+            CfxJson("gta5", "\"sv_enforceSteamAuth\":\"true\""),
+            readiness: readiness,
+            starter: starter);
+        vm.ServerAddress = address;
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Equal("Could not start Steam", vm.StatusText);
+        Assert.False(vm.IsBusy);
+        Assert.Empty(processLauncher.Requests);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_WhenTypedAddressMatchesSavedServer_ShouldStartDiscordAndLaunch()
     {
         // Given
         const string address = "cfx.re/join/y4lg95";
         var processLauncher = new FakeGameProcessLauncher();
         var repository = new InMemoryServerRepository();
         repository.Add(SavedServer.Create("My Server", address, requiresDiscord: true));
-        var readiness = new FakeRequirementReadiness { Running = false };
+        var starter = new FakeExternalAppStarter();
+        var readiness = new StatefulRequirementReadiness(app => starter.Starts.Contains(app));
         var vm = CreateViewModel(
             processLauncher,
             CfxJson("gta5"),
             repository: repository,
-            readiness: readiness);
+            readiness: readiness,
+            starter: starter);
         vm.ServerAddress = address;
 
         // When
         await vm.ConnectAsync();
 
         // Then
-        Assert.Equal("Requires Discord (not running)", vm.StatusText);
-        Assert.Empty(processLauncher.Requests);
-        Assert.Equal(1, readiness.DiscordChecks);
+        Assert.Equal([ExternalApp.Discord], starter.Starts);
+        Assert.Single(processLauncher.Requests);
+        Assert.Equal("Launching FiveM...", vm.StatusText);
     }
 
     [Fact]
-    public async Task ConnectAsync_WhenSteamAndDiscordRequiredAndMissing_ShouldListBoth()
+    public async Task ConnectAsync_WhenSteamAndDiscordRequiredAndMissing_ShouldPrepareBothThenLaunch()
     {
         // Given
         const string address = "cfx.re/join/y4lg95";
         var processLauncher = new FakeGameProcessLauncher();
         var repository = new InMemoryServerRepository();
         repository.Add(SavedServer.Create("My Server", address, requiresDiscord: true));
-        var readiness = new FakeRequirementReadiness { Running = false };
+        var starter = new FakeExternalAppStarter();
+        var readiness = new StatefulRequirementReadiness(app => starter.Starts.Contains(app));
         var vm = CreateViewModel(
             processLauncher,
             CfxJson("gta5", "\"sv_enforceSteamAuth\":\"true\""),
             repository: repository,
-            readiness: readiness);
+            readiness: readiness,
+            starter: starter);
         vm.ServerAddress = address;
 
         // When
         await vm.ConnectAsync();
 
         // Then
-        Assert.Equal("Requires Steam (not running) / Requires Discord (not running)", vm.StatusText);
-        Assert.Empty(processLauncher.Requests);
+        Assert.Equal([ExternalApp.Steam, ExternalApp.Discord], starter.Starts);
+        Assert.Single(processLauncher.Requests);
+        Assert.Equal("Launching FiveM...", vm.StatusText);
     }
 
     [Fact]
@@ -344,19 +437,21 @@ public class MainViewModelTests
     }
 
     [Fact]
-    public async Task Connect_WhenSelectedSavedServerRequiresMissingApp_ShouldBlock()
+    public async Task Connect_WhenSelectedSavedServerRequiresMissingApp_ShouldPrepareThenLaunch()
     {
         // Given
         const string address = "cfx.re/join/y4lg95";
         var repository = new InMemoryServerRepository();
         repository.Add(SavedServer.Create("My Server", address, requiresDiscord: true));
         var processLauncher = new FakeGameProcessLauncher();
-        var readiness = new FakeRequirementReadiness { Running = false };
+        var starter = new FakeExternalAppStarter();
+        var readiness = new StatefulRequirementReadiness(app => starter.Starts.Contains(app));
         var vm = CreateViewModel(
             processLauncher,
             CfxJson("gta5"),
             repository: repository,
-            readiness: readiness);
+            readiness: readiness,
+            starter: starter);
         vm.SelectedServer = vm.SavedServers[0];
 
         // When
@@ -364,8 +459,9 @@ public class MainViewModelTests
 
         // Then
         Assert.Equal(address, vm.ServerAddress);
-        Assert.Equal("Requires Discord (not running)", vm.StatusText);
-        Assert.Empty(processLauncher.Requests);
+        Assert.Equal([ExternalApp.Discord], starter.Starts);
+        Assert.Single(processLauncher.Requests);
+        Assert.Equal("Launching FiveM...", vm.StatusText);
     }
 
     private static string CfxJson(string gamename, string? extraVars = null)
@@ -383,7 +479,9 @@ public class MainViewModelTests
         IGameProcessLauncher processLauncher,
         string cfxJson,
         IServerRepository? repository = null,
-        FakeRequirementReadiness? readiness = null)
+        IRequirementReadiness? readiness = null,
+        FakeExternalAppStarter? starter = null,
+        ExternalAppPreparer? preparer = null)
     {
         var resolver = new ServerResolver(
             new CfxService(
@@ -393,12 +491,20 @@ public class MainViewModelTests
             new ServerRequirementsResolver(),
             new FakeDnsResolver());
 
-        var launcher = new GameLauncherType(processLauncher, new FakeCitizenFxPreparer());
+        var launcher = new GameLauncher(processLauncher, new FakeCitizenFxPreparer());
+
+        var readinessValue = readiness ?? new FakeRequirementReadiness();
+        var preparerValue = preparer ?? new ExternalAppPreparer(
+            readinessValue,
+            starter ?? new FakeExternalAppStarter(),
+            () => Task.CompletedTask,
+            maxAttempts: 5);
 
         return new MainViewModel(
             resolver,
             launcher,
             repository ?? new InMemoryServerRepository(),
-            readiness ?? new FakeRequirementReadiness());
+            readinessValue,
+            preparerValue);
     }
 }

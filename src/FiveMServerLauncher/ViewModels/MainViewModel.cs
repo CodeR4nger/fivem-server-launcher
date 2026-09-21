@@ -17,6 +17,7 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly GameLauncher _launcher;
     private readonly IServerRepository _serverRepository;
     private readonly IRequirementReadiness _readiness;
+    private readonly ExternalAppPreparer _preparer;
 
     private string _serverAddress = string.Empty;
     private string _newServerName = string.Empty;
@@ -29,12 +30,14 @@ public class MainViewModel : INotifyPropertyChanged
         ServerResolver resolver,
         GameLauncher launcher,
         IServerRepository serverRepository,
-        IRequirementReadiness readiness)
+        IRequirementReadiness readiness,
+        ExternalAppPreparer preparer)
     {
         _resolver = resolver;
         _launcher = launcher;
         _serverRepository = serverRepository;
         _readiness = readiness;
+        _preparer = preparer;
         ConnectCommand = new AsyncRelayCommand(ConnectAsync, CanConnect);
         AddServerCommand = new RelayCommand(AddServer);
         DeleteServerCommand = new RelayCommand(DeleteServer, CanDeleteServer);
@@ -173,10 +176,15 @@ public class MainViewModel : INotifyPropertyChanged
 
             var missingRequirements = await FindMissingRequirementsAsync(profile.Requirements);
 
-            if (missingRequirements.Count > 0)
+            foreach (var app in missingRequirements)
             {
-                StatusText = FormatMissingRequirements(missingRequirements);
-                return;
+                StatusText = $"Starting {app}...";
+
+                if (!await _preparer.TryPrepareAsync(app))
+                {
+                    StatusText = $"Could not start {app}";
+                    return;
+                }
             }
 
             var result = await _launcher.ConnectAsync(profile);
@@ -224,11 +232,6 @@ public class MainViewModel : INotifyPropertyChanged
         }
 
         return missing;
-    }
-
-    private static string FormatMissingRequirements(List<ExternalApp> missingRequirements)
-    {
-        return string.Join(" / ", missingRequirements.Select(app => $"Requires {app} (not running)"));
     }
 
     private bool CanConnect()
