@@ -46,8 +46,8 @@ public partial class App : Application
             installLocator,
             new ConfigurationRepository(
                 new FileSettingsStorage(Path.Combine(AppDataDirectory, "launcher-settings.json"))));
-        viewModel.InitializeAsync().GetAwaiter().GetResult();
         window.DataContext = viewModel;
         window.Show();
+        window.Dispatcher.InvokeAsync(viewModel.InitializeAsync);
     }
 }
