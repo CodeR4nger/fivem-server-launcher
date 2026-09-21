@@ -22,6 +22,22 @@ public class GameProcessLauncherTests
     }
 
     [Fact]
+    public async Task StartExecutableAsync_ShouldHandExeToWindowsShell()
+    {
+        // Given
+        var processStarter = new FakeProcessStarter();
+        var launcher = new GameProcessLauncher(processStarter, new FakeUriSchemeRegistration());
+
+        // When
+        await launcher.StartExecutableAsync(@"C:\FiveM\FiveM.app\FiveM.exe");
+
+        // Then
+        var startInfo = Assert.Single(processStarter.Starts);
+        Assert.Equal("explorer.exe", startInfo.FileName);
+        Assert.Equal(@"""C:\FiveM\FiveM.app\FiveM.exe""", startInfo.Arguments);
+    }
+
+    [Fact]
     public async Task StartAsync_WhenProtocolNotRegistered_ShouldThrow()
     {
         // Given
