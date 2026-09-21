@@ -108,7 +108,44 @@ public class MainViewModelTests
         Assert.Empty(starter.Starts);
         Assert.Single(processLauncher.Requests);
         Assert.Equal("Launching FiveM...", vm.StatusText);
-        Assert.Equal(1, readiness.SteamChecks);
+        Assert.Equal(0, readiness.SteamChecks);
+        Assert.Equal(1, readiness.SteamReadyChecks);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_WhenSteamAlreadyReady_ShouldNotWaitOrShowStartStatus()
+    {
+        // Given
+        const string address = "cfx.re/join/y4lg95";
+        var processLauncher = new FakeGameProcessLauncher();
+        var starter = new FakeExternalAppStarter();
+        var statusDuringPrepare = new List<string>();
+        MainViewModel? vm = null;
+        var readiness = new FakeRequirementReadiness { Running = true, Ready = true };
+        var preparer = new ExternalAppPreparer(
+            readiness,
+            starter,
+            () =>
+            {
+                statusDuringPrepare.Add(vm!.StatusText);
+                return Task.CompletedTask;
+            },
+            maxAttempts: 5);
+        vm = CreateViewModel(
+            processLauncher,
+            CfxJson("gta5", "\"sv_enforceSteamAuth\":\"true\""),
+            readiness: readiness,
+            preparer: preparer);
+        vm.ServerAddress = address;
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Empty(starter.Starts);
+        Assert.Empty(statusDuringPrepare);
+        Assert.Single(processLauncher.Requests);
+        Assert.Equal("Launching FiveM...", vm.StatusText);
     }
 
     [Fact]
@@ -164,6 +201,43 @@ public class MainViewModelTests
 
         // Then
         Assert.Equal([ExternalApp.Steam], starter.Starts);
+        Assert.Single(processLauncher.Requests);
+        Assert.Equal("Launching FiveM...", vm.StatusText);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_WhenSteamRunningButNotReady_ShouldWaitAndLaunchWithoutRestarting()
+    {
+        // Given
+        const string address = "cfx.re/join/y4lg95";
+        var processLauncher = new FakeGameProcessLauncher();
+        var starter = new FakeExternalAppStarter();
+        var checks = 0;
+        var readiness = new StatefulRequirementReadiness(_ => true, _ => ++checks >= 3);
+        var statusDuringPrepare = new List<string>();
+        MainViewModel? vm = null;
+        var preparer = new ExternalAppPreparer(
+            readiness,
+            starter,
+            () =>
+            {
+                statusDuringPrepare.Add(vm!.StatusText);
+                return Task.CompletedTask;
+            },
+            maxAttempts: 5);
+        vm = CreateViewModel(
+            processLauncher,
+            CfxJson("gta5", "\"sv_enforceSteamAuth\":\"true\""),
+            readiness: readiness,
+            preparer: preparer);
+        vm.ServerAddress = address;
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Empty(starter.Starts);
+        Assert.Equal(["Starting Steam..."], statusDuringPrepare);
         Assert.Single(processLauncher.Requests);
         Assert.Equal("Launching FiveM...", vm.StatusText);
     }
@@ -555,7 +629,6 @@ public class MainViewModelTests
             resolver,
             launcher,
             repository ?? new InMemoryServerRepository(),
-            readinessValue,
             preparerValue);
     }
 }

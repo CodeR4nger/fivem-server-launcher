@@ -7,9 +7,13 @@ public class FakeRequirementReadiness : IRequirementReadiness
 {
     public bool Running { get; set; } = true;
 
+    public bool? Ready { get; set; }
+
     public int SteamChecks { get; private set; }
 
     public int DiscordChecks { get; private set; }
+
+    public int SteamReadyChecks { get; private set; }
 
     public Task<bool> IsRunningAsync(ExternalApp app)
     {
@@ -24,5 +28,15 @@ public class FakeRequirementReadiness : IRequirementReadiness
         }
 
         return Task.FromResult(Running);
+    }
+
+    public Task<bool> IsReadyAsync(ExternalApp app)
+    {
+        if (app == ExternalApp.Steam)
+        {
+            SteamReadyChecks++;
+        }
+
+        return Task.FromResult(Ready ?? Running);
     }
 }

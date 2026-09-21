@@ -7,7 +7,6 @@ using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Domain;
 using FiveMServerLauncher.Domain.Exceptions;
 using FiveMServerLauncher.Launch;
-using FiveMServerLauncher.Service;
 
 namespace FiveMServerLauncher.ViewModels;
 
@@ -16,7 +15,6 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly ServerResolver _resolver;
     private readonly GameLauncher _launcher;
     private readonly IServerRepository _serverRepository;
-    private readonly IRequirementReadiness _readiness;
     private readonly ExternalAppPreparer _preparer;
 
     private string _serverAddress = string.Empty;
@@ -30,13 +28,11 @@ public class MainViewModel : INotifyPropertyChanged
         ServerResolver resolver,
         GameLauncher launcher,
         IServerRepository serverRepository,
-        IRequirementReadiness readiness,
         ExternalAppPreparer preparer)
     {
         _resolver = resolver;
         _launcher = launcher;
         _serverRepository = serverRepository;
-        _readiness = readiness;
         _preparer = preparer;
         ConnectCommand = new AsyncRelayCommand(ConnectAsync, CanConnect);
         AddServerCommand = new RelayCommand(AddServer);
@@ -174,9 +170,7 @@ public class MainViewModel : INotifyPropertyChanged
             var savedServer = _serverRepository.FindByAddress(ServerAddress);
             var profile = await _resolver.ResolveAsync(ServerAddress, savedServer);
 
-            var missingRequirements = await FindMissingRequirementsAsync(profile.Requirements);
-
-            foreach (var app in missingRequirements)
+            foreach (var app in RequiredApps(profile.Requirements))
             {
                 StatusText = $"Starting {app}...";
 
@@ -207,31 +201,21 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    private async Task<List<ExternalApp>> FindMissingRequirementsAsync(ServerRequirements requirements)
+    private static List<ExternalApp> RequiredApps(ServerRequirements requirements)
     {
-        var requiredApps = new List<ExternalApp>();
+        var apps = new List<ExternalApp>();
 
         if (requirements.SteamRequired == true)
         {
-            requiredApps.Add(ExternalApp.Steam);
+            apps.Add(ExternalApp.Steam);
         }
 
         if (requirements.DiscordRequired == true)
         {
-            requiredApps.Add(ExternalApp.Discord);
+            apps.Add(ExternalApp.Discord);
         }
 
-        var missing = new List<ExternalApp>();
-
-        foreach (var app in requiredApps)
-        {
-            if (!await _readiness.IsRunningAsync(app))
-            {
-                missing.Add(app);
-            }
-        }
-
-        return missing;
+        return apps;
     }
 
     private bool CanConnect()

@@ -17,16 +17,19 @@ public sealed class ExternalAppPreparer(
     {
         try
         {
-            if (await readiness.IsRunningAsync(app))
+            if (await readiness.IsReadyAsync(app))
             {
                 return true;
             }
 
-            await starter.StartAsync(app);
+            if (!await readiness.IsRunningAsync(app))
+            {
+                await starter.StartAsync(app);
+            }
 
             for (var attempt = 0; attempt < maxAttempts; attempt++)
             {
-                if (await readiness.IsRunningAsync(app))
+                if (await readiness.IsReadyAsync(app))
                 {
                     return true;
                 }

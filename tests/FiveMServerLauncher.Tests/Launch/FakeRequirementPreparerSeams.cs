@@ -4,18 +4,28 @@ using FiveMServerLauncher.Service;
 
 namespace FiveMServerLauncher.Tests.Launch;
 
-internal sealed class StatefulRequirementReadiness(Func<ExternalApp, bool> running) : IRequirementReadiness
+internal sealed class StatefulRequirementReadiness(
+    Func<ExternalApp, bool>? running = null,
+    Func<ExternalApp, bool>? ready = null) : IRequirementReadiness
 {
-    public StatefulRequirementReadiness() : this(_ => true)
+    public StatefulRequirementReadiness() : this(null, null)
     {
     }
 
-    public int Checks { get; private set; }
+    public int RunningChecks { get; private set; }
+
+    public int ReadyChecks { get; private set; }
 
     public Task<bool> IsRunningAsync(ExternalApp app)
     {
-        Checks++;
-        return Task.FromResult(running(app));
+        RunningChecks++;
+        return Task.FromResult(running?.Invoke(app) ?? true);
+    }
+
+    public Task<bool> IsReadyAsync(ExternalApp app)
+    {
+        ReadyChecks++;
+        return Task.FromResult(ready?.Invoke(app) ?? running?.Invoke(app) ?? true);
     }
 }
 

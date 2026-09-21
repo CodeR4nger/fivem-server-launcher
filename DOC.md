@@ -89,7 +89,7 @@ Steam and Discord are different:
 - We want to detect/prepare those requirements before launching/connecting to FiveM.
 So Steam and Discord are per-server ``ServerProfile`` requirements.
 
-Nor do we assume that a process exist means the service is fully ready: initially we can check processes, but the architecture must allow later to implement more precise states like "started", "ready" or "authenticated".
+Nor do we assume that a process existing means the service is fully ready. The readiness model has two levels: `running` (coarse "process exists", used to decide whether to start the app) and `ready` (the gate the connect flow waits on). Steam `ready` is a **composite probe** — the `steam` process, the `steamwebhelper` UI-host process, and a logged-in session (`ActiveUser != 0` in the Steam `ActiveProcess` registry key) — so Steam is only "ready" once it has booted, restored its session, and signed the user in; the login screen keeps the helper running but no user, so it stays not-ready. Discord's `ready` is its process running.
 
 ## ServerProfile
 We want to completely separate the launcher's global config from per-server config.

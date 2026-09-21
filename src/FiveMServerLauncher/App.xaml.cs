@@ -38,7 +38,6 @@ public partial class App : Application
             resolver,
             launcher,
             new FileServerRepository(Path.Combine(AppDataDirectory, "saved-servers.json")),
-            readiness,
             new ExternalAppPreparer(
                 readiness,
                 new ExternalAppStarter(new ProcessStarter(), new UriSchemeRegistration())));

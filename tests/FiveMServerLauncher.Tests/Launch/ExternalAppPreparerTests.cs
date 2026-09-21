@@ -8,7 +8,7 @@ public class ExternalAppPreparerTests
     private static Task NoWait() => Task.CompletedTask;
 
     [Fact]
-    public async Task TryPrepareAsync_WhenAlreadyRunning_ShouldReturnTrueWithoutStarting()
+    public async Task TryPrepareAsync_WhenAlreadyReady_ShouldReturnTrueWithoutStarting()
     {
         // Given
         var readiness = new StatefulRequirementReadiness(_ => true);
@@ -24,7 +24,7 @@ public class ExternalAppPreparerTests
     }
 
     [Fact]
-    public async Task TryPrepareAsync_WhenStartsAndBecomesRunning_ShouldReturnTrue()
+    public async Task TryPrepareAsync_WhenStartsAndBecomesReady_ShouldReturnTrue()
     {
         // Given
         var checks = 0;
@@ -41,7 +41,25 @@ public class ExternalAppPreparerTests
     }
 
     [Fact]
-    public async Task TryPrepareAsync_WhenNeverRunning_ShouldReturnFalseAfterBoundedAttempts()
+    public async Task TryPrepareAsync_WhenAlreadyRunningButNotReady_ShouldWaitWithoutRestarting()
+    {
+        // Given
+        var checks = 0;
+        var readiness = new StatefulRequirementReadiness(_ => true, _ => ++checks >= 3);
+        var starter = new FakeExternalAppStarter();
+        var preparer = new ExternalAppPreparer(readiness, starter, NoWait, maxAttempts: 10);
+
+        // When
+        var prepared = await preparer.TryPrepareAsync(ExternalApp.Steam);
+
+        // Then
+        Assert.True(prepared);
+        Assert.Empty(starter.Starts);
+        Assert.Equal(3, readiness.ReadyChecks);
+    }
+
+    [Fact]
+    public async Task TryPrepareAsync_WhenNeverReady_ShouldReturnFalseAfterBoundedAttempts()
     {
         // Given
         var readiness = new StatefulRequirementReadiness(_ => false);
@@ -53,11 +71,11 @@ public class ExternalAppPreparerTests
 
         // Then
         Assert.False(prepared);
-        Assert.Equal(5, readiness.Checks);
+        Assert.Equal(5, readiness.ReadyChecks);
         Assert.Equal([ExternalApp.Steam], starter.Starts);
     }
 
-[Fact]
+    [Fact]
     public async Task TryPrepareAsync_WhenStartThrows_ShouldReturnFalseAndNeverThrow()
     {
         // Given
