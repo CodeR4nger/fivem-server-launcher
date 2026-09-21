@@ -23,7 +23,7 @@ composition root.
       otherwise gone along the connect flow).
 - [x] Composition root wires the real starter + preparer into the view model; the whole suite
       stays green.
-- [ ] Manual checks on a real machine: Steam-required server with no Steam running → Steam
+- [x] Manual checks on a real machine: Steam-required server with no Steam running → Steam
       opens and the game launches after it appears; Discord required but not installed →
       connect aborts with "Could not start Discord".
 
@@ -45,7 +45,9 @@ composition root.
   "Starting Steam..." status is shown while waiting.
 - Tests: `ExternalAppPreparerTests` 6, `MainViewModelTests` connection-flow rewired to the
   prepare contract (per-app stateful readiness fake). Suite 231 green.
-- Pending: manual E2E (Steam opens; Discord-missing gives "Could not start Discord").
+- Verified on a real machine: Steam-required server with no Steam running → Steam opens and
+  the game launches once Steam is fully ready; Discord required while closed → it is started;
+  Discord required but not installed → connect aborts with "Could not start Discord".
 
 ## Comments
 
