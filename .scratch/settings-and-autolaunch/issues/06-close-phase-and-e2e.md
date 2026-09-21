@@ -9,9 +9,9 @@ automatically.
 
 **Blocked by:** 05 (settings UI panel).
 
-**Status:** in-progress
+**Status:** resolved
 
-- [ ] Full suite green; docs reconciled with the implemented behaviour.
-- [ ] Manual E2E: preferred-client + auto-launch changes persist across restarts.
-- [ ] Manual E2E: last server address is remembered and auto-connect triggers on next launch.
-- [ ] Code-review clean; conventional commit(s) closing the phase.
+- [x] Full suite green; docs reconciled with the implemented behaviour.
+- [x] Manual E2E: preferred-client + auto-launch changes persist across restarts.
+- [x] Manual E2E: last server address remembered; auto-connect triggers on next launch (a startup
+      deadlock found in E2E was fixed by dispatching init instead of blocking — commit `121499c`).

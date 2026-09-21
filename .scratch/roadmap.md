@@ -30,7 +30,7 @@ no path at all.
 
 ## 2. Settings + auto-launch
 
-**Status:** in-progress (tickets 01–05 implemented, suite green; code-review + commit + manual E2E pending).
+**Status:** ✅ done (commits `e94acd2` + `121499c`, manual E2E verified).
 
 **Spec:** `.scratch/settings-and-autolaunch/spec.md` (to write)
 
