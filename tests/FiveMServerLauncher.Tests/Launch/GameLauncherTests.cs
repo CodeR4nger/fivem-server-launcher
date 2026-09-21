@@ -44,6 +44,89 @@ public class GameLauncherTests
             _log.Add("launch");
             return Task.CompletedTask;
         }
+
+        public Task StartExecutableAsync(string executablePath, IReadOnlyList<string> arguments)
+        {
+            _log.Add("launch");
+            return Task.CompletedTask;
+        }
+    }
+
+    [Fact]
+    public async Task OpenAsync_WithDevOptions_ShouldStartExeWithArgs()
+    {
+        // Given
+        var options = FiveMLaunchOptions.Create(
+            address: null,
+            gameClient: GameClient.FiveM,
+            gameBuild: 3095,
+            pureMode: 1,
+            secondClient: false);
+
+        var processLauncher = new FakeGameProcessLauncher();
+        var launcher = new GameLauncher(processLauncher, new FakeCitizenFxPreparer(), new FakeClientInstallLocator());
+
+        // When
+        var result = await launcher.OpenAsync(options);
+
+        // Then
+        var openClient = Assert.IsType<LaunchResult.OpenClient>(result);
+        Assert.Equal(GameClient.FiveM, openClient.GameClient);
+        var start = Assert.Single(processLauncher.ExecutableArgsStarts);
+        Assert.Equal(@"C:\FiveM\FiveM.app\FiveM.exe", start.Path);
+        Assert.Equal(["-b3095", "-pure_1"], start.Args);
+        Assert.Empty(processLauncher.Requests);
+    }
+
+    [Fact]
+    public async Task OpenAsync_WithDevOptionsAndSecondClient_ShouldIncludeCl2()
+    {
+        // Given
+        var options = FiveMLaunchOptions.Create(null, GameClient.FiveM, null, null, secondClient: true);
+
+        var processLauncher = new FakeGameProcessLauncher();
+        var launcher = new GameLauncher(processLauncher, new FakeCitizenFxPreparer(), new FakeClientInstallLocator());
+
+        // When
+        var result = await launcher.OpenAsync(options);
+
+        // Then
+        Assert.IsType<LaunchResult.OpenClient>(result);
+        Assert.Equal(["-cl2"], Assert.Single(processLauncher.ExecutableArgsStarts).Args);
+    }
+
+    [Fact]
+    public async Task OpenAsync_WithDevOptions_WhenNotInstalled_ShouldReturnNotInstalled()
+    {
+        // Given
+        var options = FiveMLaunchOptions.Create(null, GameClient.FiveM, null, null, false);
+        var processLauncher = new FakeGameProcessLauncher();
+        var launcher = new GameLauncher(
+            processLauncher,
+            new FakeCitizenFxPreparer(),
+            new FakeClientInstallLocator { Executables = [] });
+
+        // When
+        var result = await launcher.OpenAsync(options);
+
+        // Then
+        Assert.IsType<LaunchResult.NotInstalled>(result);
+        Assert.Empty(processLauncher.ExecutableArgsStarts);
+    }
+
+    [Fact]
+    public async Task OpenAsync_WithDevOptions_WhenStartThrows_ShouldReturnStartFailed()
+    {
+        // Given
+        var options = FiveMLaunchOptions.Create(null, GameClient.FiveM, 3095, null, false);
+        var processLauncher = new FakeGameProcessLauncher { ThrowOnExecutableStart = true };
+        var launcher = new GameLauncher(processLauncher, new FakeCitizenFxPreparer(), new FakeClientInstallLocator());
+
+        // When
+        var result = await launcher.OpenAsync(options);
+
+        // Then
+        Assert.IsType<LaunchResult.StartFailed>(result);
     }
 
     [Fact]

@@ -242,13 +242,19 @@ DefaultBuild=3258
 
 
 # Dev Mode
-We want a Dev Mode separate from the normal experience.
+We want a Dev Mode separate from the normal experience (gated by a DEV MODE toggle button on the
+main window, swapping the normal OPEN controls for the dev panel).
 
 It must allow options that shouldn't belong in the user's normal configuration:
 
-- Second FiveM client (-cl2)
-- Configure Game Build manually
-- Configure Pure Mode manually
+- Second FiveM client (-cl2) — a secondary launch button, never a persisted setting
+- Configure Game Build manually (persisted as `LauncherSettings.DevGameBuild`)
+- Configure Pure Mode manually (persisted as `LauncherSettings.DevPureMode`)
+
+Launch route: the launcher starts the Legacy `FiveM.exe` with the serialized CLI args
+(`-b<build> -pure_<n> -cl2`) through `UseShellExecute = true` (ShellExecute keeps the shell parent
+context, so the Rockstar legit-flow check passes) — the `fivem://<flag>` URI route was rejected
+because it carries only one parameter.
 
 Important clarification:
 The ``Game Build`` and ``Pure Mode`` configurable in Dev Mode are for opening FiveM directly, not for forcing those values upon connection to a server.

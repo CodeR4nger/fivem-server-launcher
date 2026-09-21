@@ -176,6 +176,50 @@ public class FileSettingsStorageTests
     }
 
     [Fact]
+    public void SaveAndLoad_ShouldPreserveDevModeFields()
+    {
+        // Given
+        using var tempDir = new TempSettingsDirectory();
+
+        var settings = new LauncherSettings
+        {
+            DevGameBuild = 3095,
+            DevPureMode = 1,
+        };
+
+        var storage = new FileSettingsStorage(tempDir.FilePath);
+
+        // When
+        storage.Save(settings);
+        var result = storage.Load();
+
+        // Then
+        Assert.NotNull(result);
+        Assert.Equal(3095, result.DevGameBuild);
+        Assert.Equal(1, result.DevPureMode);
+    }
+
+    [Fact]
+    public void Load_WhenFileLacksDevModeFields_ShouldReturnNullFields()
+    {
+        // Given
+        using var tempDir = new TempSettingsDirectory();
+        Directory.CreateDirectory(tempDir.DirectoryPath);
+
+        File.WriteAllText(tempDir.FilePath, """{"PreferredClient":"FiveM"}""");
+
+        var storage = new FileSettingsStorage(tempDir.FilePath);
+
+        // When
+        var result = storage.Load();
+
+        // Then
+        Assert.NotNull(result);
+        Assert.Null(result.DevGameBuild);
+        Assert.Null(result.DevPureMode);
+    }
+
+    [Fact]
     public void SaveAndLoad_ShouldPreserveLastServerAddress()
     {
         // Given

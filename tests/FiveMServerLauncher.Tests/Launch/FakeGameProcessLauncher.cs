@@ -6,6 +6,7 @@ internal sealed class FakeGameProcessLauncher : IGameProcessLauncher
 {
     public List<Uri> Requests { get; } = [];
     public List<string> ExecutableStarts { get; } = [];
+    public List<(string Path, IReadOnlyList<string> Args)> ExecutableArgsStarts { get; } = [];
     public bool ThrowOnStart { get; set; }
     public bool ThrowOnExecutableStart { get; set; }
     public Task? ExecutableStartBarrier { get; set; }
@@ -29,6 +30,21 @@ internal sealed class FakeGameProcessLauncher : IGameProcessLauncher
         }
 
         ExecutableStarts.Add(executablePath);
+
+        if (ExecutableStartBarrier is not null)
+        {
+            await ExecutableStartBarrier;
+        }
+    }
+
+    public async Task StartExecutableAsync(string executablePath, IReadOnlyList<string> arguments)
+    {
+        if (ThrowOnExecutableStart)
+        {
+            throw new System.ComponentModel.Win32Exception("Simulated executable start failure");
+        }
+
+        ExecutableArgsStarts.Add((executablePath, arguments));
 
         if (ExecutableStartBarrier is not null)
         {

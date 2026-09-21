@@ -55,6 +55,8 @@ public class MainViewModel : INotifyPropertyChanged
         OpenClientCommand = new AsyncRelayCommand(OpenClientAsync, CanOpenClient);
         SelectOpenClientCommand = new RelayCommand(SelectOpenClient);
         SettingsCommand = new RelayCommand(() => IsSettingsOpen = !IsSettingsOpen);
+        ToggleDevModeCommand = new RelayCommand(() => IsDevMode = !IsDevMode);
+        DevLaunchCommand = new AsyncRelayCommand((object? secondClient) => DevLaunchAsync(secondClient is true), () => !IsBusy);
 
         SavedServers = new ObservableCollection<SavedServerItem>(
             serverRepository.GetAll().Select(ToItem));
@@ -77,6 +79,75 @@ public class MainViewModel : INotifyPropertyChanged
     {
         get => _isSettingsOpen;
         set => SetProperty(ref _isSettingsOpen, value);
+    }
+
+    private bool _isDevMode;
+
+    public bool IsDevMode
+    {
+        get => _isDevMode;
+        private set => SetProperty(ref _isDevMode, value);
+    }
+
+    public ICommand ToggleDevModeCommand { get; }
+
+    public string DevGameBuild
+    {
+        get => _settings.DevGameBuild?.ToString() ?? string.Empty;
+        set
+        {
+            var trimmed = value.Trim();
+            var build = int.TryParse(trimmed, out var parsed) ? parsed : (int?)null;
+
+            if (_settings.DevGameBuild == build)
+            {
+                return;
+            }
+
+            _settings.DevGameBuild = build;
+            SaveSettings();
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevGameBuild)));
+        }
+    }
+
+    public int? DevPureMode
+    {
+        get => _settings.DevPureMode;
+        set
+        {
+            if (_settings.DevPureMode == value)
+            {
+                return;
+            }
+
+            _settings.DevPureMode = value;
+            SaveSettings();
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevPureMode)));
+        }
+    }
+
+    public ICommand DevLaunchCommand { get; }
+
+    public async Task DevLaunchAsync(bool secondClient)
+    {
+        IsBusy = true;
+
+        try
+        {
+            var options = FiveMLaunchOptions.Create(
+                address: null,
+                gameClient: GameClient.FiveM,
+                gameBuild: _settings.DevGameBuild,
+                pureMode: _settings.DevPureMode,
+                secondClient: secondClient);
+
+            var result = await _launcher.OpenAsync(options);
+            StatusText = Describe(result);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     public ObservableCollection<SavedServerItem> SavedServers { get; }

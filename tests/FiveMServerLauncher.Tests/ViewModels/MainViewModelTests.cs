@@ -936,6 +936,111 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public async Task ToggleDevModeCommand_ShouldFlipIsDevMode()
+    {
+        // Given
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+        await vm.InitializeAsync();
+
+        // When / Then
+        Assert.False(vm.IsDevMode);
+        vm.ToggleDevModeCommand.Execute(null);
+        Assert.True(vm.IsDevMode);
+        vm.ToggleDevModeCommand.Execute(null);
+        Assert.False(vm.IsDevMode);
+    }
+
+    [Fact]
+    public async Task SetDevGameBuildAndPureMode_ShouldPersistThroughSettingsRepository()
+    {
+        // Given
+        var storage = new InMemorySettingsStorage();
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            settings: new ConfigurationRepository(storage));
+        await vm.InitializeAsync();
+
+        // When
+        vm.DevGameBuild = "3095";
+        vm.DevPureMode = 2;
+
+        // Then
+        var reloaded = new ConfigurationRepository(storage).Load();
+        Assert.Equal(3095, reloaded.DevGameBuild);
+        Assert.Equal(2, reloaded.DevPureMode);
+    }
+
+    [Fact]
+    public async Task DevLaunchCommand_ShouldOpenLegacyWithPersistedFlags()
+    {
+        // Given
+        var storage = new InMemorySettingsStorage();
+        storage.Save(new LauncherSettings { DevGameBuild = 3095, DevPureMode = 1 });
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(
+            processLauncher,
+            CfxJson("gta5"),
+            settings: new ConfigurationRepository(storage));
+        await vm.InitializeAsync();
+
+        // When
+        await vm.DevLaunchAsync(false);
+
+        // Then
+        var start = Assert.Single(processLauncher.ExecutableArgsStarts);
+        Assert.Equal(["-b3095", "-pure_1"], start.Args);
+        Assert.Equal("Opening FiveM...", vm.StatusText);
+        Assert.False(vm.IsBusy);
+        Assert.Empty(processLauncher.Requests);
+    }
+
+    [Fact]
+    public async Task DevLaunchCommand_WithSecondClientParameter_ShouldIncludeCl2()
+    {
+        // Given
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(processLauncher, CfxJson("gta5"));
+        await vm.InitializeAsync();
+
+        // When
+        await vm.DevLaunchAsync(true);
+
+        // Then
+        Assert.Equal(["-cl2"], Assert.Single(processLauncher.ExecutableArgsStarts).Args);
+    }
+
+    [Fact]
+    public async Task DevLaunchCommand_WithBoolParam_ShouldPassSecondClient()
+    {
+        // Given
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(processLauncher, CfxJson("gta5"));
+        await vm.InitializeAsync();
+
+        // When
+        vm.DevLaunchCommand.Execute(true);
+
+        // Then
+        Assert.Equal(["-cl2"], Assert.Single(processLauncher.ExecutableArgsStarts).Args);
+    }
+
+    [Fact]
+    public async Task DevLaunchCommand_WithNullParam_ShouldNotIncludeCl2()
+    {
+        // Given
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(processLauncher, CfxJson("gta5"));
+        await vm.InitializeAsync();
+
+        // When
+        vm.DevLaunchCommand.Execute(null);
+
+        // Then
+        Assert.Empty(Assert.Single(processLauncher.ExecutableArgsStarts).Args);
+    }
+
+    [Fact]
     public async Task SelectingOpenClient_ShouldUpdateLabel()
     {
         // Given

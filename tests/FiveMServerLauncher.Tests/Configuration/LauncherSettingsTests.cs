@@ -16,5 +16,7 @@ public class LauncherSettingsTests
         Assert.Equal(GameClient.FiveM, settings.PreferredClient);
         Assert.False(settings.AutoLaunch);
         Assert.Null(settings.LastServerAddress);
+        Assert.Null(settings.DevGameBuild);
+        Assert.Null(settings.DevPureMode);
     }
 }

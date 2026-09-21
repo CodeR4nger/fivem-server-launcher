@@ -38,6 +38,38 @@ public class GameProcessLauncherTests
     }
 
     [Fact]
+    public async Task StartExecutableAsync_WithArgs_ShouldStartExeThroughShellWithArgs()
+    {
+        // Given
+        var processStarter = new FakeProcessStarter();
+        var launcher = new GameProcessLauncher(processStarter, new FakeUriSchemeRegistration());
+
+        // When
+        await launcher.StartExecutableAsync(@"C:\FiveM\FiveM.app\FiveM.exe", ["-b3095", "-pure_1"]);
+
+        // Then
+        var startInfo = Assert.Single(processStarter.Starts);
+        Assert.Equal(@"C:\FiveM\FiveM.app\FiveM.exe", startInfo.FileName);
+        Assert.Equal("-b3095 -pure_1", startInfo.Arguments);
+        Assert.True(startInfo.UseShellExecute);
+    }
+
+    [Fact]
+    public async Task StartExecutableAsync_WithNoArgs_ShouldUseExplorerRoute()
+    {
+        // Given
+        var processStarter = new FakeProcessStarter();
+        var launcher = new GameProcessLauncher(processStarter, new FakeUriSchemeRegistration());
+
+        // When
+        await launcher.StartExecutableAsync(@"C:\FiveM\FiveM.app\FiveM.exe", []);
+
+        // Then
+        var startInfo = Assert.Single(processStarter.Starts);
+        Assert.Equal("explorer.exe", startInfo.FileName);
+    }
+
+    [Fact]
     public async Task StartAsync_WhenProtocolNotRegistered_ShouldThrow()
     {
         // Given

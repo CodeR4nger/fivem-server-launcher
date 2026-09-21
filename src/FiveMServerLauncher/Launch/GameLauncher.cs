@@ -15,6 +15,17 @@ public class GameLauncher(
 
     public async Task<LaunchResult> OpenAsync(GameClient client)
     {
+        return await OpenCoreAsync(client, path => _processLauncher.StartExecutableAsync(path));
+    }
+
+    public async Task<LaunchResult> OpenAsync(FiveMLaunchOptions options)
+    {
+        var client = options.GameClient ?? GameClient.FiveM;
+        return await OpenCoreAsync(client, path => _processLauncher.StartExecutableAsync(path, options.ToCommandLineArgs()));
+    }
+
+    private async Task<LaunchResult> OpenCoreAsync(GameClient client, Func<string, Task> start)
+    {
         try
         {
             var executablePath = await _installLocator.GetExecutablePathAsync(client);
@@ -24,7 +35,7 @@ public class GameLauncher(
                 return new LaunchResult.NotInstalled(client);
             }
 
-            await _processLauncher.StartExecutableAsync(executablePath);
+            await start(executablePath);
         }
         catch
         {
