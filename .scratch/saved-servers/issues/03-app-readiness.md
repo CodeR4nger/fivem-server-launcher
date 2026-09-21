@@ -4,10 +4,10 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] `ExternalApp` enum with `Steam` and `Discord`.
-- [ ] `ProcessReadinessChecker` uses the injected `Func<string,bool>` process-name seam (default real process lookup), returns true when present.
-- [ ] Missing process / throw check → false, exception never propagates.
-- [ ] Tested with fake process checks (no real processes).
-- [ ] Suite green.
+- [x] `ExternalApp` enum with `Steam` and `Discord`.
+- [x] `ProcessReadinessChecker` uses the injected `Func<string,bool>` process-name seam (default real process lookup), returns true when present.
+- [x] Missing process / throw check → false, exception never propagates.
+- [x] Tested with fake process checks (no real processes).
+- [x] Suite green (198).
