@@ -58,6 +58,11 @@ public class FileServerRepository : IServerRepository
             && ServerAddress.Classify(savedServer.Address) != ServerAddressKind.Unknown;
     }
 
+    public SavedServer? FindByAddress(string address)
+    {
+        return GetAll().FirstOrDefault(s => s.MatchesAddress(address));
+    }
+
     public void Add(SavedServer savedServer)
     {
         ArgumentNullException.ThrowIfNull(savedServer);

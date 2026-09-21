@@ -180,4 +180,52 @@ public class FileServerRepositoryTests
         var server = Assert.Single(result);
         Assert.Equal("My Server", server.Name);
     }
+
+    [Fact]
+    public void FindByAddress_WhenAddressSaved_ShouldReturnServerCaseInsensitively()
+    {
+        // Given
+        using var tempDir = new TempSettingsDirectory();
+        var repository = new FileServerRepository(tempDir.FilePath);
+        var server = SavedServer.Create("My Server", "abc123", requiresDiscord: true);
+        repository.Add(server);
+
+        // When
+        var result = repository.FindByAddress("ABC123");
+
+        // Then
+        Assert.NotNull(result);
+        Assert.Equal("My Server", result.Name);
+        Assert.True(result.RequiresDiscord);
+    }
+
+    [Fact]
+    public void FindByAddress_WhenAddressNotSaved_ShouldReturnNull()
+    {
+        // Given
+        using var tempDir = new TempSettingsDirectory();
+        var repository = new FileServerRepository(tempDir.FilePath);
+
+        // When
+        var result = repository.FindByAddress("abc123");
+
+        // Then
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void FindByAddress_WhenFileContainsInvalidEntries_ShouldIgnoreThem()
+    {
+        // Given
+        using var tempDir = new TempSettingsDirectory();
+        Directory.CreateDirectory(tempDir.DirectoryPath);
+        File.WriteAllText(tempDir.FilePath, """[null, {}]""");
+        var repository = new FileServerRepository(tempDir.FilePath);
+
+        // When
+        var result = repository.FindByAddress("abc123");
+
+        // Then
+        Assert.Null(result);
+    }
 }

@@ -1,4 +1,5 @@
-﻿using System.Net.Http;
+﻿using System.IO;
+using System.Net.Http;
 using System.Windows;
 using FiveMServerLauncher.Configuration;
 using FiveMServerLauncher.Domain;
@@ -13,6 +14,9 @@ namespace FiveMServerLauncher;
 /// </summary>
 public partial class App : Application
 {
+    private static string AppDataDirectory =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FiveMServerLauncher");
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -28,7 +32,11 @@ public partial class App : Application
             new CitizenFxPreparer(new ClientInstallLocator(), new CitizenFxConfigWriter()));
 
         var window = new MainWindow();
-        window.DataContext = new MainViewModel(resolver, launcher);
+        window.DataContext = new MainViewModel(
+            resolver,
+            launcher,
+            new FileServerRepository(Path.Combine(AppDataDirectory, "saved-servers.json")),
+            new ProcessReadinessChecker());
         window.Show();
     }
 }

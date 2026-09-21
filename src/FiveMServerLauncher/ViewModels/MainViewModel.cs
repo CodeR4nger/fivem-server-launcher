@@ -1,9 +1,12 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using FiveMServerLauncher.Configuration;
+using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Domain;
 using FiveMServerLauncher.Domain.Exceptions;
 using FiveMServerLauncher.Launch;
+using FiveMServerLauncher.Service;
 
 namespace FiveMServerLauncher.ViewModels;
 
@@ -11,15 +14,23 @@ public class MainViewModel : INotifyPropertyChanged
 {
     private readonly ServerResolver _resolver;
     private readonly GameLauncher _launcher;
+    private readonly IServerRepository _serverRepository;
+    private readonly IRequirementReadiness _readiness;
 
     private string _serverAddress = string.Empty;
     private string _statusText = "Ready";
     private bool _isBusy;
 
-    public MainViewModel(ServerResolver resolver, GameLauncher launcher)
+    public MainViewModel(
+        ServerResolver resolver,
+        GameLauncher launcher,
+        IServerRepository serverRepository,
+        IRequirementReadiness readiness)
     {
         _resolver = resolver;
         _launcher = launcher;
+        _serverRepository = serverRepository;
+        _readiness = readiness;
         ConnectCommand = new AsyncRelayCommand(ConnectAsync, CanConnect);
     }
 
@@ -52,7 +63,17 @@ public class MainViewModel : INotifyPropertyChanged
 
         try
         {
-            var profile = await _resolver.ResolveAsync(ServerAddress);
+            var savedServer = _serverRepository.FindByAddress(ServerAddress);
+            var profile = await _resolver.ResolveAsync(ServerAddress, savedServer);
+
+            var missingRequirements = await FindMissingRequirementsAsync(profile.Requirements);
+
+            if (missingRequirements.Count > 0)
+            {
+                StatusText = FormatMissingRequirements(missingRequirements);
+                return;
+            }
+
             var result = await _launcher.ConnectAsync(profile);
 
             StatusText = result switch
@@ -71,6 +92,38 @@ public class MainViewModel : INotifyPropertyChanged
         {
             IsBusy = false;
         }
+    }
+
+    private async Task<List<ExternalApp>> FindMissingRequirementsAsync(ServerRequirements requirements)
+    {
+        var requiredApps = new List<ExternalApp>();
+
+        if (requirements.SteamRequired == true)
+        {
+            requiredApps.Add(ExternalApp.Steam);
+        }
+
+        if (requirements.DiscordRequired == true)
+        {
+            requiredApps.Add(ExternalApp.Discord);
+        }
+
+        var missing = new List<ExternalApp>();
+
+        foreach (var app in requiredApps)
+        {
+            if (!await _readiness.IsRunningAsync(app))
+            {
+                missing.Add(app);
+            }
+        }
+
+        return missing;
+    }
+
+    private static string FormatMissingRequirements(List<ExternalApp> missingRequirements)
+    {
+        return string.Join(" / ", missingRequirements.Select(app => $"Requires {app} (not running)"));
     }
 
     private bool CanConnect()

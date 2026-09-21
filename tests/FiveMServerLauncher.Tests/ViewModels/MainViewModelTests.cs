@@ -1,7 +1,9 @@
 using System.Net;
+using FiveMServerLauncher.Configuration;
 using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Domain;
 using FiveMServerLauncher.Service;
+using FiveMServerLauncher.Tests.Configuration;
 using FiveMServerLauncher.Tests.Launch;
 using FiveMServerLauncher.Tests.Service;
 using FiveMServerLauncher.Tests.Domain;
@@ -85,12 +87,156 @@ public class MainViewModelTests
         Assert.False(vm.IsBusy);
     }
 
-    private static string CfxJson(string gamename)
+    [Fact]
+    public async Task ConnectAsync_WhenSteamRequiredButNotRunning_ShouldShowRequirementStatusWithoutLaunching()
     {
-        return $"{{\"data\":{{\"sv_projectName\":\"Test Server\",\"vars\":{{\"gamename\":\"{gamename}\"}}}}}}";
+        // Given
+        const string address = "cfx.re/join/y4lg95";
+        var processLauncher = new FakeGameProcessLauncher();
+        var readiness = new FakeRequirementReadiness { Running = false };
+        var vm = CreateViewModel(
+            processLauncher,
+            CfxJson("gta5", "\"sv_enforceSteamAuth\":\"true\""),
+            readiness: readiness);
+        vm.ServerAddress = address;
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Equal("Requires Steam (not running)", vm.StatusText);
+        Assert.False(vm.IsBusy);
+        Assert.Empty(processLauncher.Requests);
+        Assert.Equal(1, readiness.SteamChecks);
+        Assert.Equal(0, readiness.DiscordChecks);
     }
 
-    private static MainViewModel CreateViewModel(IGameProcessLauncher processLauncher, string cfxJson)
+    [Fact]
+    public async Task ConnectAsync_WhenSteamRequiredAndRunning_ShouldLaunchNormally()
+    {
+        // Given
+        const string address = "cfx.re/join/y4lg95";
+        var processLauncher = new FakeGameProcessLauncher();
+        var readiness = new FakeRequirementReadiness { Running = true };
+        var vm = CreateViewModel(
+            processLauncher,
+            CfxJson("gta5", "\"sv_enforceSteamAuth\":\"true\""),
+            readiness: readiness);
+        vm.ServerAddress = address;
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Single(processLauncher.Requests);
+        Assert.Equal("Launching FiveM...", vm.StatusText);
+        Assert.Equal(1, readiness.SteamChecks);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_WhenTypedAddressMatchesSavedServer_ShouldApplyManualFlags()
+    {
+        // Given
+        const string address = "cfx.re/join/y4lg95";
+        var processLauncher = new FakeGameProcessLauncher();
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", address, requiresDiscord: true));
+        var readiness = new FakeRequirementReadiness { Running = false };
+        var vm = CreateViewModel(
+            processLauncher,
+            CfxJson("gta5"),
+            repository: repository,
+            readiness: readiness);
+        vm.ServerAddress = address;
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Equal("Requires Discord (not running)", vm.StatusText);
+        Assert.Empty(processLauncher.Requests);
+        Assert.Equal(1, readiness.DiscordChecks);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_WhenSteamAndDiscordRequiredAndMissing_ShouldListBoth()
+    {
+        // Given
+        const string address = "cfx.re/join/y4lg95";
+        var processLauncher = new FakeGameProcessLauncher();
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", address, requiresDiscord: true));
+        var readiness = new FakeRequirementReadiness { Running = false };
+        var vm = CreateViewModel(
+            processLauncher,
+            CfxJson("gta5", "\"sv_enforceSteamAuth\":\"true\""),
+            repository: repository,
+            readiness: readiness);
+        vm.ServerAddress = address;
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Equal("Requires Steam (not running) / Requires Discord (not running)", vm.StatusText);
+        Assert.Empty(processLauncher.Requests);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_WhenNoRequirementsApply_ShouldLaunchWithoutReadinessChecks()
+    {
+        // Given
+        const string address = "cfx.re/join/y4lg95";
+        var processLauncher = new FakeGameProcessLauncher();
+        var readiness = new FakeRequirementReadiness();
+        var vm = CreateViewModel(processLauncher, CfxJson("gta5"), readiness: readiness);
+        vm.ServerAddress = address;
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Single(processLauncher.Requests);
+        Assert.Equal("Launching FiveM...", vm.StatusText);
+        Assert.Equal(0, readiness.SteamChecks);
+        Assert.Equal(0, readiness.DiscordChecks);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_WhenInvalidAddress_ShouldNotCheckReadiness()
+    {
+        // Given
+        var processLauncher = new FakeGameProcessLauncher();
+        var readiness = new FakeRequirementReadiness();
+        var vm = CreateViewModel(processLauncher, CfxJson("gta5"), readiness: readiness);
+        vm.ServerAddress = "9 92";
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Equal("Invalid address", vm.StatusText);
+        Assert.Empty(processLauncher.Requests);
+        Assert.Equal(0, readiness.SteamChecks);
+        Assert.Equal(0, readiness.DiscordChecks);
+    }
+
+    private static string CfxJson(string gamename, string? extraVars = null)
+    {
+        var vars = $"\"gamename\":\"{gamename}\"";
+        if (!string.IsNullOrEmpty(extraVars))
+        {
+            vars += $",{extraVars}";
+        }
+
+        return $"{{\"data\":{{\"sv_projectName\":\"Test Server\",\"vars\":{{{vars}}}}}}}";
+    }
+
+    private static MainViewModel CreateViewModel(
+        IGameProcessLauncher processLauncher,
+        string cfxJson,
+        IServerRepository? repository = null,
+        FakeRequirementReadiness? readiness = null)
     {
         var resolver = new ServerResolver(
             new CfxService(
@@ -102,6 +248,10 @@ public class MainViewModelTests
 
         var launcher = new GameLauncherType(processLauncher, new FakeCitizenFxPreparer());
 
-        return new MainViewModel(resolver, launcher);
+        return new MainViewModel(
+            resolver,
+            launcher,
+            repository ?? new InMemoryServerRepository(),
+            readiness ?? new FakeRequirementReadiness());
     }
 }

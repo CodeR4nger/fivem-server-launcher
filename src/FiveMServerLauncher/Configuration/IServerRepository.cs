@@ -6,6 +6,8 @@ public interface IServerRepository
 {
     IReadOnlyList<SavedServer> GetAll();
 
+    SavedServer? FindByAddress(string address);
+
     void Add(SavedServer savedServer);
 
     void Update(SavedServer savedServer);

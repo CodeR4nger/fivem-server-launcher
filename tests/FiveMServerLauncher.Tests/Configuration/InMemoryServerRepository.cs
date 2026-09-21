@@ -12,6 +12,11 @@ public class InMemoryServerRepository : IServerRepository
         return _servers;
     }
 
+    public SavedServer? FindByAddress(string address)
+    {
+        return _servers.FirstOrDefault(s => s.MatchesAddress(address));
+    }
+
     public void Add(SavedServer savedServer)
     {
         _servers.Add(savedServer);
