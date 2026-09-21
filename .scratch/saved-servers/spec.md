@@ -18,7 +18,7 @@ Additionally, players connect to servers by typing an address each time; there i
 
 ## Solution
 
-The user can save named servers (address + name) and keep them across restarts. Each saved server carries its own manual requirement flags `Steam` / `Discord`. Steam also has an automatic source: when a server publishes `sv_enforceSteamAuth = true`, the launcher treats Steam as required (published wins over the manual flag, per DOC). Before connecting, the launcher checks whether the required apps (Steam, Discord) are *running* and surfaces per-requirement readiness in the status — "Steam ✓ / Discord ✓ / Requires Steam (not running)" — so the player can start missing apps *before* reaching FiveM. The launcher does **not** launch Steam/Discord in this phase, and never manages RSC.
+The user can save named servers (address + name) and keep them across restarts. Each saved server carries its own manual requirement flags `Steam` / `Discord`. Steam also has an automatic source: when a server publishes `sv_enforceSteamAuth = true`, the launcher treats Steam as required. The manual `Steam` flag is *additive* — a user-set `Steam = true` on a saved server always requires Steam, even when the server publishes `sv_enforceSteamAuth = false` (FiveM publishes the default `false`, which silently neutralized the manual flag — fixed as a post-implementation bug). Before connecting, the launcher checks whether the required apps (Steam, Discord) are *running* and surfaces per-requirement readiness in the status — "Steam ✓ / Discord ✓ / Requires Steam (not running)" — so the player can start missing apps *before* reaching FiveM. The launcher does **not** launch Steam/Discord in this phase, and never manages RSC.
 
 Process detection is the first, coarse readiness state only; the seam is named so a later phase can sharpen "running" into "ready"/"authenticated" per DOC, and a later phase can start missing apps.
 
@@ -30,7 +30,7 @@ Process detection is the first, coarse readiness state only; the seam is named s
 4. As a player, I want to delete a saved server, so that I keep only the ones I use.
 5. As a player, I want to mark a saved server as "requires Steam" / "requires Discord", so that the launcher knows its per-server requirements.
 6. As a player, I want the launcher to detect Steam automatically when a server publishes `sv_enforceSteamAuth = true`, so that I don't have to mark it by hand.
-7. As a player, I want server-published Steam requirement to win over my manual marking when both exist (per DOC: published requirements win over manual), so that the server's own policy is respected.
+7. As a player, I want my manual Steam marking to be honored even when the server publishes `sv_enforceSteamAuth = false`, so that I can always force Steam to be prepared for a server (the manual flag is additive; a server-published `true` also requires Steam).
 8. As a player, I want to connect to a saved server exactly as I connect to a typed address, so that saved servers don't lose any existing capability.
 9. As a player, before connecting to a server that requires Steam, I want to know whether Steam is running, so that I don't land in FiveM and get rejected later.
 10. As a player, before connecting to a server that requires Discord, I want to know whether Discord is running, so that I don't land in FiveM and get rejected later.
@@ -68,7 +68,7 @@ Process detection is the first, coarse readiness state only; the seam is named s
 - Modules under test and prior art:
   - `SavedServer` factory/validation — prior art: `ServerAddress`/`FiveMLaunchOptions` factory tests.
   - `FileServerRepository` against real temp files (create-when-absent, corrupt file, round-trip) — prior art: `FileSettingsStorage` tests + `TempSettingsDirectory`/`TempCitizenFxIni` fixtures. In-memory fake for higher-layer tests — prior art: `InMemorySettingsStorage`.
-  - Effective-requirements merge (published wins over manual) — prior art: `ServerRequirementsResolverTests`.
+  - Effective-requirements merge (manual Steam is additive over published `false`; published wins otherwise; Discord is manual-only) — prior art: `ServerRequirementsResolverTests`.
   - `ProcessReadinessChecker` with injected `Func<string,bool>` — prior art: `ClientInstallLocatorTests` real-impl style.
   - `MainViewModel` connect flow with fake resolver, fake readiness and fake launcher — prior art: `MainViewModelTests`.
 - No real processes, no real OS installs, no HTTP in unit tests. Fakes for every seam.

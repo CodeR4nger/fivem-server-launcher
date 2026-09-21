@@ -16,7 +16,9 @@ public sealed record ServerRequirements
     {
         return published with
         {
-            SteamRequired = published.SteamRequired ?? savedServer?.RequiresSteam,
+            SteamRequired = savedServer?.RequiresSteam == true
+                ? true
+                : published.SteamRequired ?? savedServer?.RequiresSteam,
             DiscordRequired = savedServer?.RequiresDiscord
         };
     }

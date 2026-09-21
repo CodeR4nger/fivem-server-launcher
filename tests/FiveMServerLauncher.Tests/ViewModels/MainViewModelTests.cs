@@ -136,6 +136,39 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public async Task ConnectAsync_WhenManualSteamTrueWithoutPublishedRequirement_ShouldStartSteamAndLaunch()
+    {
+        // Given
+        var processLauncher = new FakeGameProcessLauncher();
+        var (vm, starter) = CreateManualSteamContext(processLauncher, CfxJson("gta5"));
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Equal([ExternalApp.Steam], starter.Starts);
+        Assert.Single(processLauncher.Requests);
+        Assert.Equal("Launching FiveM...", vm.StatusText);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_WhenManualSteamTrueOverridesPublishedFalse_ShouldStartSteamAndLaunch()
+    {
+        // Given
+        var processLauncher = new FakeGameProcessLauncher();
+        var (vm, starter) = CreateManualSteamContext(
+            processLauncher, CfxJson("gta5", "\"sv_enforceSteamAuth\":\"false\""));
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Equal([ExternalApp.Steam], starter.Starts);
+        Assert.Single(processLauncher.Requests);
+        Assert.Equal("Launching FiveM...", vm.StatusText);
+    }
+
+    [Fact]
     public async Task ConnectAsync_WhenSteamRequiredAndMissing_ShouldShowStartingSteamWhilePreparing()
     {
         // Given
@@ -462,6 +495,24 @@ public class MainViewModelTests
         Assert.Equal([ExternalApp.Discord], starter.Starts);
         Assert.Single(processLauncher.Requests);
         Assert.Equal("Launching FiveM...", vm.StatusText);
+    }
+
+    private static (MainViewModel Vm, FakeExternalAppStarter Starter) CreateManualSteamContext(
+        FakeGameProcessLauncher processLauncher,
+        string cfxJson)
+    {
+        const string address = "cfx.re/join/y4lg95";
+        var starter = new FakeExternalAppStarter();
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", address, requiresSteam: true));
+        var vm = CreateViewModel(
+            processLauncher,
+            cfxJson,
+            repository: repository,
+            readiness: new StatefulRequirementReadiness(app => starter.Starts.Contains(app)),
+            starter: starter);
+        vm.ServerAddress = address;
+        return (vm, starter);
     }
 
     private static string CfxJson(string gamename, string? extraVars = null)

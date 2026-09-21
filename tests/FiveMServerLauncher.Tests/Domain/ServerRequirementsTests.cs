@@ -19,7 +19,7 @@ public class ServerRequirementsTests
     }
 
     [Fact]
-    public void ForConnection_WhenSteamPublishedFalse_ShouldWinOverManualTrue()
+    public void ForConnection_WhenSteamPublishedFalseButManualTrue_ShouldRequireSteam()
     {
         // Given
         var published = new ServerRequirements { SteamRequired = false };
@@ -29,7 +29,7 @@ public class ServerRequirementsTests
         var result = ServerRequirements.ForConnection(published, savedServer);
 
         // Then
-        Assert.False(result.SteamRequired);
+        Assert.True(result.SteamRequired);
     }
 
     [Fact]

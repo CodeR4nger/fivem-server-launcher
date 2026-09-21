@@ -209,7 +209,7 @@ This is a long, awkward cycle. The official `-b`/`-pure_` doc hedges: launch Fiv
 ### Role of ServerRequirements at launch
 FiveM applies server requirements itself at connect, so the launcher's job isn't to to impose it, it's to **pre-load** it: launching with `-b<serverBuild> -pure_<level>` gets the client in the right state with no restart on connect.
 
-Server-provided requirements win over manual config (including Dev Mode) when connected to a server.
+Server-provided requirements win over manual config (including Dev Mode) when connected to a server, with one carve-out: a saved server's manual `Requires Steam` flag is *additive* — the player checked it, so the launcher treats Steam as required even when the server publishes `sv_enforceSteamAuth = false` (FiveM publishes the convar default `false`, which would otherwise silently neutralize a manual preference).
 
 # CitizenFX.ini
 We also investigated how FiveM persists part of this configuration.
