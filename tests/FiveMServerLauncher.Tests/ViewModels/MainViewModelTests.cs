@@ -100,7 +100,7 @@ public class MainViewModelTests
             new ServerRequirementsResolver(),
             new FakeDnsResolver());
 
-        var launcher = new GameLauncherType(processLauncher);
+        var launcher = new GameLauncherType(processLauncher, new FakeCitizenFxPreparer());
 
         return new MainViewModel(resolver, launcher);
     }

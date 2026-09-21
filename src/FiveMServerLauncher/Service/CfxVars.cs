@@ -6,13 +6,10 @@ internal static class CfxVars
 {
     public static GameClient? TryGetGameClient(IDictionary<string, string>? variables)
     {
-        if (variables is null ||
-            !variables.TryGetValue("gamename", out var game))
-        {
-            return null;
-        }
-
-        return MapGameClient(game);
+        var game = GetVariable(variables, "gamename");
+        return game is null
+            ? null
+            : MapGameClient(game);
     }
 
     public static GameClient? MapGameClient(string game)
@@ -28,14 +25,32 @@ internal static class CfxVars
 
     public static int? TryGetInt(IDictionary<string, string>? variables, string name)
     {
-        if (variables is null ||
-            !variables.TryGetValue(name, out var value))
-        {
-            return null;
-        }
-
-        return int.TryParse(value, out var result)
+        var value = GetVariable(variables, name);
+        return value is not null && int.TryParse(value, out var result)
             ? result
+            : null;
+    }
+
+    public static bool? TryGetBool(IDictionary<string, string>? variables, string name)
+    {
+        var value = GetVariable(variables, name);
+        return value switch
+        {
+            "true" => true,
+            "false" => false,
+            _ => null,
+        };
+    }
+
+    public static string? TryGetString(IDictionary<string, string>? variables, string name)
+    {
+        return GetVariable(variables, name);
+    }
+
+    private static string? GetVariable(IDictionary<string, string>? variables, string name)
+    {
+        return variables is not null && variables.TryGetValue(name, out var value)
+            ? value
             : null;
     }
 

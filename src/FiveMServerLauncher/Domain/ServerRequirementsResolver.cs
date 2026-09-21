@@ -10,7 +10,10 @@ public class ServerRequirementsResolver
         {
             GameBuild = serverInfo.EnforceGameBuild,
             PureMode = serverInfo.PureLevel,
-            RequestSteamTicket = serverInfo.RequestSteamTicket
+            RequestSteamTicket = serverInfo.RequestSteamTicket,
+            DefaultBuild = serverInfo.DefaultGameBuild,
+            ReplaceExecutable = serverInfo.ReplaceExecutableToSwitchBuilds,
+            PoolSizesIncrease = serverInfo.PoolSizesIncrease
         };
     }
 }

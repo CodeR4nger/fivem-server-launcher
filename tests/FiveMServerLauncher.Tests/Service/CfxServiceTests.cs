@@ -288,4 +288,73 @@ public class CfxServiceTests
         Assert.Null(result.RequestSteamTicket);
     }
 
+    [Fact]
+    public async Task GetServer_ShouldReturnCitizenFxConfigVariables()
+    {
+        // Given
+        const string cfxId = "y4lg95";
+
+        var handler = new FakeHttpMessageHandler(
+            HttpStatusCode.OK,
+            """
+            {
+                "EndPoint": "https://example.com",
+                "Data": {
+                    "sv_projectName": "Test Server",
+                    "vars": {
+                        "sv_defaultGameBuild": "3788",
+                        "sv_replaceExeToSwitchBuilds": "true",
+                        "sv_poolSizesIncrease": "{\"CWeaponComponentInfo\":500}"
+                    }
+                }
+            }
+            """);
+
+        using var httpClient = new HttpClient(handler);
+        var cfxService = new CfxService(httpClient);
+
+        // When
+        var result = await cfxService.GetServerAsync(cfxId);
+
+        // Then
+        Assert.NotNull(result);
+        Assert.Equal(3788, result.DefaultGameBuild);
+        Assert.True(result.ReplaceExecutableToSwitchBuilds);
+        Assert.Equal("{\"CWeaponComponentInfo\":500}", result.PoolSizesIncrease);
+    }
+
+    [Fact]
+    public async Task GetServer_WhenCitizenFxConfigVariablesInvalid_ShouldReturnNull()
+    {
+        // Given
+        const string cfxId = "y4lg95";
+
+        var handler = new FakeHttpMessageHandler(
+            HttpStatusCode.OK,
+            """
+            {
+                "EndPoint": "https://example.com",
+                "Data": {
+                    "sv_projectName": "Test Server",
+                    "vars": {
+                        "sv_defaultGameBuild": "banana",
+                        "sv_replaceExeToSwitchBuilds": "yes"
+                    }
+                }
+            }
+            """);
+
+        using var httpClient = new HttpClient(handler);
+        var cfxService = new CfxService(httpClient);
+
+        // When
+        var result = await cfxService.GetServerAsync(cfxId);
+
+        // Then
+        Assert.NotNull(result);
+        Assert.Null(result.DefaultGameBuild);
+        Assert.Null(result.ReplaceExecutableToSwitchBuilds);
+        Assert.Null(result.PoolSizesIncrease);
+    }
+
 }

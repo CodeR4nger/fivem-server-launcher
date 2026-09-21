@@ -40,7 +40,10 @@ public class CfxService(HttpClient httpClient)
             EnforceGameBuild = CfxVars.TryGetInt(cfxResponse.Data.Vars, "sv_enforceGameBuild"),
             GameClient = CfxVars.TryGetGameClient(cfxResponse.Data.Vars),
             PureLevel = CfxVars.TryGetInt(cfxResponse.Data.Vars, "sv_pureLevel"),
-            RequestSteamTicket = CfxVars.MapSteamTicket(cfxResponse.Data.RequestSteamTicket)
+            RequestSteamTicket = CfxVars.MapSteamTicket(cfxResponse.Data.RequestSteamTicket),
+            DefaultGameBuild = CfxVars.TryGetInt(cfxResponse.Data.Vars, "sv_defaultGameBuild"),
+            ReplaceExecutableToSwitchBuilds = CfxVars.TryGetBool(cfxResponse.Data.Vars, "sv_replaceExeToSwitchBuilds"),
+            PoolSizesIncrease = CfxVars.TryGetString(cfxResponse.Data.Vars, "sv_poolSizesIncrease")
         };
     }
 

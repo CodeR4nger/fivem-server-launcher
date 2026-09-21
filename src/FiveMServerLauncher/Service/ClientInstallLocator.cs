@@ -5,6 +5,8 @@ namespace FiveMServerLauncher.Service;
 
 public sealed class ClientInstallLocator : IClientInstallLocator
 {
+    private const string ExecutableName = "FiveM.exe";
+
     private readonly Func<string, bool> _exists;
 
     public ClientInstallLocator() : this(File.Exists)
@@ -18,24 +20,37 @@ public sealed class ClientInstallLocator : IClientInstallLocator
 
     public Task<bool> IsInstalledAsync(GameClient client)
     {
-        var path = GetPath(client);
-        return Task.FromResult(path is not null && _exists(path));
+        return Task.FromResult(GetInstalledDirectory(client) is not null);
     }
 
     public Task<string?> GetExecutablePathAsync(GameClient client)
     {
-        var path = GetPath(client);
-        return Task.FromResult(path is not null && _exists(path) ? path : null);
+        var directory = GetInstalledDirectory(client);
+        var path = directory is null ? null : Path.Combine(directory, ExecutableName);
+        return Task.FromResult(path);
     }
 
-    private static string? GetPath(GameClient client)
+    public Task<string?> GetInstallDirectoryAsync(GameClient client)
+    {
+        return Task.FromResult(GetInstalledDirectory(client));
+    }
+
+    private string? GetInstalledDirectory(GameClient client)
+    {
+        var directory = GetInstallDirectory(client);
+        return directory is not null && _exists(Path.Combine(directory, ExecutableName))
+            ? directory
+            : null;
+    }
+
+    private static string? GetInstallDirectory(GameClient client)
     {
         var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
         return client switch
         {
-            GameClient.FiveM => Path.Combine(localAppData, "FiveM", "FiveM.app", "FiveM.exe"),
-            GameClient.FiveMEnhanced => Path.Combine(localAppData, "FiveM for GTAV Enhanced", "FiveM.app", "FiveM.exe"),
+            GameClient.FiveM => Path.Combine(localAppData, "FiveM", "FiveM.app"),
+            GameClient.FiveMEnhanced => Path.Combine(localAppData, "FiveM for GTAV Enhanced", "FiveM.app"),
             _ => null,
         };
     }

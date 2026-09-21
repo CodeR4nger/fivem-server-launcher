@@ -231,8 +231,8 @@ DefaultBuild=3258
 - ``PoolSizesIncrease``, ``DefaultBuild``, ``ReplaceExecutable`` **exist de facto but are not a documented public API**. Pure mode is **not** persisted here (only read from the command line).
 
 ## Design consequence
-- The primary and consistent way to pre-load build/pure is **command-line arguments**(the UIT-level ``fivem://connect`` also accepts params).
-- ``CitizenFX.ini`` is out of scope for this phase: we won't touch the user's ini unless future investigations justify it (e.g., PoolSizesIncrease, which in fact the client manages itself via `IncreasePoolSize` / PoolSizeManager on connect).
+- The primary and consistent way to pre-load build/pure is **command-line arguments** (the ``fivem://connect`` also accepts params).
+- ``CitizenFX.ini`` is normally out of scope: we don't touch the user's ini except for one pre-connect case (see #Pool Sizes below) — priming ``[Game] DefaultBuild``/``PoolSizesIncrease`` into the Legacy FiveM client when connecting to a CFX-validated server that publishes those facts. The client manages pool sizes itself via `IncreasePoolSize` / `PoolSizeManager` on connect; priming only skips that restart-on-connect dance.
 
 
 # Dev Mode
@@ -271,7 +271,7 @@ We don't want to treat this JSON as arbitrary launcher configuration.
 - Pool limits are served from ``content.cfx.re``.
 
 ## Design consequence
-Pool sizes **stay out of FiveMLaunchOptions**: the launcher doesn't need to apply them; we keep the JSON only if we want later to display/validate it in domain, not to modify FiveM config.
+Pool sizes **stay out of FiveMLaunchOptions**: the ``sv_poolSizesIncrease`` JSON is not a launch argument. Pre-connect, the launcher primes it verbatim into the Legacy FiveM ``[Game] PoolSizesIncrease`` (best-effort, only when the current value differs) so the client boots with the right pool sizes instead of restarting on connect. We keep the JSON in domain only to interpret server facts, never as launcher configuration.
 
 # FiveM / Enhanced client
 The launcher supports:

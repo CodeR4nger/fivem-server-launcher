@@ -11,4 +11,8 @@ public class CfxServerInfo
     public int? EnforceGameBuild { get; init; }
     public int? PureLevel { get; init; }
     public bool? RequestSteamTicket { get; init; }
+
+    public int? DefaultGameBuild { get; init; }
+    public bool? ReplaceExecutableToSwitchBuilds { get; init; }
+    public string? PoolSizesIncrease { get; init; }
 }

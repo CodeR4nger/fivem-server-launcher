@@ -67,6 +67,66 @@ public class ServerRequirementsResolverTests
     }
 
     [Fact]
+    public void Resolve_WhenDefaultGameBuildPublished_ShouldReturnDefaultBuild()
+    {
+        // Given
+        var serverInfo = new CfxServerInfo
+        {
+            CfxId = "y4lg95",
+            ProjectName = "Test Server",
+            DefaultGameBuild = 3788,
+        };
+
+        var resolver = new ServerRequirementsResolver();
+
+        // When
+        var result = resolver.Resolve(serverInfo);
+
+        // Then
+        Assert.Equal(3788, result.DefaultBuild);
+    }
+
+    [Fact]
+    public void Resolve_WhenReplaceExecutablePublished_ShouldReturnReplaceExecutable()
+    {
+        // Given
+        var serverInfo = new CfxServerInfo
+        {
+            CfxId = "y4lg95",
+            ProjectName = "Test Server",
+            ReplaceExecutableToSwitchBuilds = true,
+        };
+
+        var resolver = new ServerRequirementsResolver();
+
+        // When
+        var result = resolver.Resolve(serverInfo);
+
+        // Then
+        Assert.True(result.ReplaceExecutable);
+    }
+
+    [Fact]
+    public void Resolve_WhenPoolSizesIncreasePublished_ShouldReturnPoolSizesIncrease()
+    {
+        // Given
+        var serverInfo = new CfxServerInfo
+        {
+            CfxId = "y4lg95",
+            ProjectName = "Test Server",
+            PoolSizesIncrease = "{\"CWeaponComponentInfo\":500}",
+        };
+
+        var resolver = new ServerRequirementsResolver();
+
+        // When
+        var result = resolver.Resolve(serverInfo);
+
+        // Then
+        Assert.Equal("{\"CWeaponComponentInfo\":500}", result.PoolSizesIncrease);
+    }
+
+    [Fact]
     public void Resolve_WhenRequirementsNotPublished_ShouldReturnNullFields()
     {
         // Given
@@ -85,6 +145,9 @@ public class ServerRequirementsResolverTests
         Assert.Null(result.GameBuild);
         Assert.Null(result.PureMode);
         Assert.Null(result.RequestSteamTicket);
+        Assert.Null(result.DefaultBuild);
+        Assert.Null(result.ReplaceExecutable);
+        Assert.Null(result.PoolSizesIncrease);
     }
 
 }

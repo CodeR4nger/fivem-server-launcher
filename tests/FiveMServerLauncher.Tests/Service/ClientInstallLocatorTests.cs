@@ -10,6 +10,7 @@ public class ClientInstallLocatorTests
         public GameClient? LastQueriedClient { get; private set; }
         public bool IsInstalledResult { get; set; } = true;
         public string? ExecutablePathResult { get; set; } = @"C:\FiveM\FiveM.exe";
+        public string? InstallDirectoryResult { get; set; } = @"C:\FiveM\FiveM.app";
 
         public Task<bool> IsInstalledAsync(GameClient client)
         {
@@ -21,6 +22,12 @@ public class ClientInstallLocatorTests
         {
             LastQueriedClient = client;
             return Task.FromResult(ExecutablePathResult);
+        }
+
+        public Task<string?> GetInstallDirectoryAsync(GameClient client)
+        {
+            LastQueriedClient = client;
+            return Task.FromResult(InstallDirectoryResult);
         }
     }
 
@@ -126,5 +133,39 @@ public class ClientInstallLocatorTests
         // Then
         Assert.EndsWith(Path.Combine("FiveM", "FiveM.app", "FiveM.exe"), capturedPath, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(capturedPath, result);
+    }
+
+    [Fact]
+    public async Task GetInstallDirectory_LegacyOnDisk_ShouldReturnDirectoryViaRealImpl()
+    {
+        // Given
+        string capturedPath = string.Empty;
+        var exists = (string path) =>
+        {
+            capturedPath = path;
+            return true;
+        };
+        var locator = new ClientInstallLocator(exists);
+
+        // When
+        var result = await locator.GetInstallDirectoryAsync(GameClient.FiveM);
+
+        // Then
+        Assert.EndsWith(Path.Combine("FiveM", "FiveM.app", "FiveM.exe"), capturedPath, StringComparison.OrdinalIgnoreCase);
+        Assert.EndsWith(Path.Combine("FiveM", "FiveM.app"), result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task GetInstallDirectory_WithMissingLegacy_ShouldReturnNullViaRealImpl()
+    {
+        // Given
+        var exists = (string _) => false;
+        var locator = new ClientInstallLocator(exists);
+
+        // When
+        var result = await locator.GetInstallDirectoryAsync(GameClient.FiveM);
+
+        // Then
+        Assert.Null(result);
     }
 }
