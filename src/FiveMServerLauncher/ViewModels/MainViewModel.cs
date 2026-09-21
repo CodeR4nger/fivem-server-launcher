@@ -60,6 +60,7 @@ public class MainViewModel : INotifyPropertyChanged
                 LaunchResult.Connect => "Launching FiveM...",
                 LaunchResult.OpenClient(var client) => $"Opening {client}...",
                 LaunchResult.StartFailed => "Launch failed",
+                _ => throw new InvalidOperationException("Unknown LaunchResult"),
             };
         }
         catch (InvalidAddressException)

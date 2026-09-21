@@ -386,7 +386,7 @@
                 <!-- BOTON ENTRAR -->
 
                 <Button Grid.Row="1"
-                        Content="ENTRAR AL SERVIDOR"
+                        Content="ENTER SERVER"
                         Height="50"
                         Margin="20,0,20,20"
                         Style="{StaticResource MainButtonStyle}"
