@@ -23,7 +23,7 @@ public partial class App : Application
             new ServerCatalog(httpClient),
             new ServerRequirementsResolver(),
             new DnsResolver());
-        var launcher = new GameLauncher(new GameProcessLauncher());
+        var launcher = new GameLauncher(new GameProcessLauncher(new ProcessStarter(), new UriSchemeRegistration()));
 
         var window = new MainWindow();
         window.DataContext = new MainViewModel(resolver, launcher);
