@@ -7,16 +7,18 @@ E2E on a real machine: opening Legacy FiveM from the dropdown boots it cleanly, 
 
 **Blocked by:** 04 (data-bound OPEN control).
 
-**Status:** in-progress (code complete; manual E2E pending)
+**Status:** resolved
 
 **Resolution notes:**
 - E2E first pass: the OPEN button works, but FiveM Enhanced refused a direct `CreateProcess` start
   ("Rockstar Games Launcher could not be opened") — same shell-context lesson as the `fivem://` URI
   route. `StartExecutableAsync` now hands `explorer.exe "<path>"` to the shell, mirroring the URI
-  path (test `StartExecutableAsync_ShouldHandExeToWindowsShell`). Awaiting retest.
+  path (test `StartExecutableAsync_ShouldHandExeToWindowsShell`).
+- E2E retest: FiveM Enhanced opens cleanly (shell-route verified); the dropdown lists and opens the
+  installed clients; Legacy FiveM goes through the same explorer route.
 
 - [x] Full suite green; docs (AGENTS.md, DOC.md) reconciled with the implemented behavior.
-- [ ] Manual E2E: Legacy FiveM opens cleanly from the OPEN button.
-- [ ] Manual E2E: FiveM Enhanced opens from the OPEN button (and from an Enhanced-server connect).
-- [ ] Manual E2E: the dropdown lists only installed clients.
+- [x] Manual E2E: Legacy FiveM opens cleanly from the OPEN button.
+- [x] Manual E2E: FiveM Enhanced opens from the OPEN button (and from an Enhanced-server connect).
+- [x] Manual E2E: the dropdown lists only installed clients.
 - [x] Code-review (Standards + Spec) clean; conventional English commit.
