@@ -49,7 +49,8 @@ public sealed class FiveMLaunchOptions
             return null;
         }
 
-        var uri = $"fivem://connect/{Address}";
+        var scheme = GameClient == GameClientEnum.RedM ? "redm" : "fivem";
+        var uri = $"{scheme}://connect/{Address}";
 
         foreach (var arg in BuildGameFlags())
         {

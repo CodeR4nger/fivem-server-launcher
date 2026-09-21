@@ -184,6 +184,25 @@ public class FiveMLaunchOptionsTests
     }
 
     [Fact]
+    public void ToUri_WithRedMProfile_ShouldUseRedmScheme()
+    {
+        // Given
+        var profile = new ServerProfile
+        {
+            CfxId = "y4lg95",
+            ProjectName = "Test Server",
+            GameClient = GameClient.RedM,
+            Requirements = new ServerRequirements { GameBuild = 3258, PureMode = 1 },
+        };
+
+        // When
+        var uri = FiveMLaunchOptions.FromServerProfile(profile).ToUri();
+
+        // Then
+        Assert.Equal("redm://connect/cfx.re/join/y4lg95?-b3258?-pure_1", uri?.AbsoluteUri);
+    }
+
+    [Fact]
     public void ToUri_GivenServerProfile_ShouldReturnConnectUri()
     {
         // Given

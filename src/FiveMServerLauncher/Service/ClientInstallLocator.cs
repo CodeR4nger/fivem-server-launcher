@@ -7,20 +7,24 @@ namespace FiveMServerLauncher.Service;
 public sealed class ClientInstallLocator : IClientInstallLocator
 {
     private const string ExecutableName = "FiveM.exe";
+    private const string RedMExecutableName = "RedM.exe";
     private const string RegistryKeyPath = @"HKEY_CURRENT_USER\Software\CitizenFX\FiveM";
+    private const string RedMRegistryKeyPath = @"HKEY_CURRENT_USER\Software\CitizenFX\RedM";
     private const string RegistryValueName = "Last Run Location";
 
     private readonly Func<string, bool> _exists;
     private readonly Func<string?> _legacyInstallDirectoryProvider;
+    private readonly Func<string?> _redmInstallDirectoryProvider;
 
-    public ClientInstallLocator() : this(File.Exists, ReadLastRunLocation)
+    public ClientInstallLocator() : this(File.Exists, ReadLastRunLocation, ReadRedMLastRunLocation)
     {
     }
 
-    public ClientInstallLocator(Func<string, bool> exists, Func<string?> legacyInstallDirectoryProvider)
+    public ClientInstallLocator(Func<string, bool> exists, Func<string?> legacyInstallDirectoryProvider, Func<string?>? redmInstallDirectoryProvider = null)
     {
         _exists = exists;
         _legacyInstallDirectoryProvider = legacyInstallDirectoryProvider;
+        _redmInstallDirectoryProvider = redmInstallDirectoryProvider ?? ReadRedMLastRunLocation;
     }
 
     public Task<bool> IsInstalledAsync(GameClient client)
@@ -44,21 +48,22 @@ public sealed class ClientInstallLocator : IClientInstallLocator
 
         return client switch
         {
-            GameClient.FiveM => ResolveLegacy(localAppData),
+            GameClient.FiveM => ResolveAppStyle(localAppData, _legacyInstallDirectoryProvider, "FiveM", ExecutableName),
             GameClient.FiveMEnhanced => ResolveEnhanced(localAppData),
+            GameClient.RedM => ResolveAppStyle(localAppData, _redmInstallDirectoryProvider, "RedM", RedMExecutableName),
             _ => (null, null),
         };
     }
 
-    private (string?, string?) ResolveLegacy(string localAppData)
+    private (string?, string?) ResolveAppStyle(string localAppData, Func<string?> provider, string folderName, string executableName)
     {
-        var registered = _legacyInstallDirectoryProvider();
+        var registered = provider();
         var installDirectory = string.IsNullOrWhiteSpace(registered)
-            ? Path.Combine(localAppData, "FiveM", "FiveM.app")
+            ? Path.Combine(localAppData, folderName, $"{folderName}.app")
             : NormalizeDirectory(registered);
 
-        var insideApp = Path.Combine(installDirectory, ExecutableName);
-        var sibling = Path.Combine(Path.GetDirectoryName(installDirectory) ?? installDirectory, ExecutableName);
+        var insideApp = Path.Combine(installDirectory, executableName);
+        var sibling = Path.Combine(Path.GetDirectoryName(installDirectory) ?? installDirectory, executableName);
         var executable = _exists(insideApp) ? insideApp : _exists(sibling) ? sibling : null;
         return executable is null ? (null, null) : (installDirectory, executable);
     }
@@ -77,7 +82,17 @@ public sealed class ClientInstallLocator : IClientInstallLocator
 
     private static string? ReadLastRunLocation()
     {
-        var value = Registry.GetValue(RegistryKeyPath, RegistryValueName, null) as string;
+        return ReadRegistryLastRunLocation(RegistryKeyPath);
+    }
+
+    private static string? ReadRedMLastRunLocation()
+    {
+        return ReadRegistryLastRunLocation(RedMRegistryKeyPath);
+    }
+
+    private static string? ReadRegistryLastRunLocation(string keyPath)
+    {
+        var value = Registry.GetValue(keyPath, RegistryValueName, null) as string;
         return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 }

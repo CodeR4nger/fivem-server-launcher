@@ -319,7 +319,7 @@ The dropdown lets you select the client. It lists only the clients installed on 
 - **The connection flow was redesigned** (Development Update #2): no longer starts the game in background and **the client restart is removed** on joining a server with different config. The Legacy cross-build restart problem doesn't exist on Enhanced.
 
 ## Design consequence
-- Direct connection serialization (`fivem://connect/<addr>`) and `-b`/`-pure_`/`-cl2` args apply to **FiveM (Legacy) and RedM**. For **FiveM Enhanced**, the launcher can only **open the client**; connecting happens inside its own UI. A `FiveMLaunchOptions` with `GameClient = FiveMEnhanced` doesn't serialize a URI nor connection args.
+- Direct connection serialization: `fivem://connect/<addr>` for FiveM/Enhanced (Enhanced gets null → open-only via its own UI) and `redm://connect/<addr>` for RedM. `-b`/`-pure_`/`-cl2` args apply to **FiveM (Legacy) and RedM**. For **FiveM Enhanced**, the launcher can only **open the client**; connecting happens inside its own UI. A `FiveMLaunchOptions` with `GameClient = FiveMEnhanced` doesn't serialize a URI nor connection args.
 
 # UX
 The main philosophy is: don't bother if everything is ready.

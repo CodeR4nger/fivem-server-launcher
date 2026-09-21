@@ -13,7 +13,7 @@ namespace FiveMServerLauncher.ViewModels;
 
 public class MainViewModel : INotifyPropertyChanged
 {
-    private static readonly GameClient[] OpenCandidates = [GameClient.FiveM, GameClient.FiveMEnhanced];
+    private static readonly GameClient[] OpenCandidates = [GameClient.FiveM, GameClient.FiveMEnhanced, GameClient.RedM];
 
     private readonly ServerResolver _resolver;
     private readonly GameLauncher _launcher;

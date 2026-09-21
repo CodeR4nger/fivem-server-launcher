@@ -1041,6 +1041,63 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public async Task Initialize_WithRedMInstalled_ShouldListRedMInDropdown()
+    {
+        // Given
+        var locator = new FakeClientInstallLocator();
+        locator.Executables[GameClient.RedM] = @"C:\RedM\RedM.app\RedM.exe";
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), installLocator: locator);
+
+        // When
+        await vm.InitializeAsync();
+
+        // Then
+        Assert.Contains(vm.AvailableOpenClients, c => c.Client == GameClient.RedM && c.DisplayName == "RedM");
+    }
+
+    [Fact]
+    public async Task OpenClientCommand_WhenRedMSelected_ShouldStartRedMExecutable()
+    {
+        // Given
+        const string redmPath = @"C:\RedM\RedM.app\RedM.exe";
+        var locator = new FakeClientInstallLocator();
+        locator.Executables[GameClient.RedM] = redmPath;
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(processLauncher, CfxJson("gta5"), installLocator: locator);
+        await vm.InitializeAsync();
+        vm.SelectedOpenClient = vm.AvailableOpenClients.Single(c => c.Client == GameClient.RedM);
+
+        // When
+        await vm.OpenClientAsync();
+
+        // Then
+        Assert.Equal(redmPath, Assert.Single(processLauncher.ExecutableStarts));
+        Assert.Equal("Opening RedM...", vm.StatusText);
+    }
+
+    [Fact]
+    public async Task Initialize_WithRedMPreferredAndInstalled_ShouldSeedSelectionToRedM()
+    {
+        // Given
+        var storage = new InMemorySettingsStorage();
+        storage.Save(new LauncherSettings { PreferredClient = GameClient.RedM });
+        var locator = new FakeClientInstallLocator();
+        locator.Executables[GameClient.RedM] = @"C:\RedM\RedM.app\RedM.exe";
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            installLocator: locator,
+            settings: new ConfigurationRepository(storage));
+
+        // When
+        await vm.InitializeAsync();
+
+        // Then
+        Assert.Equal(GameClient.RedM, vm.SelectedOpenClient?.Client);
+        Assert.Equal("RedM", vm.SelectedOpenClientLabel);
+    }
+
+    [Fact]
     public async Task SelectingOpenClient_ShouldUpdateLabel()
     {
         // Given

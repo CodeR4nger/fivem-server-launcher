@@ -227,6 +227,51 @@ public class ClientInstallLocatorTests
     }
 
     [Fact]
+    public async Task GetExecutablePath_RedMOnDefaultPath_ShouldReturnAppExecutable()
+    {
+        // Given
+        var redmExe = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RedM", "RedM.app", "RedM.exe");
+        var exists = (string path) => path.Equals(redmExe, StringComparison.OrdinalIgnoreCase);
+        var locator = new ClientInstallLocator(exists, () => null, () => null);
+
+        // When
+        var result = await locator.GetExecutablePathAsync(GameClient.RedM);
+
+        // Then
+        Assert.Equal(redmExe, result);
+    }
+
+    [Fact]
+    public async Task GetExecutablePath_RedMRegisteredLocation_ShouldWinOverDefault()
+    {
+        // Given
+        const string registered = @"D:\Games\RedM\RedM.app";
+        var registeredExe = registered + @"\RedM.exe";
+        var exists = (string path) => path.Equals(registeredExe, StringComparison.OrdinalIgnoreCase);
+        var locator = new ClientInstallLocator(exists, () => null, () => registered);
+
+        // When
+        var result = await locator.GetExecutablePathAsync(GameClient.RedM);
+
+        // Then
+        Assert.Equal(registeredExe, result);
+    }
+
+    [Fact]
+    public async Task IsInstalled_RedMAbsent_ShouldReturnFalse()
+    {
+        // Given
+        var locator = new ClientInstallLocator(_ => false, () => null, () => null);
+
+        // When
+        var result = await locator.IsInstalledAsync(GameClient.RedM);
+
+        // Then
+        Assert.False(result);
+    }
+
+    [Fact]
     public async Task GetInstallDirectory_EnhancedOnDisk_ShouldReturnDirectoryWithoutAppSubfolder()
     {
         // Given
