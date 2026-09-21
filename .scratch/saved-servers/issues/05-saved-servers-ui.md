@@ -4,11 +4,18 @@
 
 **Blocked by:** 01 (Saved server domain + file repository), 04 (Connect flow applies requirements + readiness)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Saved servers appear in the main window list from the repository.
-- [ ] Add / delete (and rename) a saved server via the UI, persisted.
-- [ ] Per-server Steam/Discord requirement checkboxes persist with the server.
-- [ ] Selecting a saved server populates the connect flow; readiness shows in the status line.
-- [ ] Manual end-to-end check passes (save → restart launcher → still there → connect).
-- [ ] Suite green.
+- [x] Saved servers appear in the main window list from the repository.
+- [x] Add / delete (and rename) a saved server via the UI, persisted.
+- [x] Per-server Steam/Discord requirement checkboxes persist with the server.
+- [x] Selecting a saved server populates the connect flow; readiness shows in the status line.
+- [ ] Manual end-to-end check passes (save → restart launcher → still there → connect). (pending user GUI run)
+- [x] Suite green (219).
+
+## Comments
+- Review follow-up: sync `RelayCommand` added and used for save/delete (dropping the misleading `Async` suffix on the never-awaiting methods); `SavedServerItem` persists toggles through its `changeHandler` (single path, no PropertyChanged double-plumbing); duplicate check now runs *after* `SavedServer.Create` validation so an invalid name reports "Invalid name or address".
+- Rename is intentionally not implemented (optional per ticket; delete-and-re-add covers edits).
+- Selection fills `ServerAddress`; readiness surfaces on connect (per spec the connect flow owns the readiness check).
+- Deleting a server intentionally leaves the typed connect address untouched (connecting to a non-saved address is fully supported).
+- Note for user: requires a manual GUI pass to confirm save → restart → connect persistence.

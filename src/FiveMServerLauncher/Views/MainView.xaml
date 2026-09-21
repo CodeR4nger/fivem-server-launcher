@@ -362,6 +362,122 @@
                             VerticalAlignment="Center"
                             Margin="20">
 
+                    <TextBlock Text="SAVED SERVERS"
+                               Foreground="{StaticResource SecondaryTextBrush}"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,7"/>
+
+                    <Border BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1"
+                            Background="{StaticResource PanelLightBrush}">
+
+                        <ListBox x:Name="SavedServersList"
+                                 ItemsSource="{Binding SavedServers}"
+                                 SelectedItem="{Binding SelectedServer}"
+                                 Background="{StaticResource PanelLightBrush}"
+                                 BorderThickness="0"
+                                 MaxHeight="140"
+                                 MaxWidth="340">
+
+                            <ListBox.ItemTemplate>
+
+                                <DataTemplate>
+
+                                    <StackPanel Margin="8">
+
+                                        <DockPanel>
+
+                                            <TextBlock Text="{Binding Name}"
+                                                       Foreground="{StaticResource TextBrush}"
+                                                       FontWeight="SemiBold"/>
+
+                                            <TextBlock Text="{Binding Address}"
+                                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                                       HorizontalAlignment="Right"
+                                                       FontSize="10"
+                                                       TextTrimming="CharacterEllipsis"/>
+
+                                        </DockPanel>
+
+                                        <StackPanel Orientation="Horizontal"
+                                                    Margin="0,4,0,0">
+
+                                            <CheckBox Content="Requires Steam"
+                                                      IsChecked="{Binding RequiresSteam}"
+                                                      Foreground="{StaticResource SecondaryTextBrush}"
+                                                      FontSize="11"/>
+
+                                            <CheckBox Content="Requires Discord"
+                                                      IsChecked="{Binding RequiresDiscord}"
+                                                      Foreground="{StaticResource SecondaryTextBrush}"
+                                                      FontSize="11"
+                                                      Margin="16,0,0,0"/>
+
+                                        </StackPanel>
+
+                                    </StackPanel>
+
+                                </DataTemplate>
+
+                            </ListBox.ItemTemplate>
+
+                        </ListBox>
+
+                    </Border>
+
+                    <StackPanel Orientation="Horizontal"
+                                Margin="0,8,0,0">
+
+                        <TextBox Text="{Binding NewServerName,
+                                              UpdateSourceTrigger=PropertyChanged}"
+                                 Background="{StaticResource PanelLightBrush}"
+                                 Foreground="{StaticResource TextBrush}"
+                                 BorderBrush="{StaticResource BorderBrush}"
+                                 BorderThickness="1"
+                                 Padding="10,8"
+                                 FontSize="11"
+                                 Width="120"
+                                 VerticalContentAlignment="Center"/>
+
+                        <TextBox Text="{Binding NewServerAddress,
+                                              UpdateSourceTrigger=PropertyChanged}"
+                                 Background="{StaticResource PanelLightBrush}"
+                                 Foreground="{StaticResource TextBrush}"
+                                 BorderBrush="{StaticResource BorderBrush}"
+                                 BorderThickness="1"
+                                 Padding="10,8"
+                                 FontSize="11"
+                                 Margin="8,0,0,0"
+                                 Width="160"
+                                 VerticalContentAlignment="Center"/>
+
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal"
+                                Margin="0,8,0,0">
+
+                        <Button Content="SAVE"
+                                Height="30"
+                                Padding="14,0"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Command="{Binding AddServerCommand}"/>
+
+                        <Button Content="DELETE"
+                                Height="30"
+                                Padding="14,0"
+                                Margin="8,0,0,0"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Command="{Binding DeleteServerCommand}"/>
+
+                    </StackPanel>
+
+                    <TextBlock Text="CONNECT ADDRESS"
+                               Foreground="{StaticResource SecondaryTextBrush}"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Margin="0,16,0,7"/>
+
                     <TextBox x:Name="ServerAddressBox"
                              Text="{Binding ServerAddress,
                                             UpdateSourceTrigger=PropertyChanged}"

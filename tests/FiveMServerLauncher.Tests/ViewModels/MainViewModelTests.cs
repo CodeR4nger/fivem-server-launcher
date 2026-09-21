@@ -221,6 +221,153 @@ public class MainViewModelTests
         Assert.Equal(0, readiness.DiscordChecks);
     }
 
+    [Fact]
+    public void Ctor_ShouldLoadSavedServersFromRepository()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "abc123", requiresSteam: true));
+
+        // When
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository: repository);
+
+        // Then
+        var item = Assert.Single(vm.SavedServers);
+        Assert.Equal("My Server", item.Name);
+        Assert.Equal("abc123", item.Address);
+        Assert.True(item.RequiresSteam);
+    }
+
+    [Fact]
+    public void SaveServer_WhenValid_ShouldAddToCollectionAndRepository()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository: repository);
+        vm.NewServerName = "My Server";
+        vm.NewServerAddress = "cfx.re/join/abc123";
+
+        // When
+        vm.AddServerCommand.Execute(null);
+
+        // Then
+        var item = Assert.Single(vm.SavedServers);
+        Assert.Equal("My Server", item.Name);
+        Assert.Single(repository.GetAll());
+        Assert.Equal("Server saved", vm.StatusText);
+    }
+
+    [Fact]
+    public void SaveServer_WhenInvalidAddress_ShouldShowInvalidStatusWithoutSaving()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository: repository);
+        vm.NewServerName = "My Server";
+        vm.NewServerAddress = "9 92";
+
+        // When
+        vm.AddServerCommand.Execute(null);
+
+        // Then
+        Assert.Equal("Invalid name or address", vm.StatusText);
+        Assert.Empty(repository.GetAll());
+        Assert.Empty(vm.SavedServers);
+    }
+
+    [Fact]
+    public void SaveServer_WhenAddressAlreadySaved_ShouldShowAlreadySavedStatus()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("First", "abc123"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository: repository);
+        vm.NewServerName = "Second";
+        vm.NewServerAddress = "abc123";
+
+        // When
+        vm.AddServerCommand.Execute(null);
+
+        // Then
+        Assert.Equal("Server already saved", vm.StatusText);
+        Assert.Single(repository.GetAll());
+    }
+
+    [Fact]
+    public void SelectSavedServer_ShouldFillConnectAddress()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/abc123"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository: repository);
+
+        // When
+        vm.SelectedServer = vm.SavedServers[0];
+
+        // Then
+        Assert.Equal("cfx.re/join/abc123", vm.ServerAddress);
+    }
+
+    [Fact]
+    public void DeleteSelectedSavedServer_ShouldRemoveFromCollectionAndRepository()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/abc123"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository: repository);
+        vm.SelectedServer = vm.SavedServers[0];
+
+        // When
+        vm.DeleteServerCommand.Execute(null);
+
+        // Then
+        Assert.Empty(vm.SavedServers);
+        Assert.Empty(repository.GetAll());
+        Assert.Null(vm.SelectedServer);
+    }
+
+    [Fact]
+    public void ToggleRequiresSteamOnSavedItem_ShouldPersistManualFlag()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "abc123"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository: repository);
+        var item = vm.SavedServers[0];
+
+        // When
+        item.RequiresSteam = true;
+
+        // Then
+        var saved = Assert.Single(repository.GetAll());
+        Assert.True(saved.RequiresSteam);
+    }
+
+    [Fact]
+    public async Task Connect_WhenSelectedSavedServerRequiresMissingApp_ShouldBlock()
+    {
+        // Given
+        const string address = "cfx.re/join/y4lg95";
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", address, requiresDiscord: true));
+        var processLauncher = new FakeGameProcessLauncher();
+        var readiness = new FakeRequirementReadiness { Running = false };
+        var vm = CreateViewModel(
+            processLauncher,
+            CfxJson("gta5"),
+            repository: repository,
+            readiness: readiness);
+        vm.SelectedServer = vm.SavedServers[0];
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Equal(address, vm.ServerAddress);
+        Assert.Equal("Requires Discord (not running)", vm.StatusText);
+        Assert.Empty(processLauncher.Requests);
+    }
+
     private static string CfxJson(string gamename, string? extraVars = null)
     {
         var vars = $"\"gamename\":\"{gamename}\"";

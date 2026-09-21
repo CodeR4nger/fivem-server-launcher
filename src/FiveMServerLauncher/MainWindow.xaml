@@ -5,8 +5,8 @@
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:views="clr-namespace:FiveMServerLauncher.Views"
         Title="FiveM Server Launcher"
-        Height="300"
-        Width="700"
+        Height="460"
+        Width="860"
         Background="#151515"
         WindowStyle="SingleBorderWindow"
         ResizeMode="NoResize">
