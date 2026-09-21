@@ -29,10 +29,6 @@ public sealed class CitizenFxPreparer(
         }
 
         var values = BuildValues(profile.Requirements);
-        if (values.Count == 0)
-        {
-            return;
-        }
 
         try
         {
@@ -62,10 +58,9 @@ public sealed class CitizenFxPreparer(
             values["DefaultBuild"] = gameBuild.ToString();
         }
 
-        if (!string.IsNullOrWhiteSpace(requirements.PoolSizesIncrease))
-        {
-            values["PoolSizesIncrease"] = requirements.PoolSizesIncrease;
-        }
+        values["PoolSizesIncrease"] = string.IsNullOrWhiteSpace(requirements.PoolSizesIncrease)
+            ? string.Empty
+            : requirements.PoolSizesIncrease;
 
         return values;
     }

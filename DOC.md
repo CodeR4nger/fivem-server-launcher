@@ -271,7 +271,7 @@ We don't want to treat this JSON as arbitrary launcher configuration.
 - Pool limits are served from ``content.cfx.re``.
 
 ## Design consequence
-Pool sizes **stay out of FiveMLaunchOptions**: the ``sv_poolSizesIncrease`` JSON is not a launch argument. Pre-connect, the launcher primes it verbatim into the Legacy FiveM ``[Game] PoolSizesIncrease`` (best-effort, only when the current value differs) so the client boots with the right pool sizes instead of restarting on connect. We keep the JSON in domain only to interpret server facts, never as launcher configuration.
+Pool sizes **stay out of FiveMLaunchOptions**: the ``sv_poolSizesIncrease`` JSON is not a launch argument. Pre-connect, the launcher primes it verbatim into the Legacy FiveM ``[Game] PoolSizesIncrease`` (best-effort, only when the current value differs) so the client boots with the right pool sizes instead of restarting on connect; when the server runs default pool sizes the key is reset to an empty value, clearing stale increases. We keep the JSON in domain only to interpret server facts, never as launcher configuration.
 
 # FiveM / Enhanced client
 The launcher supports:

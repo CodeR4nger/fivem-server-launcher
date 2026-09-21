@@ -28,7 +28,8 @@ public class CitizenFxPreparerTests
         var (iniPath, values) = Assert.Single(writer.Calls);
         Assert.EndsWith("CitizenFX.ini", iniPath);
         Assert.Equal("3788", values["DefaultBuild"]);
-        Assert.Single(values);
+        Assert.Equal(string.Empty, values["PoolSizesIncrease"]);
+        Assert.Equal(2, values.Count);
     }
 
     [Fact]
@@ -91,7 +92,7 @@ public class CitizenFxPreparerTests
     }
 
     [Fact]
-    public async Task Prime_WhenDefaultBuildIsZeroAndNoFallback_ShouldNotWrite()
+    public async Task Prime_WhenDefaultBuildIsZeroAndNoFallback_ShouldOnlyResetPoolSizes()
     {
         // Given
         var writer = new FakeCitizenFxConfigWriter();
@@ -101,11 +102,13 @@ public class CitizenFxPreparerTests
         await preparer.PrimeAsync(LegacyProfile(new ServerRequirements { DefaultBuild = 0 }));
 
         // Then
-        Assert.Empty(writer.Calls);
+        var (_, values) = Assert.Single(writer.Calls);
+        Assert.Single(values);
+        Assert.Equal(string.Empty, values["PoolSizesIncrease"]);
     }
 
     [Fact]
-    public async Task Prime_WhenPoolSizesIsWhitespace_ShouldNotWrite()
+    public async Task Prime_WhenPoolSizesIsWhitespace_ShouldResetToEmpty()
     {
         // Given
         var writer = new FakeCitizenFxConfigWriter();
@@ -115,7 +118,8 @@ public class CitizenFxPreparerTests
         await preparer.PrimeAsync(LegacyProfile(new ServerRequirements { PoolSizesIncrease = "   " }));
 
         // Then
-        Assert.Empty(writer.Calls);
+        var (_, values) = Assert.Single(writer.Calls);
+        Assert.Equal(string.Empty, values["PoolSizesIncrease"]);
     }
 
     [Fact]
@@ -157,7 +161,7 @@ public class CitizenFxPreparerTests
     }
 
     [Fact]
-    public async Task Prime_WhenNoRelevantFactsPublished_ShouldNotWrite()
+    public async Task Prime_WhenNoRelevantFactsPublished_ShouldResetPoolSizesToEmpty()
     {
         // Given
         var writer = new FakeCitizenFxConfigWriter();
@@ -167,7 +171,9 @@ public class CitizenFxPreparerTests
         await preparer.PrimeAsync(LegacyProfile(new ServerRequirements()));
 
         // Then
-        Assert.Empty(writer.Calls);
+        var (_, values) = Assert.Single(writer.Calls);
+        Assert.Single(values);
+        Assert.Equal(string.Empty, values["PoolSizesIncrease"]);
     }
 
     [Fact]

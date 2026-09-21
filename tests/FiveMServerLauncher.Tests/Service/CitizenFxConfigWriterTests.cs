@@ -173,6 +173,50 @@ public class CitizenFxConfigWriterTests
     }
 
     [Fact]
+    public async Task Apply_WhenTargetValueIsEmpty_ShouldWriteEmptyValue()
+    {
+        // Given
+        using var temp = new TempCitizenFxIni();
+        Directory.CreateDirectory(temp.DirectoryPath);
+        File.WriteAllText(temp.IniPath, "[Game]\r\nPoolSizesIncrease={\"CWeaponComponentInfo\":500}\r\n");
+
+        var writer = new CitizenFxConfigWriter();
+
+        // When
+        await writer.ApplyAsync(temp.IniPath, new Dictionary<string, string>
+        {
+            ["PoolSizesIncrease"] = string.Empty,
+        });
+
+        // Then
+        var content = File.ReadAllText(temp.IniPath);
+        Assert.Contains("PoolSizesIncrease=", content);
+        Assert.DoesNotContain("{\"CWeaponComponentInfo\":500}", content);
+    }
+
+    [Fact]
+    public async Task Apply_WhenEmptyValueAlreadySet_ShouldNotRewriteFile()
+    {
+        // Given
+        using var temp = new TempCitizenFxIni();
+        Directory.CreateDirectory(temp.DirectoryPath);
+        const string original = "[Game]\r\nDefaultBuild=3788\r\nPoolSizesIncrease=\r\n";
+        File.WriteAllText(temp.IniPath, original);
+        File.SetAttributes(temp.IniPath, FileAttributes.ReadOnly);
+
+        var writer = new CitizenFxConfigWriter();
+
+        // When
+        await writer.ApplyAsync(temp.IniPath, new Dictionary<string, string>
+        {
+            ["PoolSizesIncrease"] = string.Empty,
+        });
+
+        // Then
+        Assert.Equal(original, File.ReadAllText(temp.IniPath));
+    }
+
+    [Fact]
     public async Task Apply_WhenValuesEmpty_ShouldNotTouchFile()
     {
         // Given
