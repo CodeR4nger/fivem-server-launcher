@@ -48,6 +48,8 @@ per-server fields, never `Platform`, never `ServerPort`. Phase 1's dropdown defa
 
 ## 3. Dev Mode
 
+**Status:** ✅ done (commit `7b03a0a`, manual E2E verified).
+
 **Spec:** `.scratch/dev-mode/spec.md` (to write)
 
 **Current state:** `FiveMLaunchOptions` already models `GameBuild`, `PureMode`, `SecondClient` and

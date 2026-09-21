@@ -7,10 +7,11 @@ server ignores dev overrides; build/pure persist across restarts; second client 
 
 **Blocked by:** 04.
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Full suite green; docs reconciled.
-- [ ] Manual E2E: dev launch with flags boots Legacy FiveM through the shell and shows the flags.
-- [ ] Manual E2E: build/pure persist across restarts; `-cl2` not persisted.
-- [ ] Manual E2E: connecting to a server ignores dev overrides.
-- [ ] Code-review clean; conventional commit.
+- [x] Full suite green; docs reconciled.
+- [x] Manual E2E: dev launch with flags boots Legacy FiveM through the shell.
+- [x] Manual E2E: build/pure persist across restarts; `-cl2` not persisted.
+- [x] Manual E2E: connecting to a server ignores dev overrides (user-verified "all working").
+- [x] Code-review clean (string-vs-bool CommandParameter bug caught and fixed); conventional commit
+      `7b03a0a`.
