@@ -4,10 +4,13 @@
 
 **Blocked by:** 01 (Saved server domain + file repository) — the manual flags live on `SavedServer`
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] `ServerRequirements` exposes effective `SteamRequired` and `DiscordRequired` (nullable; absent = indeterminate).
-- [ ] CFX mapping reads `sv_enforceSteamAuth` (strict `"true"`/`"false"`) in both the `/single/` and catalog paths.
-- [ ] Resolver merge: published `sv_enforceSteamAuth` wins over the manual flag; Discord uses the manual flag only; `requestSteamTicket` keeps its existing meaning unchanged.
-- [ ] Merge logic is pure domain and unit-tested (published true/false vs manual true/absent both directions).
-- [ ] Suite green.
+- [x] `ServerRequirements` exposes effective `SteamRequired` and `DiscordRequired` (nullable; absent = indeterminate).
+- [x] CFX mapping reads `sv_enforceSteamAuth` (strict `"true"`/`"false"`) in both the `/single/` and catalog paths.
+- [x] Resolver merge: published `sv_enforceSteamAuth` wins over the manual flag; Discord uses the manual flag only; `requestSteamTicket` keeps its existing meaning unchanged.
+- [x] Merge logic is pure domain and unit-tested (published true/false vs manual true/absent both directions).
+- [x] Suite green (193).
+
+## Comments
+- Review follow-up: the merge (`ServerRequirements.ForConnection`, record `with`) is applied inside `ServerResolver.ResolveAsync(string, SavedServer?)` so `ServerProfile.Requirements` is always the effective connection requirements; the no-saved-server overload keeps the existing single-arg entry point.

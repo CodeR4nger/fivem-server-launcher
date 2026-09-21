@@ -43,7 +43,8 @@ public class CfxService(HttpClient httpClient)
             RequestSteamTicket = CfxVars.MapSteamTicket(cfxResponse.Data.RequestSteamTicket),
             DefaultGameBuild = CfxVars.TryGetInt(cfxResponse.Data.Vars, "sv_defaultGameBuild"),
             ReplaceExecutableToSwitchBuilds = CfxVars.TryGetBool(cfxResponse.Data.Vars, "sv_replaceExeToSwitchBuilds"),
-            PoolSizesIncrease = CfxVars.TryGetString(cfxResponse.Data.Vars, "sv_poolSizesIncrease")
+            PoolSizesIncrease = CfxVars.TryGetString(cfxResponse.Data.Vars, "sv_poolSizesIncrease"),
+            SteamEnforced = CfxVars.TryGetBool(cfxResponse.Data.Vars, "sv_enforceSteamAuth")
         };
     }
 

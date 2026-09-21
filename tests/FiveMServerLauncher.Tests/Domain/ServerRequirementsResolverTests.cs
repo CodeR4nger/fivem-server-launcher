@@ -148,6 +148,47 @@ public class ServerRequirementsResolverTests
         Assert.Null(result.DefaultBuild);
         Assert.Null(result.ReplaceExecutable);
         Assert.Null(result.PoolSizesIncrease);
+        Assert.Null(result.SteamRequired);
+    }
+
+    [Fact]
+    public void Resolve_WhenSteamAuthEnforced_ShouldReturnSteamRequired()
+    {
+        // Given
+        var serverInfo = new CfxServerInfo
+        {
+            CfxId = "y4lg95",
+            ProjectName = "Test Server",
+            SteamEnforced = true,
+        };
+
+        var resolver = new ServerRequirementsResolver();
+
+        // When
+        var result = resolver.Resolve(serverInfo);
+
+        // Then
+        Assert.True(result.SteamRequired);
+    }
+
+    [Fact]
+    public void Resolve_WhenSteamAuthExplicitlyOff_ShouldReturnFalseSteamRequired()
+    {
+        // Given
+        var serverInfo = new CfxServerInfo
+        {
+            CfxId = "y4lg95",
+            ProjectName = "Test Server",
+            SteamEnforced = false,
+        };
+
+        var resolver = new ServerRequirementsResolver();
+
+        // When
+        var result = resolver.Resolve(serverInfo);
+
+        // Then
+        Assert.False(result.SteamRequired);
     }
 
 }

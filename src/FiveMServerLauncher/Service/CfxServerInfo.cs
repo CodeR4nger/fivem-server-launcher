@@ -15,4 +15,6 @@ public class CfxServerInfo
     public int? DefaultGameBuild { get; init; }
     public bool? ReplaceExecutableToSwitchBuilds { get; init; }
     public string? PoolSizesIncrease { get; init; }
+
+    public bool? SteamEnforced { get; init; }
 }

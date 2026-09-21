@@ -10,7 +10,12 @@ public class ServerResolver(
     ServerRequirementsResolver requirementsResolver,
     IDnsResolver dnsResolver)
 {
-    public async Task<ServerProfile> ResolveAsync(string address)
+    public Task<ServerProfile> ResolveAsync(string address)
+    {
+        return ResolveAsync(address, savedServer: null);
+    }
+
+    public async Task<ServerProfile> ResolveAsync(string address, SavedServer? savedServer)
     {
         if (string.IsNullOrWhiteSpace(address))
         {
@@ -19,13 +24,17 @@ public class ServerResolver(
 
         var kind = ServerAddress.Classify(address);
 
-        return kind switch
+        var profile = kind switch
         {
             ServerAddressKind.CfxId or ServerAddressKind.CfxJoinUrl => await ResolveCfxAsync(address),
             ServerAddressKind.IpPort => await ResolveIpPortAsync(address),
             ServerAddressKind.DomainPort => await ResolveDomainPortAsync(address),
             _ => throw new InvalidAddressException(address)
         };
+
+        profile.Requirements = ServerRequirements.ForConnection(profile.Requirements, savedServer);
+
+        return profile;
     }
 
     private async Task<ServerProfile> ResolveCfxAsync(string originalAddress)
@@ -108,7 +117,8 @@ public class ServerResolver(
             GameBuild = CfxVars.TryGetInt(vars, "sv_enforceGameBuild"),
             PureMode = CfxVars.TryGetInt(vars, "sv_pureLevel"),
             RequestSteamTicket = CfxVars.MapSteamTicket(
-                vars.TryGetValue("requestSteamTicket", out var steam) ? steam : null)
+                vars.TryGetValue("requestSteamTicket", out var steam) ? steam : null),
+            SteamRequired = CfxVars.TryGetBool(vars, "sv_enforceSteamAuth")
         };
     }
 }

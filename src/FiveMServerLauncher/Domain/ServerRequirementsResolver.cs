@@ -13,7 +13,8 @@ public class ServerRequirementsResolver
             RequestSteamTicket = serverInfo.RequestSteamTicket,
             DefaultBuild = serverInfo.DefaultGameBuild,
             ReplaceExecutable = serverInfo.ReplaceExecutableToSwitchBuilds,
-            PoolSizesIncrease = serverInfo.PoolSizesIncrease
+            PoolSizesIncrease = serverInfo.PoolSizesIncrease,
+            SteamRequired = serverInfo.SteamEnforced
         };
     }
 }

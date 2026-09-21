@@ -302,7 +302,8 @@ public class ServerResolverTests
                     ["gamename"] = "gta5",
                     ["sv_enforceGameBuild"] = "3095",
                     ["sv_pureLevel"] = "2",
-                    ["requestSteamTicket"] = "on"
+                    ["requestSteamTicket"] = "on",
+                    ["sv_enforceSteamAuth"] = "true"
                 },
                 ConnectEndPoints = { address }
             }
@@ -324,6 +325,7 @@ public class ServerResolverTests
         Assert.Equal(3095, result.Requirements.GameBuild);
         Assert.Equal(2, result.Requirements.PureMode);
         Assert.True(result.Requirements.RequestSteamTicket);
+        Assert.True(result.Requirements.SteamRequired);
     }
 
     [Fact]
@@ -349,6 +351,7 @@ public class ServerResolverTests
         Assert.Null(result.Requirements.GameBuild);
         Assert.Null(result.Requirements.PureMode);
         Assert.Null(result.Requirements.RequestSteamTicket);
+        Assert.Null(result.Requirements.SteamRequired);
     }
 
     [Fact]
@@ -462,6 +465,60 @@ public class ServerResolverTests
         var exception = await Assert.ThrowsAsync<InvalidAddressException>(
             () => resolver.ResolveAsync(address));
         Assert.Contains(address, exception.Message);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenSavedServerRequiresSteam_ShouldApplyManualToUnvalidatedProfile()
+    {
+        // Given
+        const string address = "149.56.120.52:30320";
+        var savedServer = SavedServer.Create("My Server", address, requiresSteam: true);
+
+        var resolver = CreateResolver(
+            catalogHttpClient: new HttpClient(new FakeHttpMessageHandler(
+                System.Net.HttpStatusCode.OK,
+                TestProtobufFrames.BuildFrameStream(new Master.Server { EndPoint = "other" }))));
+
+        // When
+        var result = await resolver.ResolveAsync(address, savedServer);
+
+        // Then
+        Assert.False(result.IsCfxValidated);
+        Assert.True(result.Requirements.SteamRequired);
+        Assert.Null(result.Requirements.DiscordRequired);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenSavedServerRequiresDiscord_ShouldApplyManualToValidatedProfile()
+    {
+        // Given
+        const string cfxId = "y4lg95";
+        var savedServer = SavedServer.Create("My Server", cfxId, requiresDiscord: true);
+
+        var handler = new FakeHttpMessageHandler(
+            System.Net.HttpStatusCode.OK,
+            """
+            {
+                "EndPoint": "y4lg95",
+                "Data": {
+                    "sv_projectName": "Test Server",
+                    "vars": {
+                        "sv_enforceSteamAuth": "false"
+                    }
+                }
+            }
+            """);
+
+        using var httpClient = new HttpClient(handler);
+        var resolver = CreateResolver(new CfxService(httpClient));
+
+        // When
+        var result = await resolver.ResolveAsync(cfxId, savedServer);
+
+        // Then
+        Assert.True(result.IsCfxValidated);
+        Assert.False(result.Requirements.SteamRequired);
+        Assert.True(result.Requirements.DiscordRequired);
     }
 
     private static ServerResolver CreateResolver(
