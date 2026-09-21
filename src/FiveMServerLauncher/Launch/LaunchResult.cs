@@ -12,5 +12,7 @@ public abstract record LaunchResult
 
     public sealed record OpenClient(GameClient GameClient) : LaunchResult;
 
+    public sealed record NotInstalled(GameClient GameClient) : LaunchResult;
+
     public sealed record StartFailed : LaunchResult;
 }

@@ -27,20 +27,25 @@ public partial class App : Application
             new ServerCatalog(httpClient),
             new ServerRequirementsResolver(),
             new DnsResolver());
+        var installLocator = new ClientInstallLocator();
         var launcher = new GameLauncher(
             new GameProcessLauncher(new ProcessStarter(), new UriSchemeRegistration()),
-            new CitizenFxPreparer(new ClientInstallLocator(), new CitizenFxConfigWriter()));
+            new CitizenFxPreparer(installLocator, new CitizenFxConfigWriter()),
+            installLocator);
 
         var readiness = new ProcessReadinessChecker();
 
         var window = new MainWindow();
-        window.DataContext = new MainViewModel(
+        var viewModel = new MainViewModel(
             resolver,
             launcher,
             new FileServerRepository(Path.Combine(AppDataDirectory, "saved-servers.json")),
             new ExternalAppPreparer(
                 readiness,
-                new ExternalAppStarter(new ProcessStarter(), new UriSchemeRegistration())));
+                new ExternalAppStarter(new ProcessStarter(), new UriSchemeRegistration())),
+            installLocator);
+        viewModel.InitializeAsync().GetAwaiter().GetResult();
+        window.DataContext = viewModel;
         window.Show();
     }
 }

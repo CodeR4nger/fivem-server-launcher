@@ -1,14 +1,38 @@
 using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Domain;
+using FiveMServerLauncher.Service;
 
 namespace FiveMServerLauncher.Launch;
 
 public class GameLauncher(
     IGameProcessLauncher processLauncher,
-    ICitizenFxPreparer citizenFxPreparer)
+    ICitizenFxPreparer citizenFxPreparer,
+    IClientInstallLocator installLocator)
 {
     private readonly IGameProcessLauncher _processLauncher = processLauncher;
     private readonly ICitizenFxPreparer _citizenFxPreparer = citizenFxPreparer;
+    private readonly IClientInstallLocator _installLocator = installLocator;
+
+    public async Task<LaunchResult> OpenAsync(GameClient client)
+    {
+        try
+        {
+            var executablePath = await _installLocator.GetExecutablePathAsync(client);
+
+            if (executablePath is null)
+            {
+                return new LaunchResult.NotInstalled(client);
+            }
+
+            await _processLauncher.StartExecutableAsync(executablePath);
+        }
+        catch
+        {
+            return new LaunchResult.StartFailed();
+        }
+
+        return new LaunchResult.OpenClient(client);
+    }
 
     public async Task<LaunchResult> ConnectAsync(ServerProfile profile)
     {
@@ -24,7 +48,7 @@ public class GameLauncher(
 
         if (options.ToUri() is not { } uri)
         {
-            return new LaunchResult.OpenClient(profile.GameClient ?? GameClient.FiveM);
+            return await OpenAsync(profile.GameClient ?? GameClient.FiveM);
         }
 
         try

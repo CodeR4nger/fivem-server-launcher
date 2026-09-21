@@ -7,15 +7,19 @@ using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Domain;
 using FiveMServerLauncher.Domain.Exceptions;
 using FiveMServerLauncher.Launch;
+using FiveMServerLauncher.Service;
 
 namespace FiveMServerLauncher.ViewModels;
 
 public class MainViewModel : INotifyPropertyChanged
 {
+    private static readonly GameClient[] OpenCandidates = [GameClient.FiveM, GameClient.FiveMEnhanced];
+
     private readonly ServerResolver _resolver;
     private readonly GameLauncher _launcher;
     private readonly IServerRepository _serverRepository;
     private readonly ExternalAppPreparer _preparer;
+    private readonly IClientInstallLocator _installLocator;
 
     private string _serverAddress = string.Empty;
     private string _newServerName = string.Empty;
@@ -23,23 +27,29 @@ public class MainViewModel : INotifyPropertyChanged
     private string _statusText = "Ready";
     private bool _isBusy;
     private SavedServerItem? _selectedServer;
+    private InstalledClientOption? _selectedOpenClient;
 
     public MainViewModel(
         ServerResolver resolver,
         GameLauncher launcher,
         IServerRepository serverRepository,
-        ExternalAppPreparer preparer)
+        ExternalAppPreparer preparer,
+        IClientInstallLocator installLocator)
     {
         _resolver = resolver;
         _launcher = launcher;
         _serverRepository = serverRepository;
         _preparer = preparer;
+        _installLocator = installLocator;
         ConnectCommand = new AsyncRelayCommand(ConnectAsync, CanConnect);
         AddServerCommand = new RelayCommand(AddServer);
         DeleteServerCommand = new RelayCommand(DeleteServer, CanDeleteServer);
+        OpenClientCommand = new AsyncRelayCommand(OpenClientAsync, CanOpenClient);
+        SelectOpenClientCommand = new RelayCommand(SelectOpenClient);
 
         SavedServers = new ObservableCollection<SavedServerItem>(
             serverRepository.GetAll().Select(ToItem));
+        AvailableOpenClients = new ObservableCollection<InstalledClientOption>();
     }
 
     public ICommand ConnectCommand { get; }
@@ -48,7 +58,31 @@ public class MainViewModel : INotifyPropertyChanged
 
     public ICommand DeleteServerCommand { get; }
 
+    public ICommand OpenClientCommand { get; }
+
+    public ICommand SelectOpenClientCommand { get; }
+
     public ObservableCollection<SavedServerItem> SavedServers { get; }
+
+    public ObservableCollection<InstalledClientOption> AvailableOpenClients { get; }
+
+    public InstalledClientOption? SelectedOpenClient
+    {
+        get => _selectedOpenClient;
+        set
+        {
+            if (ReferenceEquals(_selectedOpenClient, value))
+            {
+                return;
+            }
+
+            _selectedOpenClient = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedOpenClient)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedOpenClientLabel)));
+        }
+    }
+
+    public string SelectedOpenClientLabel => SelectedOpenClient?.DisplayName ?? string.Empty;
 
     public SavedServerItem? SelectedServer
     {
@@ -97,7 +131,11 @@ public class MainViewModel : INotifyPropertyChanged
     public bool IsBusy
     {
         get => _isBusy;
-        private set => SetProperty(ref _isBusy, value);
+        private set
+        {
+            SetProperty(ref _isBusy, value);
+            CommandManager.InvalidateRequerySuggested();
+        }
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -183,13 +221,7 @@ public class MainViewModel : INotifyPropertyChanged
 
             var result = await _launcher.ConnectAsync(profile);
 
-            StatusText = result switch
-            {
-                LaunchResult.Connect => "Launching FiveM...",
-                LaunchResult.OpenClient(var client) => $"Opening {client}...",
-                LaunchResult.StartFailed => "Launch failed",
-                _ => throw new InvalidOperationException("Unknown LaunchResult"),
-            };
+            StatusText = Describe(result);
         }
         catch (InvalidAddressException)
         {
@@ -226,6 +258,69 @@ public class MainViewModel : INotifyPropertyChanged
     private bool CanDeleteServer()
     {
         return SelectedServer is not null;
+    }
+
+    public async Task InitializeAsync()
+    {
+        AvailableOpenClients.Clear();
+
+        foreach (var client in OpenCandidates)
+        {
+            if (await _installLocator.IsInstalledAsync(client))
+            {
+                AvailableOpenClients.Add(new InstalledClientOption(client));
+            }
+        }
+
+        if (AvailableOpenClients.Count > 0)
+        {
+            SelectedOpenClient = AvailableOpenClients[0];
+        }
+    }
+
+    public async Task OpenClientAsync()
+    {
+        if (SelectedOpenClient is not { } option)
+        {
+            return;
+        }
+
+        IsBusy = true;
+
+        try
+        {
+            var result = await _launcher.OpenAsync(option.Client);
+            StatusText = Describe(result);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private bool CanOpenClient()
+    {
+        return SelectedOpenClient is not null && !IsBusy;
+    }
+
+    private void SelectOpenClient(object? option)
+    {
+        if (option is InstalledClientOption installed)
+        {
+            SelectedOpenClient = installed;
+        }
+    }
+
+    private static string Describe(LaunchResult result)
+    {
+        return result switch
+        {
+            LaunchResult.Connect => "Launching FiveM...",
+            LaunchResult.OpenClient(var client) => $"Opening {InstalledClientOption.DisplayNameOf(client)}...",
+            LaunchResult.NotInstalled(var client) => $"{InstalledClientOption.DisplayNameOf(client)} is not installed",
+            LaunchResult.StartFailed => "Launch failed",
+            _ => throw new InvalidOperationException("Unknown LaunchResult"),
+        };
     }
 
     private void SetProperty<T>(ref T field, T value, [CallerMemberName] string? name = null)

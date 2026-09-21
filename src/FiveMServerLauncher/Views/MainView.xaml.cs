@@ -26,11 +26,6 @@ namespace FiveMServerLauncher.Views
 
         private void ClientOption_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button { CommandParameter: string label })
-            {
-                FiveMButton.Content = label;
-            }
-
             FiveMDropdown.Visibility = Visibility.Collapsed;
             ArrowText.Text = "▼";
         }

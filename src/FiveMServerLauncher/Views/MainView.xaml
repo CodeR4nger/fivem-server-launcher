@@ -281,7 +281,8 @@
 
                         <Button x:Name="FiveMButton"
                                 Grid.Column="0"
-                                Content="FiveM"
+                                Content="{Binding SelectedOpenClientLabel}"
+                                Command="{Binding OpenClientCommand}"
                                 Style="{StaticResource MainButtonStyle}"/>
 
 
@@ -312,20 +313,25 @@
 
                         <StackPanel>
 
-                            <Button Content="FiveM"
-                                    Height="42"
-                                    Style="{StaticResource DropdownButtonStyle}"
-                                    CommandParameter="FiveM"
-                                    Click="ClientOption_Click"/>
+                            <ItemsControl ItemsSource="{Binding AvailableOpenClients}">
 
-                            <Border Height="1"
-                                    Background="#080808"/>
+                                <ItemsControl.ItemTemplate>
 
-                            <Button Content="FiveM Enhanced"
-                                    Height="42"
-                                    Style="{StaticResource DropdownButtonStyle}"
-                                    CommandParameter="FiveM Enhanced"
-                                    Click="ClientOption_Click"/>
+                                    <DataTemplate>
+
+                                        <Button Content="{Binding DisplayName}"
+                                                Height="42"
+                                                Style="{StaticResource DropdownButtonStyle}"
+                                                Command="{Binding DataContext.SelectOpenClientCommand,
+                                                                  RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                Click="ClientOption_Click"/>
+
+                                    </DataTemplate>
+
+                                </ItemsControl.ItemTemplate>
+
+                            </ItemsControl>
 
                         </StackPanel>
 

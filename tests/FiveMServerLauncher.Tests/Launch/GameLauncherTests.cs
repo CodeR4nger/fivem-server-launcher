@@ -6,6 +6,8 @@ namespace FiveMServerLauncher.Tests.Launch;
 
 public class GameLauncherTests
 {
+    private const string EnhancedExecutablePath = @"C:\FiveM for GTAV Enhanced\FiveM.exe";
+
     private sealed class OrderedPreparer : ICitizenFxPreparer
     {
         private readonly List<string> _log;
@@ -36,6 +38,12 @@ public class GameLauncherTests
             _log.Add("launch");
             return Task.CompletedTask;
         }
+
+        public Task StartExecutableAsync(string executablePath)
+        {
+            _log.Add("launch");
+            return Task.CompletedTask;
+        }
     }
 
     [Fact]
@@ -51,7 +59,7 @@ public class GameLauncherTests
         };
 
         var processLauncher = new FakeGameProcessLauncher();
-        var launcher = new GameLauncher(processLauncher, new FakeCitizenFxPreparer());
+        var launcher = new GameLauncher(processLauncher, new FakeCitizenFxPreparer(), new FakeClientInstallLocator());
 
         // When
         var result = await launcher.ConnectAsync(profile);
@@ -77,7 +85,7 @@ public class GameLauncherTests
         };
 
         var log = new List<string>();
-        var launcher = new GameLauncher(new OrderedProcessLauncher(log), new OrderedPreparer(log));
+        var launcher = new GameLauncher(new OrderedProcessLauncher(log), new OrderedPreparer(log), new FakeClientInstallLocator());
 
         // When
         var result = await launcher.ConnectAsync(profile);
@@ -88,7 +96,7 @@ public class GameLauncherTests
     }
 
     [Fact]
-    public async Task ConnectAsync_WithEnhancedProfile_ShouldStillPrimeBeforeReturningOpenClient()
+    public async Task ConnectAsync_WithEnhancedProfile_ShouldStillPrimeBeforeOpeningClient()
     {
         // Given
         var profile = new ServerProfile
@@ -99,21 +107,24 @@ public class GameLauncherTests
             Requirements = new ServerRequirements(),
         };
 
-        var preparer = new FakeCitizenFxPreparer();
-        var processLauncher = new FakeGameProcessLauncher();
-        var launcher = new GameLauncher(processLauncher, preparer);
+        var log = new List<string>();
+        var locator = new FakeClientInstallLocator();
+        locator.Executables[GameClient.FiveMEnhanced] = EnhancedExecutablePath;
+        var launcher = new GameLauncher(
+            new OrderedProcessLauncher(log),
+            new OrderedPreparer(log),
+            locator);
 
         // When
         var result = await launcher.ConnectAsync(profile);
 
         // Then
         Assert.IsType<LaunchResult.OpenClient>(result);
-        Assert.Equal(profile, Assert.Single(preparer.PrimedProfiles));
-        Assert.Empty(processLauncher.Requests);
+        Assert.Equal(["prime", "launch"], log);
     }
 
     [Fact]
-    public async Task ConnectAsync_WithEnhancedProfile_ShouldReturnOpenClientWithoutLaunching()
+    public async Task ConnectAsync_WithEnhancedProfile_ShouldStartEnhancedExecutableAndReturnOpenClient()
     {
         // Given
         var profile = new ServerProfile
@@ -125,7 +136,9 @@ public class GameLauncherTests
         };
 
         var processLauncher = new FakeGameProcessLauncher();
-        var launcher = new GameLauncher(processLauncher, new FakeCitizenFxPreparer());
+        var locator = new FakeClientInstallLocator();
+        locator.Executables[GameClient.FiveMEnhanced] = EnhancedExecutablePath;
+        var launcher = new GameLauncher(processLauncher, new FakeCitizenFxPreparer(), locator);
 
         // When
         var result = await launcher.ConnectAsync(profile);
@@ -133,6 +146,35 @@ public class GameLauncherTests
         // Then
         var openClient = Assert.IsType<LaunchResult.OpenClient>(result);
         Assert.Equal(GameClient.FiveMEnhanced, openClient.GameClient);
+        Assert.Equal(EnhancedExecutablePath, Assert.Single(processLauncher.ExecutableStarts));
+        Assert.Empty(processLauncher.Requests);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_WithEnhancedProfile_WhenEnhancedNotInstalled_ShouldReturnNotInstalled()
+    {
+        // Given
+        var profile = new ServerProfile
+        {
+            CfxId = "y4lg95",
+            ProjectName = "Test Server",
+            GameClient = GameClient.FiveMEnhanced,
+            Requirements = new ServerRequirements(),
+        };
+
+        var processLauncher = new FakeGameProcessLauncher();
+        var launcher = new GameLauncher(
+            processLauncher,
+            new FakeCitizenFxPreparer(),
+            new FakeClientInstallLocator { Executables = [] });
+
+        // When
+        var result = await launcher.ConnectAsync(profile);
+
+        // Then
+        var notInstalled = Assert.IsType<LaunchResult.NotInstalled>(result);
+        Assert.Equal(GameClient.FiveMEnhanced, notInstalled.GameClient);
+        Assert.Empty(processLauncher.ExecutableStarts);
         Assert.Empty(processLauncher.Requests);
     }
 
@@ -150,7 +192,7 @@ public class GameLauncherTests
         };
 
         var processLauncher = new FakeGameProcessLauncher { ThrowOnStart = true };
-        var launcher = new GameLauncher(processLauncher, new FakeCitizenFxPreparer());
+        var launcher = new GameLauncher(processLauncher, new FakeCitizenFxPreparer(), new FakeClientInstallLocator());
 
         // When
         var result = await launcher.ConnectAsync(profile);
@@ -175,7 +217,7 @@ public class GameLauncherTests
 
         var preparer = new FakeCitizenFxPreparer { Throw = true };
         var processLauncher = new FakeGameProcessLauncher();
-        var launcher = new GameLauncher(processLauncher, preparer);
+        var launcher = new GameLauncher(processLauncher, preparer, new FakeClientInstallLocator());
 
         // When
         var result = await launcher.ConnectAsync(profile);
@@ -185,5 +227,74 @@ public class GameLauncherTests
         Assert.Equal("fivem://connect/cfx.re/join/y4lg95?-b3258", connect.ConnectUri.AbsoluteUri);
         Assert.Single(processLauncher.Requests);
         Assert.Empty(preparer.PrimedProfiles);
+    }
+
+    [Fact]
+    public async Task OpenAsync_WithInstalledLegacyClient_ShouldStartExecutableAndReturnOpenClient()
+    {
+        // Given
+        var processLauncher = new FakeGameProcessLauncher();
+        var launcher = new GameLauncher(
+            processLauncher,
+            new FakeCitizenFxPreparer(),
+            new FakeClientInstallLocator());
+
+        // When
+        var result = await launcher.OpenAsync(GameClient.FiveM);
+
+        // Then
+        var openClient = Assert.IsType<LaunchResult.OpenClient>(result);
+        Assert.Equal(GameClient.FiveM, openClient.GameClient);
+        Assert.Equal(@"C:\FiveM\FiveM.app\FiveM.exe", Assert.Single(processLauncher.ExecutableStarts));
+    }
+
+    [Fact]
+    public async Task OpenAsync_WithInstalledEnhancedClient_ShouldStartEnhancedExecutableAndReturnOpenClient()
+    {
+        // Given
+        var processLauncher = new FakeGameProcessLauncher();
+        var locator = new FakeClientInstallLocator();
+        locator.Executables[GameClient.FiveMEnhanced] = EnhancedExecutablePath;
+        var launcher = new GameLauncher(processLauncher, new FakeCitizenFxPreparer(), locator);
+
+        // When
+        var result = await launcher.OpenAsync(GameClient.FiveMEnhanced);
+
+        // Then
+        var openClient = Assert.IsType<LaunchResult.OpenClient>(result);
+        Assert.Equal(GameClient.FiveMEnhanced, openClient.GameClient);
+        Assert.Equal(EnhancedExecutablePath, Assert.Single(processLauncher.ExecutableStarts));
+    }
+
+    [Fact]
+    public async Task OpenAsync_WhenClientNotInstalled_ShouldReturnNotInstalledWithoutStarting()
+    {
+        // Given
+        var processLauncher = new FakeGameProcessLauncher();
+        var locator = new FakeClientInstallLocator { Executables = [] };
+        var launcher = new GameLauncher(processLauncher, new FakeCitizenFxPreparer(), locator);
+
+        // When
+        var result = await launcher.OpenAsync(GameClient.FiveMEnhanced);
+
+        // Then
+        var notInstalled = Assert.IsType<LaunchResult.NotInstalled>(result);
+        Assert.Equal(GameClient.FiveMEnhanced, notInstalled.GameClient);
+        Assert.Empty(processLauncher.ExecutableStarts);
+    }
+
+    [Fact]
+    public async Task OpenAsync_WhenStartThrows_ShouldReturnStartFailed()
+    {
+        // Given
+        var processLauncher = new FakeGameProcessLauncher { ThrowOnExecutableStart = true };
+        var launcher = new GameLauncher(processLauncher, new FakeCitizenFxPreparer(), new FakeClientInstallLocator());
+
+        // When
+        var result = await launcher.OpenAsync(GameClient.FiveM);
+
+        // Then
+        Assert.IsType<LaunchResult.StartFailed>(result);
+        Assert.Empty(processLauncher.ExecutableStarts);
     }
 }

@@ -9,4 +9,10 @@ public sealed class GameProcessLauncher(IProcessStarter processStarter, IUriSche
         UriShellStarter.Start(processStarter, uriSchemeRegistration, uri);
         return Task.CompletedTask;
     }
+
+    public Task StartExecutableAsync(string executablePath)
+    {
+        processStarter.Start(new ProcessStartInfo(executablePath));
+        return Task.CompletedTask;
+    }
 }

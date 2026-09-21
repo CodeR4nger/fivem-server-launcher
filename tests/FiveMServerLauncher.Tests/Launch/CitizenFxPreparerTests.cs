@@ -250,7 +250,7 @@ public class CitizenFxPreparerTests
         // Given
         var writer = new FakeCitizenFxConfigWriter();
         var preparer = new CitizenFxPreparer(
-            new FakeClientInstallLocator { InstallDirectory = null },
+            new FakeClientInstallLocator { Executables = [] },
             writer);
 
         // When

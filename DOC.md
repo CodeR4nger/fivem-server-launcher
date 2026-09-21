@@ -296,7 +296,7 @@ Conceptually:
 │         OPEN FIVEM       ▼    │
 └───────────────────────────────┘
 ```
-The dropdown lets you select the client.
+The dropdown lets you select the client. It lists only the clients installed on the machine (checked at startup), and pressing the open button launches the selected client directly. Connecting to a FiveM Enhanced server also opens the Enhanced client directly (no URI protocol on Enhanced).
 
 ## FiveM Enhanced: verified state (investigated before assuming)
 - **It's a separate client and launcher**: downloaded separately (fivem.net), installed in its own folder and does **not** document `fivem://connect`, `-b`, `-pure_` or `-cl2`.

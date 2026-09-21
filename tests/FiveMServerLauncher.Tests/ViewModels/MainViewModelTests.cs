@@ -52,21 +52,24 @@ public class MainViewModelTests
     }
 
     [Fact]
-    public async Task ConnectAsync_WithEnhancedServer_ShouldShowOpenClientWithoutLaunching()
+    public async Task ConnectAsync_WithEnhancedServer_ShouldStartEnhancedExecutableAndShowOpenClientStatus()
     {
         // Given
         const string address = "cfx.re/join/ecxx01";
         var processLauncher = new FakeGameProcessLauncher();
-        var vm = CreateViewModel(processLauncher, CfxJson("gta5enhanced"));
+        var locator = new FakeClientInstallLocator();
+        locator.Executables[GameClient.FiveMEnhanced] = EnhancedExecutablePath;
+        var vm = CreateViewModel(processLauncher, CfxJson("gta5enhanced"), installLocator: locator);
         vm.ServerAddress = address;
 
         // When
         await vm.ConnectAsync();
 
         // Then
-        Assert.Equal("Opening FiveMEnhanced...", vm.StatusText);
+        Assert.Equal("Opening FiveM Enhanced...", vm.StatusText);
         Assert.False(vm.IsBusy);
         Assert.Empty(processLauncher.Requests);
+        Assert.Equal(@"C:\FiveM for GTAV Enhanced\FiveM.exe", Assert.Single(processLauncher.ExecutableStarts));
     }
 
     [Fact]
@@ -571,6 +574,182 @@ public class MainViewModelTests
         Assert.Equal("Launching FiveM...", vm.StatusText);
     }
 
+    [Fact]
+    public async Task Initialize_WithLegacyAndEnhancedInstalled_ShouldListBothAndSelectFirst()
+    {
+        // Given
+        var locator = new FakeClientInstallLocator();
+        locator.Executables[GameClient.FiveMEnhanced] = EnhancedExecutablePath;
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), installLocator: locator);
+
+        // When
+        await vm.InitializeAsync();
+
+        // Then
+        Assert.Equal(2, vm.AvailableOpenClients.Count);
+        Assert.Equal("FiveM", vm.AvailableOpenClients[0].DisplayName);
+        Assert.Equal("FiveM Enhanced", vm.AvailableOpenClients[1].DisplayName);
+        Assert.Equal(GameClient.FiveM, vm.SelectedOpenClient?.Client);
+        Assert.Equal("FiveM", vm.SelectedOpenClientLabel);
+    }
+
+    private const string EnhancedExecutablePath = @"C:\FiveM for GTAV Enhanced\FiveM.exe";
+
+    [Fact]
+    public async Task Initialize_WhenNothingInstalled_ShouldListNothingAndDisableOpenCommand()
+    {
+        // Given
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            installLocator: new FakeClientInstallLocator { Executables = [] });
+
+        // When
+        await vm.InitializeAsync();
+
+        // Then
+        Assert.Empty(vm.AvailableOpenClients);
+        Assert.Null(vm.SelectedOpenClient);
+        Assert.False(vm.OpenClientCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task OpenClientCommand_WhenLegacyInstalled_ShouldStartLegacyExecutableAndDescribeResult()
+    {
+        // Given
+        const string legacyPath = @"C:\FiveM\FiveM.app\FiveM.exe";
+        var processLauncher = new FakeGameProcessLauncher();
+        var locator = new FakeClientInstallLocator();
+        locator.Executables[GameClient.FiveM] = legacyPath;
+        var vm = CreateViewModel(processLauncher, CfxJson("gta5"), installLocator: locator);
+        await vm.InitializeAsync();
+
+        // When
+        await vm.OpenClientAsync();
+
+        // Then
+        Assert.Equal(legacyPath, Assert.Single(processLauncher.ExecutableStarts));
+        Assert.Empty(processLauncher.Requests);
+        Assert.Equal("Opening FiveM...", vm.StatusText);
+        Assert.False(vm.IsBusy);
+    }
+
+    [Fact]
+    public async Task OpenClientCommand_WhenSelectedClientMissing_ShouldShowNotInstalledStatus()
+    {
+        // Given
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(processLauncher, CfxJson("gta5"), installLocator: new FakeClientInstallLocator());
+        await vm.InitializeAsync();
+        vm.SelectedOpenClient = new InstalledClientOption(GameClient.FiveMEnhanced);
+
+        // When
+        await vm.OpenClientAsync();
+
+        // Then
+        Assert.Empty(processLauncher.ExecutableStarts);
+        Assert.Equal("FiveM Enhanced is not installed", vm.StatusText);
+        Assert.False(vm.IsBusy);
+    }
+
+    [Fact]
+    public async Task OpenClientCommand_WhenOpenThrows_ShouldShowStartFailedStatus()
+    {
+        // Given
+        var processLauncher = new FakeGameProcessLauncher { ThrowOnExecutableStart = true };
+        var vm = CreateViewModel(processLauncher, CfxJson("gta5"), installLocator: new FakeClientInstallLocator());
+        await vm.InitializeAsync();
+
+        // When
+        await vm.OpenClientAsync();
+
+        // Then
+        Assert.Equal("Launch failed", vm.StatusText);
+        Assert.False(vm.IsBusy);
+    }
+
+    [Fact]
+    public async Task OpenClientCommand_WithSelection_ShouldBeExecutable()
+    {
+        // Given
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(processLauncher, CfxJson("gta5"), installLocator: new FakeClientInstallLocator());
+        Assert.False(vm.OpenClientCommand.CanExecute(null));
+
+        // When
+        await vm.InitializeAsync();
+
+        // Then
+        Assert.True(vm.OpenClientCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task OpenClientCommand_WhileOpenInFlight_ShouldBeDisabled()
+    {
+        // Given
+        var barrier = new TaskCompletionSource();
+        var processLauncher = new FakeGameProcessLauncher { ExecutableStartBarrier = barrier.Task };
+        var vm = CreateViewModel(processLauncher, CfxJson("gta5"), installLocator: new FakeClientInstallLocator());
+        await vm.InitializeAsync();
+
+        // When
+        var openTask = vm.OpenClientAsync();
+
+        // Then
+        Assert.True(vm.IsBusy);
+        Assert.False(vm.OpenClientCommand.CanExecute(null));
+
+        barrier.SetResult();
+        await openTask;
+    }
+
+    [Fact]
+    public async Task SelectingOpenClient_ShouldUpdateLabel()
+    {
+        // Given
+        var locator = new FakeClientInstallLocator();
+        locator.Executables[GameClient.FiveMEnhanced] = EnhancedExecutablePath;
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), installLocator: locator);
+        await vm.InitializeAsync();
+
+        // When
+        vm.SelectedOpenClient = vm.AvailableOpenClients[1];
+
+        // Then
+        Assert.Equal("FiveM Enhanced", vm.SelectedOpenClientLabel);
+    }
+
+    [Fact]
+    public async Task SelectOpenClientCommand_ShouldChangeSelectionAndLabel()
+    {
+        // Given
+        var locator = new FakeClientInstallLocator();
+        locator.Executables[GameClient.FiveMEnhanced] = EnhancedExecutablePath;
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), installLocator: locator);
+        await vm.InitializeAsync();
+
+        // When
+        vm.SelectOpenClientCommand.Execute(vm.AvailableOpenClients[1]);
+
+        // Then
+        Assert.Equal(GameClient.FiveMEnhanced, vm.SelectedOpenClient?.Client);
+        Assert.Equal("FiveM Enhanced", vm.SelectedOpenClientLabel);
+    }
+
+    [Fact]
+    public async Task SelectOpenClientCommand_WithNonOptionParameter_ShouldKeepSelection()
+    {
+        // Given
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), installLocator: new FakeClientInstallLocator());
+        await vm.InitializeAsync();
+
+        // When
+        vm.SelectOpenClientCommand.Execute("FiveM Enhanced");
+
+        // Then
+        Assert.Equal(GameClient.FiveM, vm.SelectedOpenClient?.Client);
+    }
+
     private static (MainViewModel Vm, FakeExternalAppStarter Starter) CreateManualSteamContext(
         FakeGameProcessLauncher processLauncher,
         string cfxJson)
@@ -606,7 +785,8 @@ public class MainViewModelTests
         IServerRepository? repository = null,
         IRequirementReadiness? readiness = null,
         FakeExternalAppStarter? starter = null,
-        ExternalAppPreparer? preparer = null)
+        ExternalAppPreparer? preparer = null,
+        IClientInstallLocator? installLocator = null)
     {
         var resolver = new ServerResolver(
             new CfxService(
@@ -616,7 +796,9 @@ public class MainViewModelTests
             new ServerRequirementsResolver(),
             new FakeDnsResolver());
 
-        var launcher = new GameLauncher(processLauncher, new FakeCitizenFxPreparer());
+        installLocator ??= new FakeClientInstallLocator();
+
+        var launcher = new GameLauncher(processLauncher, new FakeCitizenFxPreparer(), installLocator);
 
         var readinessValue = readiness ?? new FakeRequirementReadiness();
         var preparerValue = preparer ?? new ExternalAppPreparer(
@@ -629,6 +811,7 @@ public class MainViewModelTests
             resolver,
             launcher,
             repository ?? new InMemoryServerRepository(),
-            preparerValue);
+            preparerValue,
+            installLocator);
     }
 }
