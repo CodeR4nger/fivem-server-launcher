@@ -23,7 +23,9 @@ public sealed class CitizenFxPreparer(
     {
         ArgumentNullException.ThrowIfNull(profile);
 
-        if (!profile.IsCfxValidated || profile.GameClient != GameClient.FiveM)
+        var client = profile.GameClient;
+
+        if (!profile.IsCfxValidated || client is not (GameClient.FiveM or GameClient.RedM))
         {
             return;
         }
@@ -32,7 +34,7 @@ public sealed class CitizenFxPreparer(
 
         try
         {
-            var directory = await _installLocator.GetInstallDirectoryAsync(GameClient.FiveM);
+            var directory = await _installLocator.GetInstallDirectoryAsync(client.Value);
             if (directory is null)
             {
                 return;

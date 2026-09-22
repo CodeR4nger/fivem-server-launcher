@@ -1114,6 +1114,67 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public async Task ToggleDevClientCommand_ShouldSwitchDevTarget()
+    {
+        // Given
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+        await vm.InitializeAsync();
+
+        // When / Then
+        Assert.Equal(GameClient.FiveM, vm.DevClient);
+        vm.ToggleDevClientCommand.Execute(null);
+        Assert.Equal(GameClient.RedM, vm.DevClient);
+        vm.ToggleDevClientCommand.Execute(null);
+        Assert.Equal(GameClient.FiveM, vm.DevClient);
+    }
+
+    [Fact]
+    public async Task DevLaunchCommand_WhenRedMSelected_ShouldLaunchRedMExecutableWithFlags()
+    {
+        // Given
+        const string redmPath = @"C:\RedM\RedM.app\RedM.exe";
+        var storage = new InMemorySettingsStorage();
+        storage.Save(new LauncherSettings { DevGameBuild = 3116 });
+        var locator = new FakeClientInstallLocator();
+        locator.Executables[GameClient.RedM] = redmPath;
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(
+            processLauncher,
+            CfxJson("gta5"),
+            installLocator: locator,
+            settings: new ConfigurationRepository(storage));
+        await vm.InitializeAsync();
+        vm.ToggleDevClientCommand.Execute(null);
+
+        // When
+        await vm.DevLaunchAsync(false);
+
+        // Then
+        var start = Assert.Single(processLauncher.ExecutableArgsStarts);
+        Assert.Equal(redmPath, start.Path);
+        Assert.Equal(["-b3116"], start.Args);
+        Assert.Equal("Opening RedM...", vm.StatusText);
+    }
+
+    [Fact]
+    public async Task DevLaunchCommand_SwitchingToRedM_ShouldNotPersist()
+    {
+        // Given
+        var storage = new InMemorySettingsStorage();
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            settings: new ConfigurationRepository(storage));
+        await vm.InitializeAsync();
+
+        // When
+        vm.ToggleDevClientCommand.Execute(null);
+
+        // Then
+        Assert.Equal(GameClient.FiveM, new ConfigurationRepository(storage).Load().PreferredClient);
+    }
+
+    [Fact]
     public async Task SelectOpenClientCommand_ShouldChangeSelectionAndLabel()
     {
         // Given

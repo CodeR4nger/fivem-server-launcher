@@ -424,6 +424,20 @@
                                HorizontalAlignment="Center"
                                Margin="0,0,0,7"/>
 
+                    <Button Height="28"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Command="{Binding ToggleDevClientCommand}"
+                            Margin="0,0,0,10">
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+
+                            <TextBlock Text="CLIENT: "/>
+                            <TextBlock Text="{Binding DevClientLabel}"/>
+
+                        </StackPanel>
+
+                    </Button>
+
                     <TextBlock Text="GAME BUILD"
                                Foreground="{StaticResource SecondaryTextBrush}"
                                FontSize="10"

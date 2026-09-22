@@ -56,6 +56,8 @@ public class MainViewModel : INotifyPropertyChanged
         SelectOpenClientCommand = new RelayCommand(SelectOpenClient);
         SettingsCommand = new RelayCommand(() => IsSettingsOpen = !IsSettingsOpen);
         ToggleDevModeCommand = new RelayCommand(() => IsDevMode = !IsDevMode);
+        ToggleDevClientCommand = new RelayCommand(() =>
+            DevClient = DevClient == GameClient.FiveM ? GameClient.RedM : GameClient.FiveM);
         DevLaunchCommand = new AsyncRelayCommand((object? secondClient) => DevLaunchAsync(secondClient is true), () => !IsBusy);
 
         SavedServers = new ObservableCollection<SavedServerItem>(
@@ -82,6 +84,7 @@ public class MainViewModel : INotifyPropertyChanged
     }
 
     private bool _isDevMode;
+    private GameClient _devClient = GameClient.FiveM;
 
     public bool IsDevMode
     {
@@ -90,6 +93,22 @@ public class MainViewModel : INotifyPropertyChanged
     }
 
     public ICommand ToggleDevModeCommand { get; }
+
+    public GameClient DevClient
+    {
+        get => _devClient;
+        private set
+        {
+            if (SetProperty(ref _devClient, value))
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevClientLabel)));
+            }
+        }
+    }
+
+    public string DevClientLabel => InstalledClientOption.DisplayNameOf(DevClient);
+
+    public ICommand ToggleDevClientCommand { get; }
 
     public string DevGameBuild
     {
@@ -136,7 +155,7 @@ public class MainViewModel : INotifyPropertyChanged
         {
             var options = FiveMLaunchOptions.Create(
                 address: null,
-                gameClient: GameClient.FiveM,
+                gameClient: DevClient,
                 gameBuild: _settings.DevGameBuild,
                 pureMode: _settings.DevPureMode,
                 secondClient: secondClient);
@@ -464,14 +483,15 @@ public class MainViewModel : INotifyPropertyChanged
         };
     }
 
-    private void SetProperty<T>(ref T field, T value, [CallerMemberName] string? name = null)
+    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? name = null)
     {
         if (EqualityComparer<T>.Default.Equals(field, value))
         {
-            return;
+            return false;
         }
 
         field = value;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        return true;
     }
 }

@@ -15,6 +15,55 @@ public class CitizenFxPreparerTests
     };
 
     [Fact]
+    public async Task Prime_WhenRedMProfile_ShouldWriteIniInRedMInstallDirectory()
+    {
+        // Given
+        var writer = new FakeCitizenFxConfigWriter();
+        var locator = new FakeClientInstallLocator();
+        locator.Executables[GameClient.RedM] = @"C:\RedM\RedM.app\RedM.exe";
+        var preparer = new CitizenFxPreparer(locator, writer);
+
+        var profile = new ServerProfile
+        {
+            IsCfxValidated = true,
+            GameClient = GameClient.RedM,
+            CfxId = "y4lg95",
+            Requirements = new ServerRequirements { DefaultBuild = 1491, PoolSizesIncrease = "{\"AnimStore\":100}" },
+        };
+
+        // When
+        await preparer.PrimeAsync(profile);
+
+        // Then
+        var (iniPath, values) = Assert.Single(writer.Calls);
+        Assert.Equal(@"C:\RedM\RedM.app\CitizenFX.ini", iniPath);
+        Assert.Equal("1491", values["DefaultBuild"]);
+        Assert.Equal("{\"AnimStore\":100}", values["PoolSizesIncrease"]);
+    }
+
+    [Fact]
+    public async Task Prime_WhenRedMProfileNotValidated_ShouldNotWrite()
+    {
+        // Given
+        var writer = new FakeCitizenFxConfigWriter();
+        var preparer = new CitizenFxPreparer(new FakeClientInstallLocator(), writer);
+
+        var profile = new ServerProfile
+        {
+            IsCfxValidated = false,
+            GameClient = GameClient.RedM,
+            Address = "127.0.0.1:30120",
+            Requirements = new ServerRequirements { DefaultBuild = 1491 },
+        };
+
+        // When
+        await preparer.PrimeAsync(profile);
+
+        // Then
+        Assert.Empty(writer.Calls);
+    }
+
+    [Fact]
     public async Task Prime_WhenDefaultBuildPublished_ShouldWriteDefaultBuildKey()
     {
         // Given
