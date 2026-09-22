@@ -14,12 +14,17 @@ namespace FiveMServerLauncher;
 /// </summary>
 public partial class App : Application
 {
-    private static string AppDataDirectory =>
+    private static string LegacyAppDataDirectory =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FiveMServerLauncher");
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        var dataDirectory = PortableDataDirectory.Default();
+        LegacyDataMigration.Migrate(
+            LegacyAppDataDirectory,
+            new[] { dataDirectory.SettingsPath, dataDirectory.ServersPath });
 
         var httpClient = new HttpClient();
         var catalog = new ServerCatalog(httpClient);
@@ -44,13 +49,13 @@ public partial class App : Application
         var viewModel = new MainViewModel(
             resolver,
             launcher,
-            new FileServerRepository(Path.Combine(AppDataDirectory, "saved-servers.json")),
+            new FileServerRepository(dataDirectory.ServersPath),
             new ExternalAppPreparer(
                 readiness,
                 new ExternalAppStarter(new ProcessStarter(), new UriSchemeRegistration())),
             installLocator,
             new ConfigurationRepository(
-                new FileSettingsStorage(Path.Combine(AppDataDirectory, "launcher-settings.json"))),
+                new FileSettingsStorage(dataDirectory.SettingsPath)),
             enrichment,
             cfxStatus);
         window.DataContext = viewModel;

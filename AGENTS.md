@@ -6,10 +6,29 @@ Windows-only C#/.NET 10 WPF launcher for FiveM. Design decisions and UX philosop
 - Build: `dotnet build FiveMServerLauncher.slnx`
 - Test all: `dotnet test`
 - Run one test class: `dotnet test --filter FullyQualifiedName~CfxServiceTests` (xUnit)
+- Publish portable single-file win-x64 (`CFXLauncher.exe`, self-contained, one file; native
+  WPF libs self-extract to temp at startup). First build, then publish with `--no-build` (a
+  publish that recompiles WPF markup in the `_wpftmp` temp project cannot resolve the
+  Grpc.Tools-generated `Master` types — CS0246):
+  `dotnet build src/FiveMServerLauncher/FiveMServerLauncher.csproj -c Release -r win-x64`
+  `dotnet publish src/FiveMServerLauncher/FiveMServerLauncher.csproj -c Release -r win-x64 --self-contained --no-build -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -p:DebugSymbols=false -o dist`
+  Single-file props stay on the command line, never in the csproj.
 - Solution uses the new `.slnx` format: `dotnet sln FiveMServerLauncher.slnx add <project>`.
 - Requires .NET 10 SDK. Verify with `dotnet --version` before running anything.
 
 ## Current state (verified; do not "fix" blindly)
+- Product name is **CFX Launcher** (`Core/AppInfo`: `ProductName`/`Author`/`Title`, the single
+  user-visible naming source bound by `MainWindow.xaml` title bar + footer). Executable is
+  `CFXLauncher.exe` (`<AssemblyName>CFXLauncher</AssemblyName>` + `<RootNamespace>
+  FiveMServerLauncher</RootNamespace>` — namespaces/types unchanged; do NOT switch to
+  `TargetName`, it breaks .NET 10 WPF markup compilation (MC3050 in the `_wpftmp` temp project)).
+- Data is portable: `Configuration/PortableDataDirectory` resolves `launcher-settings.json` /
+  `saved-servers.json` beside the running exe (injectable `Func<string?>`, default
+  `Environment.ProcessPath` — `AppContext.BaseDirectory` is the single-file extraction dir, not
+  the exe's home), and `Configuration/LegacyDataMigration` best-effort copies the old
+  `%localappdata%\FiveMServerLauncher` files on first run when the portable dir is empty
+  (portable wins on conflict; legacy kept as backup, never deleted). Both are wired in
+  `App.xaml.cs`; new seams are intentional (composition-root owned).
 - Build and all tests pass (`dotnet test`).
 - `Domain/ServerResolver.ResolveAsync` accepts the four DOC.md address forms (`CfxId`, `cfx.re/join/<id>` with/without scheme, `IP:port`, `domain:port`) via `ServerAddress.Classify` and returns a `ServerProfile` (`CfxId`, `Address`, `ProjectName`, `GameClient`, `Requirements`, `IsCfxValidated`). There is an overload `ResolveAsync(string, SavedServer?)` that merges the saved server's manual Steam/Discord flags into `Requirements` via `ServerRequirements.ForConnection`, so `ServerProfile.Requirements` is always the *effective* connection requirements. `ServerRequirements` (sealed record) carries CFX-published `GameBuild`, `PureMode`, `RequestSteamTicket`, `DefaultBuild`, `ReplaceExecutable`, `PoolSizesIncrease`, `SteamRequired` (from published `sv_enforceSteamAuth`), `DiscordRequired` (all nullable when not published). `ForConnection` makes the manual flag *additive*: a saved server's `RequiresSteam = true` always requires Steam (even when the server publishes `sv_enforceSteamAuth = false`), otherwise the published value wins when present, else the manual fallback.
   - `CfxId`/`CfxJoinUrl` → `CfxService` (+`ServerRequirementsResolver`), `IsCfxValidated=true`; unknown form → `InvalidAddressException`.
@@ -22,7 +41,7 @@ Windows-only C#/.NET 10 WPF launcher for FiveM. Design decisions and UX philosop
 
 ## Architecture
 - `Core/Enums`: shared types. `GameClient` = FiveM | FiveMEnhanced | RedM. Note `DOC.md` lists only two — the code is source of truth; `Service/CfxService.cs` maps CFX `gamename` (`gta5`, `gta5enhanced`, `rdr3`) to it.
-- `Configuration/`: global launcher settings only. `LauncherSettings` is `PreferredClient` + `AutoLaunch` + `LastServerAddress` (the "open automatically next time" memory — the last successfully launched connect address) + `DevGameBuild` / `DevPureMode` (persisted Dev Mode values; the dev client toggle and `-cl2` are session-only, never persisted). JSON persistence via `ISettingsStorage` -> `FileSettingsStorage` (System.Text.Json + `JsonStringEnumConverter`, `launcher-settings.json` under `%localappdata%\FiveMServerLauncher`). Never add per-server fields, `Platform`, or `ServerPort` here.
+- `Configuration/`: global launcher settings only. `LauncherSettings` is `PreferredClient` + `AutoLaunch` + `LastServerAddress` (the "open automatically next time" memory — the last successfully launched connect address) + `DevGameBuild` / `DevPureMode` (persisted Dev Mode values; the dev client toggle and `-cl2` are session-only, never persisted). JSON persistence via `ISettingsStorage` -> `FileSettingsStorage` (System.Text.Json + `JsonStringEnumConverter`, `launcher-settings.json` next to the running exe via `PortableDataDirectory`). Never add per-server fields, `Platform`, or `ServerPort` here.
 - `Domain/SavedServer` (immutable, private ctor + validated `Create`, `[JsonConstructor]` for persistence) carries `Name`, `Address` (trimmed, classified connectable via `ServerAddress.Classify`), manual `RequiresSteam`/`RequiresDiscord` (`bool?`), optional `CfxId` (enrichment key, null when unknown; derived from CFX-form addresses, or captured at save time for IP:port/domain), and `MatchesAddress` (case-insensitive identity key). `Configuration/IServerRepository` -> `FileServerRepository` persist the saved-servers JSON list (missing/corrupt/invalid entries → empty, never crash; missing `CfxId` in old files → null; `Add` rejects duplicates, `Update` is address-keyed, `Remove` no-ops when unknown); tests use `InMemoryServerRepository`.
 - `Service/ServerEnrichmentService` (seam, `IServerEnrichmentService`; `HttpClient` + `ServerCatalog` + optional `IDnsResolver`) powers the enriched saved-server rows: `RefreshAsync` maps the streamRedir catalog snapshot to a `CfxId → ServerPresence(Online, Players, MaxPlayers, Game)` dictionary (`null` = outage, never throws; duplicate EndPoints grouped; `gamename` var → `GameClient` via `CfxVars`), `GetIconAsync(cfxId)` tracks `iconVersion` via `/single/{id}` and caches the PNG bytes keyed by `(CfxId, iconVersion)` (re-download only on version change; corrupt payload → null), and `ResolveCfxIdAsync(address)` returns the catalog `EndPoint` (= canonical cfx id) for IP:port/domain (DNS→IP via the seam) or extracts the id from CFX forms; all outages degrade to null/empty, never throw (swallows `HttpRequestException`/`TaskCanceledException`/`JsonException` only).
 - **Composition root**: `App.xaml.cs` `OnStartup` builds the object graph manually (`HttpClient` → shared `ServerCatalog` → `CfxService`/`ServerEnrichmentService` → `ServerResolver` → `GameLauncher` (`GameProcessLauncher` + `ProcessStarter` + `UriSchemeRegistration`, `CitizenFxPreparer` + `ClientInstallLocator` + `CitizenFxConfigWriter`; the same `ClientInstallLocator` instance is shared with `GameLauncher` and `MainViewModel`) → `ExternalAppStarter`/`ExternalAppPreparer` (shared `ProcessReadinessChecker`) → `MainViewModel`) and sets `MainWindow.DataContext`; no DI container, no `StartupUri` in `App.xaml`. It also starts the per-minute enrichment loop on the window dispatcher (cancelled when the window closes); a single `ServerCatalog` is shared between `ServerResolver` and `ServerEnrichmentService` so the streamRedir cache is not duplicated.

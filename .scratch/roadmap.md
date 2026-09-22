@@ -169,3 +169,21 @@ seams (`ProcessStarter`, `DnsResolver`, `UriSchemeRegistration`, `UriShellStarte
 
 **Goal:** pin the last untested public logic types, review the closing diff, and produce the
 final Release build.
+
+## 8. Product name "CFX Launcher" + portable single-file build
+
+**Status:** ✅ done pending commit (tickets `.scratch/product-name-and-portable/` 01–04 resolved;
+suite 439 green; code review clean on both axes after the findings were fixed; single-file
+publish verified; final manual smoke run left to the user — the machine-wide .NET update dialog
+interrupts agent-driven launches)
+
+**Spec:** `.scratch/product-name-and-portable/spec.md` (status `done`)
+
+**What:** rename visible presentation to **CFX Launcher** (window title, title bar, footer, and
+executable `CFXLauncher.exe` — cosmetic only, project/namespaces stay `FiveMServerLauncher`)
+with a **by CodeRanger** credit; make the launcher portable: settings (`launcher-settings.json`)
+and saved servers (`saved-servers.json`) stored **beside the exe** via a `PortableDataDirectory`
+seam (+ one-time `%localappdata%` migration), and a self-contained **win-x64 single-file**
+publish (`PublishSingleFile`, no trimming) as the documented release artifact.
+
+**Goal:** shipping a single portable `CFXLauncher.exe` that carries its own data alongside it.
