@@ -64,6 +64,9 @@ forced onto a server connection (server-published requirements always win). Need
 
 ## 4. RedM direct-open
 
+**Status:** ✅ done (commits `62e5403`, `bd65c82` + view fixes `81e8854`/`32799b4`;
+manual E2E verified: dropdown, redm://connect, dev client toggle, CitizenFX.ini priming).
+
 **Spec:** `.scratch/redm-open/spec.md` (to write)
 
 **Current state:** `GameClient.RedM` exists and `CfxVars` maps CFX `gamename rdr3` to it, so
