@@ -10,6 +10,8 @@
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
         <views:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility"/>
 
+        <views:SelectionEqualityToVisibilityConverter x:Key="SelectionEqualityToVisibility"/>
+
         <!-- COLORES -->
 
         <SolidColorBrush x:Key="BackgroundBrush" Color="#101010"/>
@@ -133,11 +135,23 @@
                TargetType="{x:Type Button}"
                BasedOn="{StaticResource BaseButtonStyle}">
 
+            <Setter Property="Background"
+                    Value="Transparent"/>
+
+            <Setter Property="Foreground"
+                    Value="{StaticResource AccentBrush}"/>
+
+            <Setter Property="BorderBrush"
+                    Value="{StaticResource AccentBrush}"/>
+
+            <Setter Property="BorderThickness"
+                    Value="1,1,1,2"/>
+
             <Setter Property="FontSize"
                     Value="15"/>
 
             <Setter Property="FontWeight"
-                    Value="SemiBold"/>
+                    Value="Bold"/>
 
             <Setter Property="HorizontalContentAlignment"
                     Value="Center"/>
@@ -147,14 +161,131 @@
 
         </Style>
 
-        <!-- BOTÓN SECUNDARIO -->
+        <!-- BOTÓN SECUNDARIO (outline, quiet) -->
 
         <Style x:Key="SecondaryButtonStyle"
                TargetType="{x:Type Button}"
-               BasedOn="{StaticResource MainButtonStyle}">
+               BasedOn="{StaticResource BaseButtonStyle}">
 
             <Setter Property="Background"
-                    Value="{StaticResource PanelBrush}"/>
+                    Value="Transparent"/>
+
+            <Setter Property="Foreground"
+                    Value="{StaticResource SecondaryTextBrush}"/>
+
+            <Setter Property="BorderBrush"
+                    Value="#3A3A3A"/>
+
+            <Setter Property="FontSize"
+                    Value="12"/>
+
+            <Setter Property="FontWeight"
+                    Value="SemiBold"/>
+
+            <Setter Property="HorizontalContentAlignment"
+                    Value="Center"/>
+
+            <Setter Property="Padding"
+                    Value="16,10"/>
+
+        </Style>
+
+        <!-- SECTION HEADER (shared label style) -->
+        <Style x:Key="SectionHeaderStyle"
+               TargetType="TextBlock">
+
+            <Setter Property="Foreground"
+                    Value="{StaticResource SecondaryTextBrush}"/>
+
+            <Setter Property="FontSize"
+                    Value="11"/>
+
+            <Setter Property="FontWeight"
+                    Value="SemiBold"/>
+
+        </Style>
+
+        <!-- THIN DARK SCROLLBAR (view-scoped) -->
+
+        <Style TargetType="{x:Type ScrollBar}">
+
+            <Setter Property="Width" Value="6"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="OverridesDefaultStyle" Value="True"/>
+
+            <Setter Property="Template">
+
+                <Setter.Value>
+
+                    <ControlTemplate TargetType="{x:Type ScrollBar}">
+
+                        <Grid UseLayoutRounding="True">
+
+                            <Track x:Name="PART_Track"
+                                   IsDirectionReversed="True"
+                                   IsEnabled="True">
+
+                                <Track.Thumb>
+
+                                    <Thumb>
+
+                                        <Thumb.Template>
+
+                                            <ControlTemplate TargetType="{x:Type Thumb}">
+
+                                                <Rectangle Fill="#3A3A3A"
+                                                           RadiusX="3"
+                                                           RadiusY="3"/>
+
+                                            </ControlTemplate>
+
+                                        </Thumb.Template>
+
+                                    </Thumb>
+
+                                </Track.Thumb>
+
+                                <Track.DecreaseRepeatButton>
+
+                                    <RepeatButton Command="{x:Static ScrollBar.LineUpCommand}"
+                                                  Focusable="False"
+                                                  IsTabStop="False"
+                                                  Background="Transparent"
+                                                  BorderThickness="0">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="{x:Type RepeatButton}">
+                                                <Border Background="Transparent"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+
+                                </Track.DecreaseRepeatButton>
+
+                                <Track.IncreaseRepeatButton>
+
+                                    <RepeatButton Command="{x:Static ScrollBar.LineDownCommand}"
+                                                  Focusable="False"
+                                                  IsTabStop="False"
+                                                  Background="Transparent"
+                                                  BorderThickness="0">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="{x:Type RepeatButton}">
+                                                <Border Background="Transparent"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+
+                                </Track.IncreaseRepeatButton>
+
+                            </Track>
+
+                        </Grid>
+
+                    </ControlTemplate>
+
+                </Setter.Value>
+
+            </Setter>
 
         </Style>
 
@@ -214,7 +345,7 @@
                 Background="{StaticResource PanelBrush}"
                 BorderBrush="{StaticResource BorderBrush}"
                 BorderThickness="1"
-                Margin="25">
+                Margin="20,24,10,24">
 
             <Grid>
 
@@ -235,14 +366,14 @@
                 <DockPanel Grid.Row="0" Margin="14,14,14,0">
 
                     <Button Content="⚙ SETTINGS"
-                            Height="32"
-                            Padding="12,0"
+                            MinHeight="34"
+                            Padding="14,8"
                             Style="{StaticResource SecondaryButtonStyle}"
                             Command="{Binding SettingsCommand}"/>
 
                     <Button Content="DEV MODE"
-                            Height="32"
-                            Padding="12,0"
+                            MinHeight="34"
+                            Padding="14,8"
                             Margin="8,0,0,0"
                             Style="{StaticResource SecondaryButtonStyle}"
                             Command="{Binding ToggleDevModeCommand}"/>
@@ -263,9 +394,7 @@
                     <StackPanel VerticalAlignment="Top">
 
                         <TextBlock Text="PREFERRED OPEN CLIENT"
-                                   Foreground="{StaticResource SecondaryTextBrush}"
-                                   FontSize="11"
-                                   FontWeight="SemiBold"/>
+                                   Style="{StaticResource SectionHeaderStyle}"/>
 
                         <ComboBox ItemsSource="{Binding AvailableOpenClients}"
                                   DisplayMemberPath="DisplayName"
@@ -295,9 +424,7 @@
                                                  FallbackValue=Visible}">
 
                     <TextBlock Text="FIVEM / CFX"
-                               Foreground="{StaticResource SecondaryTextBrush}"
-                               FontSize="11"
-                               FontWeight="SemiBold"
+                               Style="{StaticResource SectionHeaderStyle}"
                                HorizontalAlignment="Center"
                                Margin="0,0,0,7"/>
 
@@ -410,22 +537,22 @@
 
                 <!-- DEV MODE -->
 
-                <StackPanel Grid.Row="2"
-                            VerticalAlignment="Center"
-                            Margin="20"
-                            Visibility="{Binding IsDevMode,
-                                                 Converter={StaticResource BoolToVisibility},
-                                                 FallbackValue=Collapsed}">
+                <ScrollViewer Grid.Row="2"
+                              VerticalScrollBarVisibility="Auto"
+                              Visibility="{Binding IsDevMode,
+                                                  Converter={StaticResource BoolToVisibility},
+                                                  FallbackValue=Collapsed}">
+
+                    <StackPanel
+                            VerticalAlignment="Top"
+                            Margin="20,8,20,0">
 
                     <TextBlock Text="DEV MODE"
-                               Foreground="{StaticResource SecondaryTextBrush}"
-                               FontSize="11"
-                               FontWeight="SemiBold"
+                               Style="{StaticResource SectionHeaderStyle}"
                                HorizontalAlignment="Center"
-                               Margin="0,0,0,7"/>
+                               Margin="0,0,0,10"/>
 
                     <Button Content="{Binding DevClientButtonText}"
-                            Height="36"
                             Padding="14,6"
                             Style="{StaticResource SecondaryButtonStyle}"
                             Command="{Binding ToggleDevClientCommand}"
@@ -441,7 +568,7 @@
                              Foreground="{StaticResource TextBrush}"
                              BorderBrush="{StaticResource BorderBrush}"
                              BorderThickness="1"
-                             Padding="10,6"
+                             Padding="10,8"
                              FontSize="12"/>
 
                     <TextBlock Text="PURE MODE"
@@ -451,7 +578,7 @@
 
                     <ComboBox SelectedValue="{Binding DevPureMode}"
                               SelectedValuePath="Tag"
-                              Height="28"
+                              MinHeight="28"
                               VerticalContentAlignment="Center">
 
                         <ComboBoxItem Content="None"/>
@@ -467,24 +594,26 @@
 
                     </ComboBox>
 
-                </StackPanel>
+                    </StackPanel>
+
+                </ScrollViewer>
 
                 <!-- DEV LAUNCH -->
 
                 <StackPanel Grid.Row="3"
-                            Margin="20,0,20,20"
+                            Margin="20,14,20,20"
                             Visibility="{Binding IsDevMode,
                                                  Converter={StaticResource BoolToVisibility},
                                                  FallbackValue=Collapsed}">
 
                     <Button Content="LAUNCH"
-                            Height="50"
+                            MinHeight="50"
                             Style="{StaticResource MainButtonStyle}"
                             Command="{Binding DevLaunchCommand}"
                             CommandParameter="{x:Null}"/>
 
                     <Button Content="LAUNCH WITH SECOND CLIENT (-cl2)"
-                            Height="50"
+                            MinHeight="50"
                             Margin="0,8,0,0"
                             Style="{StaticResource SecondaryButtonStyle}"
                             Command="{Binding DevLaunchCommand}"
@@ -502,7 +631,7 @@
                 Background="{StaticResource PanelBrush}"
                 BorderBrush="{StaticResource BorderBrush}"
                 BorderThickness="1"
-                Margin="25">
+                Margin="10,24,20,24">
 
             <Grid>
 
@@ -517,14 +646,14 @@
 
                 <!-- FORMULARIO -->
 
-                <StackPanel Grid.Row="0"
-                            VerticalAlignment="Center"
-                            Margin="20">
+                <ScrollViewer Grid.Row="0"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+
+                    <StackPanel Margin="20">
 
                     <TextBlock Text="SAVED SERVERS"
-                               Foreground="{StaticResource SecondaryTextBrush}"
-                               FontSize="11"
-                               FontWeight="SemiBold"
+                               Style="{StaticResource SectionHeaderStyle}"
                                Margin="0,0,0,7"/>
 
                     <Border BorderBrush="{StaticResource BorderBrush}"
@@ -536,46 +665,86 @@
                                  SelectedItem="{Binding SelectedServer}"
                                  Background="{StaticResource PanelLightBrush}"
                                  BorderThickness="0"
-                                 MaxHeight="140"
-                                 MaxWidth="340">
+                                 HorizontalContentAlignment="Stretch"
+                                 Padding="0,4,0,4"
+                                 MaxHeight="110">
 
                             <ListBox.ItemTemplate>
 
                                 <DataTemplate>
 
-                                    <StackPanel Margin="8">
+                                    <Grid Margin="6">
 
-                                        <DockPanel>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
 
-                                            <TextBlock Text="{Binding Name}"
-                                                       Foreground="{StaticResource TextBrush}"
-                                                       FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding Name}"
+                                                   Foreground="{StaticResource TextBrush}"
+                                                   FontWeight="SemiBold"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
 
-                                            <TextBlock Text="{Binding Address}"
-                                                       Foreground="{StaticResource SecondaryTextBrush}"
-                                                       HorizontalAlignment="Right"
-                                                       FontSize="10"
-                                                       TextTrimming="CharacterEllipsis"/>
+                                        <Button Grid.Column="1"
+                                                Command="{Binding DataContext.OpenEditServerDialogCommand,
+                                                                  RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                Cursor="Hand"
+                                                Padding="6,2"
+                                                VerticalAlignment="Center">
 
-                                        </DockPanel>
+                                            <Button.Visibility>
 
-                                        <StackPanel Orientation="Horizontal"
-                                                    Margin="0,4,0,0">
+                                                <MultiBinding Converter="{StaticResource SelectionEqualityToVisibility}">
 
-                                            <CheckBox Content="Requires Steam"
-                                                      IsChecked="{Binding RequiresSteam}"
-                                                      Foreground="{StaticResource SecondaryTextBrush}"
-                                                      FontSize="11"/>
+                                                    <Binding Path="DataContext"
+                                                             RelativeSource="{RelativeSource AncestorType=ListBoxItem}"/>
 
-                                            <CheckBox Content="Requires Discord"
-                                                      IsChecked="{Binding RequiresDiscord}"
-                                                      Foreground="{StaticResource SecondaryTextBrush}"
-                                                      FontSize="11"
-                                                      Margin="16,0,0,0"/>
+                                                    <Binding Path="SelectedItem"
+                                                             RelativeSource="{RelativeSource AncestorType=ListBox}"/>
 
-                                        </StackPanel>
+                                                </MultiBinding>
 
-                                    </StackPanel>
+                                            </Button.Visibility>
+
+                                            <TextBlock Text="✏"/>
+
+                                            <Button.Template>
+
+                                                <ControlTemplate TargetType="{x:Type Button}">
+
+                                                    <Border Background="Transparent" Padding="{TemplateBinding Padding}">
+
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                                                    </Border>
+
+                                                </ControlTemplate>
+
+                                            </Button.Template>
+
+                                            <Button.Resources>
+
+                                                <Style TargetType="{x:Type TextBlock}" BasedOn="{x:Null}">
+
+                                                    <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}"/>
+
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                                     Value="True">
+                                                            <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+
+                                                </Style>
+
+                                            </Button.Resources>
+
+                                        </Button>
+
+                                    </Grid>
 
                                 </DataTemplate>
 
@@ -585,57 +754,26 @@
 
                     </Border>
 
-                    <StackPanel Orientation="Horizontal"
-                                Margin="0,8,0,0">
-
-                        <TextBox Text="{Binding NewServerName,
-                                              UpdateSourceTrigger=PropertyChanged}"
-                                 Background="{StaticResource PanelLightBrush}"
-                                 Foreground="{StaticResource TextBrush}"
-                                 BorderBrush="{StaticResource BorderBrush}"
-                                 BorderThickness="1"
-                                 Padding="10,8"
-                                 FontSize="11"
-                                 Width="120"
-                                 VerticalContentAlignment="Center"/>
-
-                        <TextBox Text="{Binding NewServerAddress,
-                                              UpdateSourceTrigger=PropertyChanged}"
-                                 Background="{StaticResource PanelLightBrush}"
-                                 Foreground="{StaticResource TextBrush}"
-                                 BorderBrush="{StaticResource BorderBrush}"
-                                 BorderThickness="1"
-                                 Padding="10,8"
-                                 FontSize="11"
-                                 Margin="8,0,0,0"
-                                 Width="160"
-                                 VerticalContentAlignment="Center"/>
-
-                    </StackPanel>
-
-                    <StackPanel Orientation="Horizontal"
-                                Margin="0,8,0,0">
-
-                        <Button Content="SAVE"
-                                Height="30"
-                                Padding="14,0"
-                                Style="{StaticResource SecondaryButtonStyle}"
-                                Command="{Binding AddServerCommand}"/>
+                    <DockPanel Margin="0,8,0,0">
 
                         <Button Content="DELETE"
-                                Height="30"
-                                Padding="14,0"
-                                Margin="8,0,0,0"
+                                MinHeight="26"
+                                Padding="12,4"
                                 Style="{StaticResource SecondaryButtonStyle}"
                                 Command="{Binding DeleteServerCommand}"/>
 
-                    </StackPanel>
+                        <Button Content="+ NEW SERVER"
+                                MinHeight="26"
+                                Padding="12,4"
+                                HorizontalAlignment="Right"
+                                Style="{StaticResource MainButtonStyle}"
+                                Command="{Binding OpenAddServerDialogCommand}"/>
+
+                    </DockPanel>
 
                     <TextBlock Text="CONNECT ADDRESS"
-                               Foreground="{StaticResource SecondaryTextBrush}"
-                               FontSize="11"
-                               FontWeight="SemiBold"
-                               Margin="0,16,0,7"/>
+                               Style="{StaticResource SectionHeaderStyle}"
+                               Margin="0,20,0,0"/>
 
                     <TextBox x:Name="ServerAddressBox"
                              Text="{Binding ServerAddress,
@@ -644,30 +782,119 @@
                              Foreground="{StaticResource TextBrush}"
                              BorderBrush="{StaticResource BorderBrush}"
                              BorderThickness="1"
-                             Padding="18,14"
+                             Padding="16,10"
                              FontSize="13"
                              VerticalContentAlignment="Center"
-                             Height="50"/>
+                             MinHeight="40"
+                             Margin="0,7,0,0"/>
 
                     <TextBlock Text="{Binding StatusText}"
                                Foreground="{StaticResource SecondaryTextBrush}"
                                FontSize="11"
                                HorizontalAlignment="Center"
-                               Margin="0,8,0,0"/>
+                               Margin="0,10,0,0"/>
 
-                </StackPanel>
+                    </StackPanel>
 
+                </ScrollViewer>
 
                 <!-- BOTON ENTRAR -->
 
                 <Button Grid.Row="1"
                         Content="ENTER SERVER"
-                        Height="50"
-                        Margin="20,0,20,20"
+                        Height="54"
+                        Margin="20,16,20,20"
                         Style="{StaticResource MainButtonStyle}"
                         Command="{Binding ConnectCommand}"/>
 
             </Grid>
+
+        </Border>
+
+        <!-- ADD/EDIT SERVER DIALOG (overlay) -->
+
+        <Border Grid.Column="0"
+                Grid.ColumnSpan="3"
+                Background="#66000000"
+                Padding="40,60"
+                Visibility="{Binding IsServerDialogOpen,
+                                     Converter={StaticResource BoolToVisibility},
+                                     FallbackValue=Collapsed}">
+
+            <Border Background="{StaticResource PanelBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    Padding="20"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    MinWidth="320">
+
+                <StackPanel>
+
+                    <TextBlock Text="{Binding ServerDialogTitle}"
+                               Style="{StaticResource SectionHeaderStyle}"
+                               Margin="0,0,0,12"/>
+
+                    <TextBox Text="{Binding DialogServerName, UpdateSourceTrigger=PropertyChanged}"
+                             Background="{StaticResource PanelLightBrush}"
+                             Foreground="{StaticResource TextBrush}"
+                             BorderBrush="{StaticResource BorderBrush}"
+                             BorderThickness="1"
+                             Padding="12,8"
+                             FontSize="12"
+                             MinHeight="38"/>
+
+                    <TextBox Text="{Binding DialogServerAddress, UpdateSourceTrigger=PropertyChanged}"
+                             Background="{StaticResource PanelLightBrush}"
+                             Foreground="{StaticResource TextBrush}"
+                             BorderBrush="{StaticResource BorderBrush}"
+                             BorderThickness="1"
+                             Padding="12,8"
+                             FontSize="12"
+                             MinHeight="38"
+                             Margin="0,8,0,0"/>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+
+                        <CheckBox IsChecked="{Binding DialogRequiresSteam}"
+                                  Content="Requires Steam"
+                                  Foreground="{StaticResource SecondaryTextBrush}"
+                                  FontSize="11"/>
+
+                        <CheckBox IsChecked="{Binding DialogRequiresDiscord}"
+                                  Content="Requires Discord"
+                                  Foreground="{StaticResource SecondaryTextBrush}"
+                                  FontSize="11"
+                                  Margin="16,0,0,0"/>
+
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding DialogError}"
+                               Foreground="#E5533D"
+                               FontSize="11"
+                               HorizontalAlignment="Center"
+                               Margin="0,10,0,0"/>
+
+                    <DockPanel Margin="0,14,0,0">
+
+                        <Button Content="CANCEL"
+                                MinHeight="32"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                HorizontalAlignment="Left"
+                                Command="{Binding CancelServerDialogCommand}"/>
+
+                        <Button Content="SAVE"
+                                MinHeight="32"
+                                Style="{StaticResource MainButtonStyle}"
+                                HorizontalAlignment="Right"
+                                MinWidth="90"
+                                Command="{Binding SaveServerDialogCommand}"/>
+
+                    </DockPanel>
+
+                </StackPanel>
+
+            </Border>
 
         </Border>
 

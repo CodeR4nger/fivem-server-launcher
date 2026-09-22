@@ -447,11 +447,12 @@ public class MainViewModelTests
         // Given
         var repository = new InMemoryServerRepository();
         var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository: repository);
-        vm.NewServerName = "My Server";
-        vm.NewServerAddress = "cfx.re/join/abc123";
+        vm.OpenAddServerDialogCommand.Execute(null);
+        vm.DialogServerName = "My Server";
+        vm.DialogServerAddress = "cfx.re/join/abc123";
 
         // When
-        vm.AddServerCommand.Execute(null);
+        vm.SaveServerDialogCommand.Execute(null);
 
         // Then
         var item = Assert.Single(vm.SavedServers);
@@ -466,14 +467,15 @@ public class MainViewModelTests
         // Given
         var repository = new InMemoryServerRepository();
         var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository: repository);
-        vm.NewServerName = "My Server";
-        vm.NewServerAddress = "9 92";
+        vm.OpenAddServerDialogCommand.Execute(null);
+        vm.DialogServerName = "My Server";
+        vm.DialogServerAddress = "9 92";
 
         // When
-        vm.AddServerCommand.Execute(null);
+        vm.SaveServerDialogCommand.Execute(null);
 
         // Then
-        Assert.Equal("Invalid name or address", vm.StatusText);
+        Assert.Equal("Invalid name or address", vm.DialogError);
         Assert.Empty(repository.GetAll());
         Assert.Empty(vm.SavedServers);
     }
@@ -485,14 +487,15 @@ public class MainViewModelTests
         var repository = new InMemoryServerRepository();
         repository.Add(SavedServer.Create("First", "abc123"));
         var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository: repository);
-        vm.NewServerName = "Second";
-        vm.NewServerAddress = "abc123";
+        vm.OpenAddServerDialogCommand.Execute(null);
+        vm.DialogServerName = "Second";
+        vm.DialogServerAddress = "abc123";
 
         // When
-        vm.AddServerCommand.Execute(null);
+        vm.SaveServerDialogCommand.Execute(null);
 
         // Then
-        Assert.Equal("Server already saved", vm.StatusText);
+        Assert.Equal("Server already saved", vm.DialogError);
         Assert.Single(repository.GetAll());
     }
 
@@ -896,6 +899,252 @@ public class MainViewModelTests
         // Then
         Assert.Empty(processLauncher.Requests);
         Assert.Equal("Ready", vm.StatusText);
+    }
+
+    [Fact]
+    public async Task ToggleDevModeCommand_WhenSettingsOpen_ShouldCloseSettings()
+    {
+        // Given
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+        await vm.InitializeAsync();
+        vm.SettingsCommand.Execute(null);
+
+        // When
+        vm.ToggleDevModeCommand.Execute(null);
+
+        // Then
+        Assert.True(vm.IsDevMode);
+        Assert.False(vm.IsSettingsOpen);
+    }
+
+    [Fact]
+    public async Task SettingsCommand_WhenDevModeOpen_ShouldCloseDevMode()
+    {
+        // Given
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+        await vm.InitializeAsync();
+        vm.ToggleDevModeCommand.Execute(null);
+
+        // When
+        vm.SettingsCommand.Execute(null);
+
+        // Then
+        Assert.False(vm.IsDevMode);
+        Assert.True(vm.IsSettingsOpen);
+    }
+
+    [Fact]
+    public async Task OpenAddServerDialogCommand_ShouldOpenEmptyDialog()
+    {
+        // Given
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+        await vm.InitializeAsync();
+
+        // When
+        vm.OpenAddServerDialogCommand.Execute(null);
+
+        // Then
+        Assert.True(vm.IsServerDialogOpen);
+        Assert.Null(vm.EditingServer);
+        Assert.Equal(string.Empty, vm.DialogServerName);
+        Assert.Equal(string.Empty, vm.DialogServerAddress);
+        Assert.False(vm.DialogRequiresSteam);
+        Assert.False(vm.DialogRequiresDiscord);
+    }
+
+    [Fact]
+    public async Task OpenEditServerDialogCommand_ShouldPrefillFromRow()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/y4lg95", requiresSteam: true));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+        await vm.InitializeAsync();
+
+        // When
+        vm.OpenEditServerDialogCommand.Execute(vm.SavedServers[0]);
+
+        // Then
+        Assert.True(vm.IsServerDialogOpen);
+        Assert.Equal(vm.SavedServers[0], vm.EditingServer);
+        Assert.Equal("My Server", vm.DialogServerName);
+        Assert.Equal("cfx.re/join/y4lg95", vm.DialogServerAddress);
+        Assert.True(vm.DialogRequiresSteam);
+    }
+
+    [Fact]
+    public async Task SaveServerDialogCommand_OnAdd_ShouldPersistAndCloseDialog()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+        await vm.InitializeAsync();
+        vm.OpenAddServerDialogCommand.Execute(null);
+        vm.DialogServerName = "New Server";
+        vm.DialogServerAddress = "cfx.re/join/abc123";
+        vm.DialogRequiresDiscord = true;
+
+        // When
+        vm.SaveServerDialogCommand.Execute(null);
+
+        // Then
+        Assert.False(vm.IsServerDialogOpen);
+        Assert.Single(vm.SavedServers);
+        Assert.Equal("New Server", vm.SavedServers[0].Name);
+        Assert.Equal("cfx.re/join/abc123", vm.SavedServers[0].Address);
+        Assert.True(vm.SavedServers[0].RequiresDiscord);
+        Assert.Equal("Server saved", vm.StatusText);
+    }
+
+    [Fact]
+    public async Task SaveServerDialogCommand_OnEdit_ShouldUpdateSameAddress()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("Old Name", "cfx.re/join/keep"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+        await vm.InitializeAsync();
+        vm.OpenEditServerDialogCommand.Execute(vm.SavedServers[0]);
+
+        // When
+        vm.DialogServerName = "New Name";
+        vm.DialogRequiresSteam = true;
+        vm.SaveServerDialogCommand.Execute(null);
+
+        // Then
+        Assert.Single(vm.SavedServers);
+        Assert.Equal("New Name", vm.SavedServers[0].Name);
+        Assert.True(vm.SavedServers[0].RequiresSteam);
+        Assert.False(vm.IsServerDialogOpen);
+    }
+
+    [Fact]
+    public async Task SaveServerDialogCommand_OnEditAddressChange_ShouldRemoveOldAndAddNew()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("Move Me", "cfx.re/join/old"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+        await vm.InitializeAsync();
+        vm.OpenEditServerDialogCommand.Execute(vm.SavedServers[0]);
+
+        // When
+        vm.DialogServerAddress = "cfx.re/join/new";
+        vm.SaveServerDialogCommand.Execute(null);
+
+        // Then
+        Assert.Single(vm.SavedServers);
+        Assert.Equal("cfx.re/join/new", vm.SavedServers[0].Address);
+        Assert.Null(repository.FindByAddress("cfx.re/join/old"));
+        Assert.NotNull(repository.FindByAddress("cfx.re/join/new"));
+    }
+
+    [Fact]
+    public async Task SaveServerDialogCommand_WithInvalidInput_ShouldNotCloseDialog()
+    {
+        // Given
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+        await vm.InitializeAsync();
+        vm.OpenAddServerDialogCommand.Execute(null);
+        vm.DialogServerName = "  ";
+        vm.DialogServerAddress = "9 92";
+
+        // When
+        vm.SaveServerDialogCommand.Execute(null);
+
+        // Then
+        Assert.True(vm.IsServerDialogOpen);
+        Assert.Equal("Invalid name or address", vm.DialogError);
+    }
+
+    [Fact]
+    public async Task CancelServerDialogCommand_ShouldCloseWithoutSaving()
+    {
+        // Given
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+        await vm.InitializeAsync();
+        vm.OpenAddServerDialogCommand.Execute(null);
+        vm.DialogServerName = "Touched";
+
+        // When
+        vm.CancelServerDialogCommand.Execute(null);
+
+        // Then
+        Assert.False(vm.IsServerDialogOpen);
+        Assert.Empty(vm.SavedServers);
+    }
+
+    [Fact]
+    public async Task ServerDialogTitle_OnAdd_ShouldBeNewServer()
+    {
+        // Given
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+        await vm.InitializeAsync();
+
+        // When
+        vm.OpenAddServerDialogCommand.Execute(null);
+
+        // Then
+        Assert.Equal("NEW SERVER", vm.ServerDialogTitle);
+    }
+
+    [Fact]
+    public async Task ServerDialogTitle_OnEdit_ShouldBeEditServer()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/y4lg95"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+        await vm.InitializeAsync();
+
+        // When
+        vm.OpenEditServerDialogCommand.Execute(vm.SavedServers[0]);
+
+        // Then
+        Assert.Equal("EDIT SERVER", vm.ServerDialogTitle);
+    }
+
+    [Fact]
+    public async Task SaveServerDialogCommand_OnEditSameAddressCaseInsensitive_ShouldUpdateInPlace()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("Old Name", "cfx.re/join/keep"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+        await vm.InitializeAsync();
+        vm.OpenEditServerDialogCommand.Execute(vm.SavedServers[0]);
+
+        // When
+        vm.DialogServerName = "New Name";
+        vm.DialogServerAddress = "CFX.RE/JOIN/KEEP";
+        vm.SaveServerDialogCommand.Execute(null);
+
+        // Then
+        Assert.Single(vm.SavedServers);
+        Assert.Equal("New Name", vm.SavedServers[0].Name);
+        Assert.Equal("CFX.RE/JOIN/KEEP", vm.SavedServers[0].Address);
+        Assert.False(vm.IsServerDialogOpen);
+    }
+
+    [Fact]
+    public async Task SaveServerDialogCommand_OnDuplicateEditAddress_ShouldNotCloseDialog()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("Keep Me", "cfx.re/join/keep"));
+        repository.Add(SavedServer.Create("Edit Me", "cfx.re/join/edit"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+        await vm.InitializeAsync();
+        vm.OpenEditServerDialogCommand.Execute(vm.SavedServers[1]);
+
+        // When
+        vm.DialogServerAddress = "cfx.re/join/keep";
+        vm.SaveServerDialogCommand.Execute(null);
+
+        // Then
+        Assert.True(vm.IsServerDialogOpen);
+        Assert.Equal("Server already saved", vm.DialogError);
+        Assert.Equal(2, vm.SavedServers.Count);
     }
 
     [Fact]

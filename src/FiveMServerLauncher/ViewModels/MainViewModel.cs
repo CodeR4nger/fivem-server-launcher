@@ -25,8 +25,6 @@ public class MainViewModel : INotifyPropertyChanged
     private LauncherSettings _settings;
 
     private string _serverAddress = string.Empty;
-    private string _newServerName = string.Empty;
-    private string _newServerAddress = string.Empty;
     private string _statusText = "Ready";
     private bool _isBusy;
     private bool _isSettingsOpen;
@@ -50,12 +48,15 @@ public class MainViewModel : INotifyPropertyChanged
         _settingsRepository = settingsRepository;
         _settings = settingsRepository.Load();
         ConnectCommand = new AsyncRelayCommand(ConnectAsync, CanConnect);
-        AddServerCommand = new RelayCommand(AddServer);
         DeleteServerCommand = new RelayCommand(DeleteServer, CanDeleteServer);
         OpenClientCommand = new AsyncRelayCommand(OpenClientAsync, CanOpenClient);
         SelectOpenClientCommand = new RelayCommand(SelectOpenClient);
-        SettingsCommand = new RelayCommand(() => IsSettingsOpen = !IsSettingsOpen);
-        ToggleDevModeCommand = new RelayCommand(() => IsDevMode = !IsDevMode);
+        SettingsCommand = new RelayCommand(ToggleSettings);
+        ToggleDevModeCommand = new RelayCommand(ToggleDevMode);
+        OpenAddServerDialogCommand = new RelayCommand(OpenAddServerDialog);
+        OpenEditServerDialogCommand = new RelayCommand(OpenEditServerDialog);
+        SaveServerDialogCommand = new RelayCommand(SaveServerDialog);
+        CancelServerDialogCommand = new RelayCommand(CloseServerDialog);
         ToggleDevClientCommand = new RelayCommand(() =>
             DevClient = DevClient == GameClient.FiveM ? GameClient.RedM : GameClient.FiveM);
         DevLaunchCommand = new AsyncRelayCommand((object? secondClient) => DevLaunchAsync(secondClient is true), () => !IsBusy);
@@ -67,8 +68,6 @@ public class MainViewModel : INotifyPropertyChanged
 
     public ICommand ConnectCommand { get; }
 
-    public ICommand AddServerCommand { get; }
-
     public ICommand DeleteServerCommand { get; }
 
     public ICommand OpenClientCommand { get; }
@@ -76,6 +75,72 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand SelectOpenClientCommand { get; }
 
     public ICommand SettingsCommand { get; }
+
+    public ICommand OpenAddServerDialogCommand { get; }
+
+    public ICommand OpenEditServerDialogCommand { get; }
+
+    public ICommand SaveServerDialogCommand { get; }
+
+    public ICommand CancelServerDialogCommand { get; }
+
+    private SavedServerItem? _editingServer;
+    private bool _isServerDialogOpen;
+    private string _dialogServerName = string.Empty;
+    private string _dialogServerAddress = string.Empty;
+    private bool _dialogRequiresSteam;
+    private bool _dialogRequiresDiscord;
+    private string _dialogError = string.Empty;
+
+    public SavedServerItem? EditingServer
+    {
+        get => _editingServer;
+        private set
+        {
+            if (SetProperty(ref _editingServer, value))
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ServerDialogTitle)));
+            }
+        }
+    }
+
+    public bool IsServerDialogOpen
+    {
+        get => _isServerDialogOpen;
+        private set => SetProperty(ref _isServerDialogOpen, value);
+    }
+
+    public string ServerDialogTitle => EditingServer is null ? "NEW SERVER" : "EDIT SERVER";
+
+    public string DialogError
+    {
+        get => _dialogError;
+        private set => SetProperty(ref _dialogError, value);
+    }
+
+    public string DialogServerName
+    {
+        get => _dialogServerName;
+        set => SetProperty(ref _dialogServerName, value);
+    }
+
+    public string DialogServerAddress
+    {
+        get => _dialogServerAddress;
+        set => SetProperty(ref _dialogServerAddress, value);
+    }
+
+    public bool DialogRequiresSteam
+    {
+        get => _dialogRequiresSteam;
+        set => SetProperty(ref _dialogRequiresSteam, value);
+    }
+
+    public bool DialogRequiresDiscord
+    {
+        get => _dialogRequiresDiscord;
+        set => SetProperty(ref _dialogRequiresDiscord, value);
+    }
 
     public bool IsSettingsOpen
     {
@@ -247,22 +312,114 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
+    private void OpenAddServerDialog(object? _)
+    {
+        OpenAddServerDialog();
+    }
+
+    private void OpenAddServerDialog()
+    {
+        EditingServer = null;
+        DialogServerName = string.Empty;
+        DialogServerAddress = string.Empty;
+        DialogRequiresSteam = false;
+        DialogRequiresDiscord = false;
+        DialogError = string.Empty;
+        IsServerDialogOpen = true;
+    }
+
+    private void OpenEditServerDialog(object? row)
+    {
+        if (row is not SavedServerItem item)
+        {
+            return;
+        }
+
+        EditingServer = item;
+        DialogServerName = item.Name;
+        DialogServerAddress = item.Address;
+        DialogRequiresSteam = item.RequiresSteam;
+        DialogRequiresDiscord = item.RequiresDiscord;
+        DialogError = string.Empty;
+        IsServerDialogOpen = true;
+    }
+
+    private void CloseServerDialog(object? _ = null)
+    {
+        IsServerDialogOpen = false;
+        EditingServer = null;
+    }
+
+    private void SaveServerDialog(object? _ = null)
+    {
+        SavedServer savedServer;
+
+        try
+        {
+            savedServer = SavedServer.Create(
+                DialogServerName,
+                DialogServerAddress,
+                DialogRequiresSteam,
+                DialogRequiresDiscord);
+        }
+        catch (ArgumentException)
+        {
+            DialogError = "Invalid name or address";
+            return;
+        }
+
+        var conflicting = _serverRepository.FindByAddress(savedServer.Address);
+
+        if (EditingServer is null)
+        {
+            if (conflicting is not null)
+            {
+                DialogError = "Server already saved";
+                return;
+            }
+
+            _serverRepository.Add(savedServer);
+            SavedServers.Add(ToItem(savedServer));
+        }
+        else
+        {
+            if (conflicting is not null
+                && !conflicting.MatchesAddress(EditingServer.Address))
+            {
+                DialogError = "Server already saved";
+                return;
+            }
+
+            var oldRow = SavedServers.FirstOrDefault(s =>
+                string.Equals(s.Address, EditingServer.Address, StringComparison.OrdinalIgnoreCase));
+
+            if (conflicting is null
+                && string.Equals(EditingServer.Address, savedServer.Address, StringComparison.OrdinalIgnoreCase))
+            {
+                _serverRepository.Update(savedServer);
+            }
+            else
+            {
+                _serverRepository.Remove(EditingServer.Address);
+                _serverRepository.Add(savedServer);
+            }
+
+            if (oldRow is not null)
+            {
+                var index = SavedServers.IndexOf(oldRow);
+                SavedServers.RemoveAt(index);
+                SavedServers.Insert(index, ToItem(savedServer));
+            }
+        }
+
+        StatusText = "Server saved";
+        CloseServerDialog();
+    }
+
     public string ServerAddress
     {
         get => _serverAddress;
         set => SetProperty(ref _serverAddress, value);
-    }
-
-    public string NewServerName
-    {
-        get => _newServerName;
-        set => SetProperty(ref _newServerName, value);
-    }
-
-    public string NewServerAddress
-    {
-        get => _newServerAddress;
-        set => SetProperty(ref _newServerAddress, value);
     }
 
     public string StatusText
@@ -300,33 +457,6 @@ public class MainViewModel : INotifyPropertyChanged
     private void PersistServer(SavedServerItem item)
     {
         _serverRepository.Update(SavedServer.Create(item.Name, item.Address, item.RequiresSteam, item.RequiresDiscord));
-    }
-
-    private void AddServer()
-    {
-        SavedServer savedServer;
-
-        try
-        {
-            savedServer = SavedServer.Create(NewServerName, NewServerAddress);
-        }
-        catch (ArgumentException)
-        {
-            StatusText = "Invalid name or address";
-            return;
-        }
-
-        if (_serverRepository.FindByAddress(savedServer.Address) is not null)
-        {
-            StatusText = "Server already saved";
-            return;
-        }
-
-        _serverRepository.Add(savedServer);
-        SavedServers.Add(ToItem(savedServer));
-        NewServerName = string.Empty;
-        NewServerAddress = string.Empty;
-        StatusText = "Server saved";
     }
 
     private void DeleteServer()
@@ -466,6 +596,26 @@ public class MainViewModel : INotifyPropertyChanged
         if (option is InstalledClientOption installed)
         {
             SelectedOpenClient = installed;
+        }
+    }
+
+    private void ToggleSettings()
+    {
+        IsSettingsOpen = !IsSettingsOpen;
+
+        if (IsSettingsOpen)
+        {
+            IsDevMode = false;
+        }
+    }
+
+    private void ToggleDevMode()
+    {
+        IsDevMode = !IsDevMode;
+
+        if (IsDevMode)
+        {
+            IsSettingsOpen = false;
         }
     }
 

@@ -78,22 +78,29 @@ location/executable before assuming (DOC.md: "investigate before assuming").
 
 ## 5. UI improvement (with a design skill)
 
-**Spec:** `.scratch/ui-improvement/spec.md` (to write)
+**Status:** ✅ done (phase close: code-review Standards + Spec, suite 313 green, visual
+confirmation; commit pending `code-review` closure). Spec: `.scratch/ui-improvement/spec.md`
+status `done`, issues 01–05 all resolved.
 
-**Goal:** polish the main UI against DOC.md (#UX, #Initial UI design, color tokens) once the core
-flows are wired, so the work lands on working behavior.
+**Spec:** `.scratch/ui-improvement/spec.md`
 
-**Step 0 — design skill:** create `.agents/skills/ui-design/SKILL.md` (repo-local skill, picked
-up automatically via `skills.paths` in `opencode.json`; no `skills-lock.json` entry — only
-pinned external skills live there). The skill must encode:
+**Goal:** polish the main UI against DOC.md (#UX, #Initial UI design) once the core flows are
+wired, so the work lands on working behavior.
+
+**Step 0 — design skill:** ✅ `.agents/skills/ui-design/SKILL.md` created (repo-local skill,
+picked up automatically via `skills.paths` in `opencode.json`; no `skills-lock.json` entry — only
+pinned external skills live there). The skill encodes:
 - DOC.md UX philosophy: don't bother if everything is ready; show an explanatory progress screen
   only when something requires intervention or waiting.
-- Design tokens: background `#FFFFFF`, primary `#000000`, accent `#FF6A00`, text `#111111`,
-  secondary `#777777`, error `#D32F2F`, success `#2E7D32`.
+- **Dark theme is the identity and stays** (user correction): greys `#101010`/`#181818`/`#202020`,
+  amber accent `#F5A623`, deep borders `#080808` — not the light palette originally listed below.
 - WPF/XAML conventions: clean design, white space, large buttons, restrained animations, styles
   in resources, bindings over code-behind, business logic never in XAML.
 
-Apply the skill to drive the polish work inside this phase.
+**Phase outcome:** layout clipping fixes, settings/dev mutual exclusivity, thin dark scrollbar,
+saved-server rows (name + selected-only edit pencil, flush right, accent hover), add/edit overlay
+dialog (address-keyed `Update` vs remove+add, in-dialog `DialogError`), multi-size `.ico`
+(`Assets/launcher.ico`, `ApplicationIcon` + window `Icon`).
 
 ## Independent (out-of-band)
 
