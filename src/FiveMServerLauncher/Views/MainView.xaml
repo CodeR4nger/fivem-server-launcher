@@ -424,19 +424,11 @@
                                HorizontalAlignment="Center"
                                Margin="0,0,0,7"/>
 
-                    <Button Height="28"
+                    <Button Content="{Binding DevClientLabel, StringFormat=CLIENT: {0}}"
+                            Height="28"
                             Style="{StaticResource SecondaryButtonStyle}"
                             Command="{Binding ToggleDevClientCommand}"
-                            Margin="0,0,0,10">
-
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-
-                            <TextBlock Text="CLIENT: "/>
-                            <TextBlock Text="{Binding DevClientLabel}"/>
-
-                        </StackPanel>
-
-                    </Button>
+                            Margin="0,0,0,10"/>
 
                     <TextBlock Text="GAME BUILD"
                                Foreground="{StaticResource SecondaryTextBrush}"
@@ -491,7 +483,7 @@
                             CommandParameter="{x:Null}"/>
 
                     <Button Content="LAUNCH WITH SECOND CLIENT (-cl2)"
-                            Height="40"
+                            Height="50"
                             Margin="0,8,0,0"
                             Style="{StaticResource SecondaryButtonStyle}"
                             Command="{Binding DevLaunchCommand}"
