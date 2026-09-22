@@ -1,6 +1,6 @@
 # Final project review + final release build
 
-**Status:** done (tickets 01–03 resolved; suite 422 green; code review clean; final Release build 0 errors; commit `?`)
+**Status:** done (tickets 01–03 resolved; suite 422 green; code review clean; final Release build 0 errors; commit `efc96b5`)
 
 ## Problem Statement
 
