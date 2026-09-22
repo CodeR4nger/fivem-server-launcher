@@ -102,11 +102,14 @@ public class MainViewModel : INotifyPropertyChanged
             if (SetProperty(ref _devClient, value))
             {
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevClientLabel)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevClientButtonText)));
             }
         }
     }
 
     public string DevClientLabel => InstalledClientOption.DisplayNameOf(DevClient);
+
+    public string DevClientButtonText => $"CLIENT: {DevClientLabel}";
 
     public ICommand ToggleDevClientCommand { get; }
 

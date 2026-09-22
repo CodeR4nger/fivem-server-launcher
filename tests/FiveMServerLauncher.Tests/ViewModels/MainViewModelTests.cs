@@ -1114,6 +1114,19 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public async Task ToggleDevClientCommand_ShouldUpdateButtonText()
+    {
+        // Given
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+        await vm.InitializeAsync();
+
+        // When / Then
+        Assert.Equal("CLIENT: FiveM", vm.DevClientButtonText);
+        vm.ToggleDevClientCommand.Execute(null);
+        Assert.Equal("CLIENT: RedM", vm.DevClientButtonText);
+    }
+
+    [Fact]
     public async Task ToggleDevClientCommand_ShouldSwitchDevTarget()
     {
         // Given

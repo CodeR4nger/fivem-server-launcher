@@ -424,8 +424,9 @@
                                HorizontalAlignment="Center"
                                Margin="0,0,0,7"/>
 
-                    <Button Content="{Binding DevClientLabel, StringFormat=CLIENT: {0}}"
-                            Height="28"
+                    <Button Content="{Binding DevClientButtonText}"
+                            Height="36"
+                            Padding="14,6"
                             Style="{StaticResource SecondaryButtonStyle}"
                             Command="{Binding ToggleDevClientCommand}"
                             Margin="0,0,0,10"/>
