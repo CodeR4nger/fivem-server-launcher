@@ -442,6 +442,301 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public void Ctor_WhenSavedServerHasCfxId_ShouldExposeItOnRow()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "192.168.1.10:30120", cfxId: "y4lg95"));
+
+        // When
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository: repository);
+
+        // Then
+        Assert.Equal("y4lg95", Assert.Single(vm.SavedServers).CfxId);
+    }
+
+    [Fact]
+    public async Task RefreshServerInfoAsync_WhenOnline_ShouldPopulatePlayersAndIcon()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/y4lg95"));
+        var enrichment = new FakeServerEnrichmentService
+        {
+            Presence = new Dictionary<string, ServerPresence>
+            {
+                ["y4lg95"] = new ServerPresence(true, 12, 64, GameClient.FiveM)
+            },
+            Icon = [1, 2, 3]
+        };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            enrichment: enrichment);
+
+        // When
+        await vm.RefreshServerInfoAsync();
+
+        // Then
+        var item = Assert.Single(vm.SavedServers);
+        Assert.True(item.Online);
+        Assert.Equal(12, item.Players);
+        Assert.Equal(64, item.MaxPlayers);
+        Assert.Equal("12/64", item.StatusLabel);
+        Assert.Equal(GameClient.FiveM, item.Game);
+        Assert.Equal("FiveM", item.GameTagLabel);
+        Assert.True(item.HasIcon);
+    }
+
+    [Fact]
+    public async Task RefreshServerInfoAsync_WhenCfxIdNotInCatalog_ShouldShowOfflineStatus()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/y4lg95"));
+        var enrichment = new FakeServerEnrichmentService { Presence = new Dictionary<string, ServerPresence>() };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            enrichment: enrichment);
+
+        // When
+        await vm.RefreshServerInfoAsync();
+
+        // Then
+        var item = Assert.Single(vm.SavedServers);
+        Assert.False(item.Online);
+        Assert.Equal("OFFLINE", item.StatusLabel);
+        Assert.False(item.HasIcon);
+    }
+
+    [Fact]
+    public async Task RefreshServerInfoAsync_WhenNoCfxId_ShouldLeaveRowUnenriched()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "not-published.example.com:30120"));
+        var enrichment = new FakeServerEnrichmentService
+        {
+            Presence = new Dictionary<string, ServerPresence> { ["y4lg95"] = new ServerPresence(true, 1, 32, GameClient.FiveM) }
+        };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            enrichment: enrichment);
+
+        // When
+        await vm.RefreshServerInfoAsync();
+
+        // Then
+        var item = Assert.Single(vm.SavedServers);
+        Assert.False(item.Online);
+        Assert.Equal("UNRESOLVED", item.StatusLabel);
+        Assert.False(item.HasIcon);
+        Assert.Equal(0, enrichment.IconCalls);
+    }
+
+    [Fact]
+    public async Task SaveServer_WithIpPortAddress_ShouldCaptureCfxIdInBackgroundAndPersist()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        var enrichment = new FakeServerEnrichmentService { ResolvedCfxId = "y4lg95" };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            enrichment: enrichment);
+        vm.OpenAddServerDialogCommand.Execute(null);
+        vm.DialogServerName = "Ip Server";
+        vm.DialogServerAddress = "149.56.120.52:30320";
+
+        // When
+        vm.SaveServerDialogCommand.Execute(null);
+        await vm.WaitForPendingCapturesAsync();
+
+        // Then
+        var item = Assert.Single(vm.SavedServers);
+        Assert.Equal("y4lg95", item.CfxId);
+        Assert.Equal("y4lg95", Assert.Single(repository.GetAll()).CfxId);
+        Assert.Equal(1, enrichment.ResolveCalls);
+    }
+
+    [Fact]
+    public async Task SaveServer_WithIpPortAddress_WhenNotResolvable_ShouldKeepNullCfxId()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        var enrichment = new FakeServerEnrichmentService { ResolvedCfxId = null };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            enrichment: enrichment);
+        vm.OpenAddServerDialogCommand.Execute(null);
+        vm.DialogServerName = "Ip Server";
+        vm.DialogServerAddress = "149.56.120.52:30320";
+
+        // When
+        vm.SaveServerDialogCommand.Execute(null);
+        await vm.WaitForPendingCapturesAsync();
+
+        // Then
+        var item = Assert.Single(vm.SavedServers);
+        Assert.Null(item.CfxId);
+        Assert.Null(Assert.Single(repository.GetAll()).CfxId);
+    }
+
+    [Fact]
+    public void SaveServer_WithCfxJoinAddress_ShouldStoreCfxIdImmediately()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        var enrichment = new FakeServerEnrichmentService();
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            enrichment: enrichment);
+        vm.OpenAddServerDialogCommand.Execute(null);
+        vm.DialogServerName = "Cfx Server";
+        vm.DialogServerAddress = "cfx.re/join/y4lg95";
+
+        // When
+        vm.SaveServerDialogCommand.Execute(null);
+
+        // Then
+        var item = Assert.Single(vm.SavedServers);
+        Assert.Equal("y4lg95", item.CfxId);
+        Assert.Equal("y4lg95", Assert.Single(repository.GetAll()).CfxId);
+        Assert.Equal(0, enrichment.ResolveCalls);
+    }
+
+    [Fact]
+    public void SaveServer_WhenEditingName_ShouldPreserveCapturedCfxId()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/y4lg95"));
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            enrichment: new FakeServerEnrichmentService());
+        vm.OpenEditServerDialogCommand.Execute(vm.SavedServers[0]);
+
+        // When
+        vm.DialogServerName = "Renamed";
+        vm.SaveServerDialogCommand.Execute(null);
+
+        // Then
+        Assert.Equal("y4lg95", Assert.Single(repository.GetAll()).CfxId);
+        Assert.Equal("y4lg95", Assert.Single(vm.SavedServers).CfxId);
+    }
+
+    [Fact]
+    public void SaveServer_WhenEditingIpPortName_ShouldPreserveCapturedCfxId()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("Ip Server", "149.56.120.52:30320", cfxId: "y4lg95"));
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            enrichment: new FakeServerEnrichmentService());
+        vm.OpenEditServerDialogCommand.Execute(vm.SavedServers[0]);
+        vm.DialogServerName = "Renamed";
+
+        // When
+        vm.SaveServerDialogCommand.Execute(null);
+
+        // Then
+        Assert.Equal("y4lg95", Assert.Single(repository.GetAll()).CfxId);
+        Assert.Equal("y4lg95", Assert.Single(vm.SavedServers).CfxId);
+    }
+
+    [Fact]
+    public async Task RunEnrichmentLoopAsync_ShouldRefreshThenWaitUntilCancelled()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/y4lg95"));
+        var enrichment = new FakeServerEnrichmentService
+        {
+            Presence = new Dictionary<string, ServerPresence>
+            {
+                ["y4lg95"] = new ServerPresence(true, 4, 32, GameClient.RedM)
+            }
+        };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            enrichment: enrichment);
+        using var cts = new CancellationTokenSource();
+        var loop = vm.RunEnrichmentLoopAsync(
+            cancellationToken: cts.Token,
+            cadence: TimeSpan.FromMinutes(1),
+            delay: async (_, _) => await Task.Yield());
+
+        // When
+        while (enrichment.RefreshCalls < 3)
+        {
+            await Task.Yield();
+        }
+
+        cts.Cancel();
+        await loop;
+
+        // Then
+        Assert.True(enrichment.RefreshCalls >= 3);
+        Assert.Equal("4/32", Assert.Single(vm.SavedServers).StatusLabel);
+    }
+
+    [Fact]
+    public async Task RunEnrichmentLoopAsync_WhenRefreshThrows_ShouldKeepLooping()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/y4lg95"));
+        var enrichment = new FakeServerEnrichmentService
+        {
+            ThrowOnRefreshCount = 1,
+            Presence = new Dictionary<string, ServerPresence>
+            {
+                ["y4lg95"] = new ServerPresence(true, 4, 32, GameClient.FiveM)
+            }
+        };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            enrichment: enrichment);
+        using var cts = new CancellationTokenSource();
+        var loop = vm.RunEnrichmentLoopAsync(
+            cancellationToken: cts.Token,
+            cadence: TimeSpan.FromMinutes(1),
+            delay: async (_, _) => await Task.Yield());
+
+        // When
+        var spins = 0;
+        while (enrichment.RefreshCalls < 3 && spins++ < 100_000)
+        {
+            await Task.Yield();
+        }
+
+        cts.Cancel();
+        await loop;
+
+        // Then
+        Assert.True(enrichment.RefreshCalls >= 3);
+    }
+
+    [Fact]
     public void SaveServer_WhenValid_ShouldAddToCollectionAndRepository()
     {
         // Given
@@ -1504,7 +1799,8 @@ public class MainViewModelTests
         FakeExternalAppStarter? starter = null,
         ExternalAppPreparer? preparer = null,
         IClientInstallLocator? installLocator = null,
-        ConfigurationRepository? settings = null)
+        ConfigurationRepository? settings = null,
+        IServerEnrichmentService? enrichment = null)
     {
         var resolver = new ServerResolver(
             new CfxService(
@@ -1531,6 +1827,7 @@ public class MainViewModelTests
             repository ?? new InMemoryServerRepository(),
             preparerValue,
             installLocator,
-            settings ?? new ConfigurationRepository(new InMemorySettingsStorage()));
+            settings ?? new ConfigurationRepository(new InMemorySettingsStorage()),
+            enrichment ?? new FakeServerEnrichmentService());
     }
 }

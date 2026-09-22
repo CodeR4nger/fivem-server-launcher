@@ -84,6 +84,22 @@ public class FileServerRepositoryTests
     }
 
     [Fact]
+    public void Update_ShouldPreserveCfxId()
+    {
+        // Given
+        using var tempDir = new TempSettingsDirectory();
+        var repository = new FileServerRepository(tempDir.FilePath);
+        repository.Add(SavedServer.Create("My Server", "149.56.120.52:30320", cfxId: "y4lg95"));
+        var renamed = SavedServer.Create("Renamed", "149.56.120.52:30320", cfxId: "y4lg95");
+
+        // When
+        repository.Update(renamed);
+
+        // Then
+        Assert.Equal("y4lg95", Assert.Single(repository.GetAll()).CfxId);
+    }
+
+    [Fact]
     public void Update_WhenAddressNotSaved_ShouldThrowArgumentException()
     {
         // Given
@@ -227,5 +243,39 @@ public class FileServerRepositoryTests
 
         // Then
         Assert.Null(result);
+    }
+
+    [Fact]
+    public void AddThenReopen_WhenServerHasCfxId_ShouldPersistCfxId()
+    {
+        // Given
+        using var tempDir = new TempSettingsDirectory();
+        var first = new FileServerRepository(tempDir.FilePath);
+        first.Add(SavedServer.Create("My Server", "cfx.re/join/abc123"));
+
+        // When (a fresh instance reads the same file)
+        var second = new FileServerRepository(tempDir.FilePath);
+        var result = second.GetAll();
+
+        // Then
+        var server = Assert.Single(result);
+        Assert.Equal("abc123", server.CfxId);
+    }
+
+    [Fact]
+    public void GetAll_WhenFileLacksCfxIdField_ShouldDeserializeWithNullCfxId()
+    {
+        // Given
+        using var tempDir = new TempSettingsDirectory();
+        Directory.CreateDirectory(tempDir.DirectoryPath);
+        File.WriteAllText(tempDir.FilePath, """[{"Name": "My Server", "Address": "abc123"}]""");
+        var repository = new FileServerRepository(tempDir.FilePath);
+
+        // When
+        var result = repository.GetAll();
+
+        // Then
+        var server = Assert.Single(result);
+        Assert.Null(server.CfxId);
     }
 }

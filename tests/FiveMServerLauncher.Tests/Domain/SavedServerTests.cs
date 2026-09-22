@@ -83,4 +83,67 @@ public class SavedServerTests
         Assert.Null(result.RequiresSteam);
         Assert.Null(result.RequiresDiscord);
     }
+
+    [Fact]
+    public void Create_WithBareCfxIdAddress_ShouldCaptureCfxId()
+    {
+        // Given
+        const string address = "abc123";
+
+        // When
+        var result = SavedServer.Create("My Server", address);
+
+        // Then
+        Assert.Equal(address, result.CfxId);
+    }
+
+    [Fact]
+    public void Create_WithCfxJoinUrlAddress_ShouldCaptureExtractedCfxId()
+    {
+        // Given / When
+        var result = SavedServer.Create("My Server", "cfx.re/join/abc123");
+
+        // Then
+        Assert.Equal("abc123", result.CfxId);
+    }
+
+    [Fact]
+    public void Create_WithIpPortAddress_ShouldLeaveCfxIdNull()
+    {
+        // Given / When
+        var result = SavedServer.Create("My Server", "192.168.1.10:30120");
+
+        // Then
+        Assert.Null(result.CfxId);
+    }
+
+    [Fact]
+    public void Create_WithDomainPortAddress_ShouldLeaveCfxIdNull()
+    {
+        // Given / When
+        var result = SavedServer.Create("My Server", "play.example.com:30120");
+
+        // Then
+        Assert.Null(result.CfxId);
+    }
+
+    [Fact]
+    public void Create_WithExplicitCfxId_ShouldPreserveIt()
+    {
+        // Given / When
+        var result = SavedServer.Create("My Server", "192.168.1.10:30120", cfxId: "y4lg95");
+
+        // Then
+        Assert.Equal("y4lg95", result.CfxId);
+    }
+
+    [Fact]
+    public void Create_WithExplicitCfxIdNull_ShouldDeriveFromCfxAddress()
+    {
+        // Given / When
+        var result = SavedServer.Create("My Server", "cfx.re/join/abc123", cfxId: null);
+
+        // Then
+        Assert.Equal("abc123", result.CfxId);
+    }
 }

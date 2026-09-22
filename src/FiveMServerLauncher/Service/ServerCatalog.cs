@@ -31,7 +31,7 @@ public class ServerCatalog(
         return servers.FirstOrDefault(s => s.EndPoint == endPoint);
     }
 
-    private async Task<IReadOnlyList<Master.Server>> GetServersAsync()
+    public async Task<IReadOnlyList<Master.Server>?> GetSnapshotAsync()
     {
         if (IsCacheValid())
         {
@@ -47,7 +47,7 @@ public class ServerCatalog(
 
             if (!response.IsSuccessStatusCode)
             {
-                return [];
+                return null;
             }
 
             var payload = await response.Content.ReadAsByteArrayAsync();
@@ -59,12 +59,17 @@ public class ServerCatalog(
         }
         catch (HttpRequestException)
         {
-            return [];
+            return null;
         }
         catch (TaskCanceledException)
         {
-            return [];
+            return null;
         }
+    }
+
+    private async Task<IReadOnlyList<Master.Server>> GetServersAsync()
+    {
+        return await GetSnapshotAsync() ?? [];
     }
 
     private bool IsCacheValid()

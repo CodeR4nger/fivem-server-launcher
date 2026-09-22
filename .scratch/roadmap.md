@@ -117,11 +117,19 @@ Never mix these concepts.
 
 ### Richer server-info UI
 
-**Spec:** `.scratch/server-info-ui/spec.md` (to write)
+**Status:** ✅ done (tickets `.scratch/server-info-ui/` 01–05, suite 357 green, manual E2E
+verified by the user).
 
-**Current state:** data sources exist (`CfxService`, `ServerCatalog`) but the UI shows no server
-details.
+**Spec:** `.scratch/server-info-ui/spec.md` (status `done`)
+
+**Phase outcome:** `SavedServer.CfxId` enrichment key (captured at save, background for
+IP:port/domain); `ServerEnrichmentService` (per-minute streamRedir presence + `gamename` → game
+tag, icon version cache via `/single/` + `/icon/`); `MainViewModel` refresh loop + background
+capture; saved rows render `[icon] name [gameTag] [status]` with per-game colors, `players/max`
+online, `OFFLINE`/`UNRESOLVED` otherwise.
 
 **Boundary (from DOC.md):** this "may evolve to show" server banner, online status, players,
 news, Discord, website, CFX info — additive UI only, **without modifying the business
 architecture**.
+
+**Possible follow-ups (unticketed):** banner, news, Discord/website, CFX info for enriched rows.

@@ -21,6 +21,9 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly ExternalAppPreparer _preparer;
     private readonly IClientInstallLocator _installLocator;
     private readonly ConfigurationRepository _settingsRepository;
+    private readonly IServerEnrichmentService _enrichment;
+    private readonly object _captureGate = new();
+    private readonly List<Task> _pendingCaptures = [];
 
     private LauncherSettings _settings;
 
@@ -38,7 +41,8 @@ public class MainViewModel : INotifyPropertyChanged
         IServerRepository serverRepository,
         ExternalAppPreparer preparer,
         IClientInstallLocator installLocator,
-        ConfigurationRepository settingsRepository)
+        ConfigurationRepository settingsRepository,
+        IServerEnrichmentService enrichment)
     {
         _resolver = resolver;
         _launcher = launcher;
@@ -46,6 +50,7 @@ public class MainViewModel : INotifyPropertyChanged
         _preparer = preparer;
         _installLocator = installLocator;
         _settingsRepository = settingsRepository;
+        _enrichment = enrichment;
         _settings = settingsRepository.Load();
         ConnectCommand = new AsyncRelayCommand(ConnectAsync, CanConnect);
         DeleteServerCommand = new RelayCommand(DeleteServer, CanDeleteServer);
@@ -352,6 +357,10 @@ public class MainViewModel : INotifyPropertyChanged
 
     private void SaveServerDialog(object? _ = null)
     {
+        var addressUnchanged = EditingServer is not null
+            && string.Equals(EditingServer.Address, DialogServerAddress.Trim(), StringComparison.OrdinalIgnoreCase);
+
+        var cfxId = addressUnchanged ? EditingServer!.CfxId : null;
         SavedServer savedServer;
 
         try
@@ -360,7 +369,8 @@ public class MainViewModel : INotifyPropertyChanged
                 DialogServerName,
                 DialogServerAddress,
                 DialogRequiresSteam,
-                DialogRequiresDiscord);
+                DialogRequiresDiscord,
+                cfxId);
         }
         catch (ArgumentException)
         {
@@ -379,7 +389,9 @@ public class MainViewModel : INotifyPropertyChanged
             }
 
             _serverRepository.Add(savedServer);
-            SavedServers.Add(ToItem(savedServer));
+            var item = ToItem(savedServer);
+            SavedServers.Add(item);
+            TryCaptureCfxId(item);
         }
         else
         {
@@ -408,12 +420,142 @@ public class MainViewModel : INotifyPropertyChanged
             {
                 var index = SavedServers.IndexOf(oldRow);
                 SavedServers.RemoveAt(index);
-                SavedServers.Insert(index, ToItem(savedServer));
+                var item = ToItem(savedServer);
+                SavedServers.Insert(index, item);
+                TryCaptureCfxId(item);
             }
         }
 
         StatusText = "Server saved";
         CloseServerDialog();
+    }
+
+    private void TryCaptureCfxId(SavedServerItem item)
+    {
+        if (_serverRepository.FindByAddress(item.Address)?.CfxId is not null)
+        {
+            return;
+        }
+
+        lock (_captureGate)
+        {
+            var capture = CaptureCfxIdAsync(item);
+            _pendingCaptures.Add(capture);
+            _ = capture.ContinueWith(t =>
+            {
+                lock (_captureGate)
+                {
+                    _pendingCaptures.Remove(capture);
+                }
+            }, TaskScheduler.Default);
+        }
+    }
+
+    private async Task CaptureCfxIdAsync(SavedServerItem item)
+    {
+        var cfxId = await _enrichment.ResolveCfxIdAsync(item.Address);
+
+        if (cfxId is null)
+        {
+            return;
+        }
+
+        var saved = _serverRepository.FindByAddress(item.Address);
+
+        if (saved is null)
+        {
+            return;
+        }
+
+        var updated = SavedServer.Create(saved.Name, saved.Address, saved.RequiresSteam, saved.RequiresDiscord, cfxId);
+        _serverRepository.Update(updated);
+        item.SetCfxId(cfxId);
+    }
+
+    public async Task RefreshServerInfoAsync()
+    {
+        var presence = await _enrichment.RefreshAsync();
+
+        if (presence is null)
+        {
+            return;
+        }
+
+        foreach (var item in SavedServers)
+        {
+            if (!item.HasCfxId)
+            {
+                continue;
+            }
+
+            if (presence.TryGetValue(item.CfxId!, out var serverPresence))
+            {
+                item.ApplyPresence(serverPresence);
+            }
+            else
+            {
+                item.ApplyPresence(new ServerPresence(false, 0, 0, null));
+            }
+
+            var icon = await _enrichment.GetIconAsync(item.CfxId!);
+
+            if (icon is not null && item.Icon != icon)
+            {
+                item.SetIcon(icon);
+            }
+        }
+    }
+
+    public async Task WaitForPendingCapturesAsync()
+    {
+        while (true)
+        {
+            Task[] snapshot;
+            lock (_captureGate)
+            {
+                snapshot = _pendingCaptures.ToArray();
+            }
+
+            if (snapshot.Length == 0)
+            {
+                return;
+            }
+
+            await Task.WhenAll(snapshot);
+        }
+    }
+
+    public async Task RunEnrichmentLoopAsync(
+        CancellationToken cancellationToken,
+        TimeSpan? cadence = null,
+        Func<TimeSpan, CancellationToken, Task>? delay = null)
+    {
+        var interval = cadence ?? TimeSpan.FromMinutes(1);
+        var wait = delay ?? ((duration, token) => Task.Delay(duration, token));
+
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                await RefreshServerInfoAsync();
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (Exception)
+            {
+            }
+
+            try
+            {
+                await wait(interval, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+        }
     }
 
     public string ServerAddress
@@ -449,14 +591,15 @@ public class MainViewModel : INotifyPropertyChanged
             savedServer.Address,
             savedServer.RequiresSteam,
             savedServer.RequiresDiscord,
-            () => PersistServer(item));
+            () => PersistServer(item),
+            savedServer.CfxId);
 
         return item;
     }
 
     private void PersistServer(SavedServerItem item)
     {
-        _serverRepository.Update(SavedServer.Create(item.Name, item.Address, item.RequiresSteam, item.RequiresDiscord));
+        _serverRepository.Update(SavedServer.Create(item.Name, item.Address, item.RequiresSteam, item.RequiresDiscord, item.CfxId));
     }
 
     private void DeleteServer()

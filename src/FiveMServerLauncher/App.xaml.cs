@@ -22,9 +22,10 @@ public partial class App : Application
         base.OnStartup(e);
 
         var httpClient = new HttpClient();
+        var catalog = new ServerCatalog(httpClient);
         var resolver = new ServerResolver(
             new CfxService(httpClient),
-            new ServerCatalog(httpClient),
+            catalog,
             new ServerRequirementsResolver(),
             new DnsResolver());
         var installLocator = new ClientInstallLocator();
@@ -34,6 +35,8 @@ public partial class App : Application
             installLocator);
 
         var readiness = new ProcessReadinessChecker();
+
+        var enrichment = new ServerEnrichmentService(catalog, httpClient);
 
         var window = new MainWindow();
         var viewModel = new MainViewModel(
@@ -45,9 +48,14 @@ public partial class App : Application
                 new ExternalAppStarter(new ProcessStarter(), new UriSchemeRegistration())),
             installLocator,
             new ConfigurationRepository(
-                new FileSettingsStorage(Path.Combine(AppDataDirectory, "launcher-settings.json"))));
+                new FileSettingsStorage(Path.Combine(AppDataDirectory, "launcher-settings.json"))),
+            enrichment);
         window.DataContext = viewModel;
         window.Show();
         window.Dispatcher.InvokeAsync(viewModel.InitializeAsync);
+
+        var refreshCts = new CancellationTokenSource();
+        window.Closed += (_, _) => refreshCts.Cancel();
+        window.Dispatcher.InvokeAsync(() => viewModel.RunEnrichmentLoopAsync(refreshCts.Token));
     }
 }
