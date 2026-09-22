@@ -38,6 +38,8 @@ public partial class App : Application
 
         var enrichment = new ServerEnrichmentService(catalog, httpClient);
 
+        var cfxStatus = new CfxStatusService(httpClient);
+
         var window = new MainWindow();
         var viewModel = new MainViewModel(
             resolver,
@@ -49,7 +51,8 @@ public partial class App : Application
             installLocator,
             new ConfigurationRepository(
                 new FileSettingsStorage(Path.Combine(AppDataDirectory, "launcher-settings.json"))),
-            enrichment);
+            enrichment,
+            cfxStatus);
         window.DataContext = viewModel;
         window.Show();
         window.Dispatcher.InvokeAsync(viewModel.InitializeAsync);

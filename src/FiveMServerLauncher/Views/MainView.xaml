@@ -11,6 +11,7 @@
         <views:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility"/>
         <views:BytesToImageSourceConverter x:Key="BytesToImageSourceConverter"/>
         <views:GameClientToBrushConverter x:Key="GameClientToBrushConverter"/>
+        <views:CfxStatusToBrushConverter x:Key="CfxStatusToBrushConverter"/>
 
         <views:SelectionEqualityToVisibilityConverter x:Key="SelectionEqualityToVisibility"/>
 
@@ -428,23 +429,44 @@
                     <TextBlock Text="FIVEM / CFX"
                                Style="{StaticResource SectionHeaderStyle}"
                                HorizontalAlignment="Center"
-                               Margin="0,0,0,7"/>
+                               Margin="0,0,0,10"/>
 
-                    <StackPanel Orientation="Horizontal"
-                                HorizontalAlignment="Center">
+                    <ItemsControl ItemsSource="{Binding CfxStatuses}">
 
-                        <Ellipse Width="8"
-                                 Height="8"
-                                 Fill="{StaticResource GreenBrush}"
-                                 VerticalAlignment="Center"
-                                 Margin="0,0,8,0"/>
+                        <ItemsControl.ItemTemplate>
 
-                        <TextBlock Text="ONLINE"
-                                   Foreground="{StaticResource GreenBrush}"
-                                   FontSize="12"
-                                   FontWeight="SemiBold"/>
+                            <DataTemplate>
 
-                    </StackPanel>
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Center"
+                                            Margin="0,2">
+
+                                    <Ellipse Width="8"
+                                             Height="8"
+                                             Fill="{Binding Status,
+                                                           Converter={StaticResource CfxStatusToBrushConverter}}"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,8,0"/>
+
+                                    <TextBlock Text="{Binding DisplayName}"
+                                               Foreground="{StaticResource SecondaryTextBrush}"
+                                               FontSize="12"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,10,0"/>
+
+                                    <TextBlock Text="{Binding StatusLabel}"
+                                               Foreground="{StaticResource TextBrush}"
+                                               FontSize="12"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center"/>
+
+                                </StackPanel>
+
+                            </DataTemplate>
+
+                        </ItemsControl.ItemTemplate>
+
+                    </ItemsControl>
 
                 </StackPanel>
 

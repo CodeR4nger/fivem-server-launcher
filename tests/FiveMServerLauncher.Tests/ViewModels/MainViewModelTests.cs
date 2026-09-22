@@ -1762,6 +1762,184 @@ public class MainViewModelTests
         Assert.Equal(GameClient.FiveM, vm.SelectedOpenClient?.Client);
     }
 
+    [Fact]
+    public async Task RefreshCfxStatusAsync_WhenStatusesReturned_ShouldApplyToAllThreeProperties()
+    {
+        // Given
+        var statusService = new FakeCfxStatusService
+        {
+            Statuses = new Dictionary<GameClient, CfxStatus>
+            {
+                [GameClient.FiveM] = CfxStatus.Degraded,
+                [GameClient.FiveMEnhanced] = CfxStatus.MajorOutage,
+                [GameClient.RedM] = CfxStatus.Operational
+            }
+        };
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), cfxStatus: statusService);
+
+        // When
+        await vm.RefreshCfxStatusAsync();
+
+        // Then
+        Assert.Equal(CfxStatus.Degraded, vm.FiveMStatus.Status);
+        Assert.Equal("DEGRADED", vm.FiveMStatus.StatusLabel);
+        Assert.Equal(CfxStatus.MajorOutage, vm.FiveMEnhancedStatus.Status);
+        Assert.Equal("OUTAGE", vm.FiveMEnhancedStatus.StatusLabel);
+        Assert.Equal(CfxStatus.Operational, vm.RedMStatus.Status);
+        Assert.Equal("OPERATIONAL", vm.RedMStatus.StatusLabel);
+    }
+
+    [Fact]
+    public async Task RefreshCfxStatusAsync_WhenStatusNull_ShouldKeepLastKnownStatus()
+    {
+        // Given
+        var statusService = new FakeCfxStatusService
+        {
+            Statuses = new Dictionary<GameClient, CfxStatus>
+            {
+                [GameClient.FiveM] = CfxStatus.Operational,
+                [GameClient.FiveMEnhanced] = CfxStatus.Operational,
+                [GameClient.RedM] = CfxStatus.Operational
+            }
+        };
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), cfxStatus: statusService);
+        await vm.RefreshCfxStatusAsync();
+        statusService.Statuses = null;
+
+        // When
+        await vm.RefreshCfxStatusAsync();
+
+        // Then
+        Assert.Equal(CfxStatus.Operational, vm.FiveMStatus.Status);
+        Assert.Equal("OPERATIONAL", vm.FiveMStatus.StatusLabel);
+    }
+
+    [Fact]
+    public async Task RefreshCfxStatusAsync_WhenFirstFetchFails_ShouldShowUnknown()
+    {
+        // Given
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            cfxStatus: new FakeCfxStatusService());
+
+        // When
+        await vm.RefreshCfxStatusAsync();
+
+        // Then
+        Assert.Equal(CfxStatus.Unknown, vm.FiveMStatus.Status);
+        Assert.Equal("UNKNOWN", vm.FiveMStatus.StatusLabel);
+        Assert.Equal(CfxStatus.Unknown, vm.FiveMEnhancedStatus.Status);
+        Assert.Equal(CfxStatus.Unknown, vm.RedMStatus.Status);
+    }
+
+    [Fact]
+    public async Task RunEnrichmentLoopAsync_ShouldRefreshCfxStatusEachCycle()
+    {
+        // Given
+        var statusService = new FakeCfxStatusService
+        {
+            Statuses = new Dictionary<GameClient, CfxStatus>
+            {
+                [GameClient.FiveM] = CfxStatus.Operational,
+                [GameClient.FiveMEnhanced] = CfxStatus.Operational,
+                [GameClient.RedM] = CfxStatus.MajorOutage
+            }
+        };
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), cfxStatus: statusService);
+        using var cts = new CancellationTokenSource();
+        var loop = vm.RunEnrichmentLoopAsync(
+            cancellationToken: cts.Token,
+            cadence: TimeSpan.FromMinutes(1),
+            delay: async (_, _) => await Task.Yield());
+
+        // When
+        var spins = 0;
+        while (statusService.GetCalls < 3 && spins++ < 100_000)
+        {
+            await Task.Yield();
+        }
+
+        cts.Cancel();
+        await loop;
+
+        // Then
+        Assert.True(statusService.GetCalls >= 3);
+        Assert.Equal(CfxStatus.MajorOutage, vm.RedMStatus.Status);
+    }
+
+    [Fact]
+    public async Task RunEnrichmentLoopAsync_WhenCfxStatusServiceThrows_ShouldKeepLooping()
+    {
+        // Given
+        var statusService = new FakeCfxStatusService
+        {
+            ThrowOnGetCount = 1,
+            Statuses = new Dictionary<GameClient, CfxStatus>
+            {
+                [GameClient.FiveM] = CfxStatus.Operational,
+                [GameClient.FiveMEnhanced] = CfxStatus.Operational,
+                [GameClient.RedM] = CfxStatus.Operational
+            }
+        };
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), cfxStatus: statusService);
+        using var cts = new CancellationTokenSource();
+        var loop = vm.RunEnrichmentLoopAsync(
+            cancellationToken: cts.Token,
+            cadence: TimeSpan.FromMinutes(1),
+            delay: async (_, _) => await Task.Yield());
+
+        // When
+        var spins = 0;
+        while (statusService.GetCalls < 3 && spins++ < 100_000)
+        {
+            await Task.Yield();
+        }
+
+        cts.Cancel();
+        await loop;
+
+        // Then
+        Assert.True(statusService.GetCalls >= 3);
+        Assert.Equal(CfxStatus.Operational, vm.RedMStatus.Status);
+    }
+
+    [Fact]
+    public void CfxStatuses_ShouldExposeFixedOrderedTrio()
+    {
+        // Given
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+
+        // When / Then
+        Assert.Equal(
+            [GameClient.FiveM, GameClient.FiveMEnhanced, GameClient.RedM],
+            vm.CfxStatuses.Select(i => i.Client));
+    }
+
+    [Fact]
+    public async Task InitializeAsync_ShouldRefreshCfxStatusOnceAtStartup()
+    {
+        // Given
+        var statusService = new FakeCfxStatusService
+        {
+            Statuses = new Dictionary<GameClient, CfxStatus>
+            {
+                [GameClient.FiveM] = CfxStatus.Operational,
+                [GameClient.FiveMEnhanced] = CfxStatus.Degraded,
+                [GameClient.RedM] = CfxStatus.Operational
+            }
+        };
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), cfxStatus: statusService);
+
+        // When
+        await vm.InitializeAsync();
+
+        // Then
+        Assert.Equal(1, statusService.GetCalls);
+        Assert.Equal(CfxStatus.Degraded, vm.FiveMEnhancedStatus.Status);
+        Assert.Equal("DEGRADED", vm.FiveMEnhancedStatus.StatusLabel);
+    }
+
     private static (MainViewModel Vm, FakeExternalAppStarter Starter) CreateManualSteamContext(
         FakeGameProcessLauncher processLauncher,
         string cfxJson)
@@ -1800,7 +1978,8 @@ public class MainViewModelTests
         ExternalAppPreparer? preparer = null,
         IClientInstallLocator? installLocator = null,
         ConfigurationRepository? settings = null,
-        IServerEnrichmentService? enrichment = null)
+        IServerEnrichmentService? enrichment = null,
+        ICfxStatusService? cfxStatus = null)
     {
         var resolver = new ServerResolver(
             new CfxService(
@@ -1828,6 +2007,7 @@ public class MainViewModelTests
             preparerValue,
             installLocator,
             settings ?? new ConfigurationRepository(new InMemorySettingsStorage()),
-            enrichment ?? new FakeServerEnrichmentService());
+            enrichment ?? new FakeServerEnrichmentService(),
+            cfxStatus ?? new FakeCfxStatusService());
     }
 }

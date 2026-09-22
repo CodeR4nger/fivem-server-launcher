@@ -22,6 +22,7 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly IClientInstallLocator _installLocator;
     private readonly ConfigurationRepository _settingsRepository;
     private readonly IServerEnrichmentService _enrichment;
+    private readonly ICfxStatusService _cfxStatus;
     private readonly object _captureGate = new();
     private readonly List<Task> _pendingCaptures = [];
 
@@ -42,7 +43,8 @@ public class MainViewModel : INotifyPropertyChanged
         ExternalAppPreparer preparer,
         IClientInstallLocator installLocator,
         ConfigurationRepository settingsRepository,
-        IServerEnrichmentService enrichment)
+        IServerEnrichmentService enrichment,
+        ICfxStatusService cfxStatus)
     {
         _resolver = resolver;
         _launcher = launcher;
@@ -51,6 +53,7 @@ public class MainViewModel : INotifyPropertyChanged
         _installLocator = installLocator;
         _settingsRepository = settingsRepository;
         _enrichment = enrichment;
+        _cfxStatus = cfxStatus;
         _settings = settingsRepository.Load();
         ConnectCommand = new AsyncRelayCommand(ConnectAsync, CanConnect);
         DeleteServerCommand = new RelayCommand(DeleteServer, CanDeleteServer);
@@ -69,6 +72,11 @@ public class MainViewModel : INotifyPropertyChanged
         SavedServers = new ObservableCollection<SavedServerItem>(
             serverRepository.GetAll().Select(ToItem));
         AvailableOpenClients = new ObservableCollection<InstalledClientOption>();
+
+        FiveMStatus = new CfxStatusItem(GameClient.FiveM);
+        FiveMEnhancedStatus = new CfxStatusItem(GameClient.FiveMEnhanced);
+        RedMStatus = new CfxStatusItem(GameClient.RedM);
+        CfxStatuses = [FiveMStatus, FiveMEnhancedStatus, RedMStatus];
     }
 
     public ICommand ConnectCommand { get; }
@@ -245,6 +253,14 @@ public class MainViewModel : INotifyPropertyChanged
     public ObservableCollection<SavedServerItem> SavedServers { get; }
 
     public ObservableCollection<InstalledClientOption> AvailableOpenClients { get; }
+
+    public CfxStatusItem FiveMStatus { get; }
+
+    public CfxStatusItem FiveMEnhancedStatus { get; }
+
+    public CfxStatusItem RedMStatus { get; }
+
+    public IReadOnlyList<CfxStatusItem> CfxStatuses { get; }
 
     public InstalledClientOption? SelectedOpenClient
     {
@@ -506,6 +522,20 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
+    public async Task RefreshCfxStatusAsync()
+    {
+        var statuses = await _cfxStatus.GetStatusesAsync();
+
+        if (statuses is null)
+        {
+            return;
+        }
+
+        FiveMStatus.Apply(statuses.GetValueOrDefault(GameClient.FiveM, CfxStatus.Unknown));
+        FiveMEnhancedStatus.Apply(statuses.GetValueOrDefault(GameClient.FiveMEnhanced, CfxStatus.Unknown));
+        RedMStatus.Apply(statuses.GetValueOrDefault(GameClient.RedM, CfxStatus.Unknown));
+    }
+
     public async Task WaitForPendingCapturesAsync()
     {
         while (true)
@@ -538,6 +568,7 @@ public class MainViewModel : INotifyPropertyChanged
             try
             {
                 await RefreshServerInfoAsync();
+                await RefreshCfxStatusAsync();
             }
             catch (OperationCanceledException)
             {
@@ -701,6 +732,8 @@ public class MainViewModel : INotifyPropertyChanged
             _preferredClientOption = SelectedOpenClient;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PreferredClientOption)));
         }
+
+        await RefreshCfxStatusAsync();
 
         if (_settings.AutoLaunch && !string.IsNullOrWhiteSpace(_settings.LastServerAddress))
         {

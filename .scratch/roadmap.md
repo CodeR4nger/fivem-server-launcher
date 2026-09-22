@@ -133,3 +133,18 @@ news, Discord, website, CFX info — additive UI only, **without modifying the b
 architecture**.
 
 **Possible follow-ups (unticketed):** banner, news, Discord/website, CFX info for enriched rows.
+
+## 6. CFX service status (FiveM / FiveM Enhanced / RedM)
+
+**Status:** ✅ done (tickets `.scratch/cfx-status/` 01–05 resolved, suite 387 green, code
+review clean, manual E2E verified).
+
+**Spec:** `.scratch/cfx-status/spec.md` (status `done`)
+
+**Current state:** the left panel hardcodes `FIVEM / CFX  ONLINE`, which is always ON and
+carries no real information.
+
+**Goal:** replace it with live three-row status (FiveM, FiveM Enhanced, RedM — dot + English
+label) from the official statuspage (`summary.json`); FiveM/RedM use their dedicated components,
+FiveM Enhanced uses the page-level indicator (no dedicated component exists). Refresh reuses the
+existing per-minute loop + startup; outage keeps last known / `UNKNOWN`, never crashes.
