@@ -5,8 +5,8 @@ with flags; validated RedM connect primes the RedM ini; code-review clean; conve
 
 **Blocked by:** 01, 02.
 
-**Status:** in-progress
+**Status:** resolved
 
-- [ ] Suite green; AGENTS.md/DOC.md updated.
-- [ ] Manual E2E verified by user.
-- [ ] Commit closing the phase.
+- [x] Suite green (299) + docs updated.
+- [x] Manual E2E: dev toggle shows/switches client; second-client button unclipped (`81e8854`, `32799b4`).
+- [x] Commits: `bd65c82` (feature), view fixes `81e8854`/`32799b4`.
