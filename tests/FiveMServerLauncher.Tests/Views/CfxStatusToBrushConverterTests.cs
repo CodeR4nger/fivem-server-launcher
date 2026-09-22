@@ -19,7 +19,7 @@ public class CfxStatusToBrushConverterTests
     private static SolidColorBrush Convert(object? value)
     {
         return (SolidColorBrush)new CfxStatusToBrushConverter().Convert(
-            value, typeof(Brush), null, CultureInfo.InvariantCulture);
+            value!, typeof(Brush), null!, CultureInfo.InvariantCulture);
     }
 
     [Fact]
@@ -89,6 +89,6 @@ public class CfxStatusToBrushConverterTests
 
         // When / Then
         Assert.Throws<NotSupportedException>(() =>
-            converter.ConvertBack(Brushes.Green, typeof(CfxStatus), null, CultureInfo.InvariantCulture));
+            converter.ConvertBack(Brushes.Green, typeof(CfxStatus), null!, CultureInfo.InvariantCulture));
     }
 }

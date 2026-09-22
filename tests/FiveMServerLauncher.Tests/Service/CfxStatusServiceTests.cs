@@ -49,6 +49,7 @@ public class CfxStatusServiceTests
         var result = await service.GetStatusesAsync();
 
         // Then
+        Assert.NotNull(result);
         Assert.Equal(CfxStatus.Degraded, result[GameClient.FiveM]);
         Assert.Equal(CfxStatus.Operational, result[GameClient.RedM]);
         Assert.Equal(CfxStatus.Operational, result[GameClient.FiveMEnhanced]);
@@ -64,6 +65,7 @@ public class CfxStatusServiceTests
         var result = await service.GetStatusesAsync();
 
         // Then
+        Assert.NotNull(result);
         Assert.Equal(CfxStatus.Operational, result[GameClient.FiveM]);
         Assert.Equal(CfxStatus.MajorOutage, result[GameClient.RedM]);
     }
@@ -78,6 +80,7 @@ public class CfxStatusServiceTests
         var result = await service.GetStatusesAsync();
 
         // Then
+        Assert.NotNull(result);
         Assert.Equal(CfxStatus.Degraded, result[GameClient.FiveMEnhanced]);
     }
 
@@ -91,6 +94,7 @@ public class CfxStatusServiceTests
         var result = await service.GetStatusesAsync();
 
         // Then
+        Assert.NotNull(result);
         Assert.Equal(CfxStatus.MajorOutage, result[GameClient.FiveMEnhanced]);
     }
 
@@ -104,6 +108,7 @@ public class CfxStatusServiceTests
         var result = await service.GetStatusesAsync();
 
         // Then
+        Assert.NotNull(result);
         Assert.Equal(CfxStatus.MajorOutage, result[GameClient.FiveMEnhanced]);
     }
 
@@ -117,6 +122,7 @@ public class CfxStatusServiceTests
         var result = await service.GetStatusesAsync();
 
         // Then
+        Assert.NotNull(result);
         Assert.Equal(CfxStatus.Unknown, result[GameClient.FiveM]);
     }
 
@@ -130,6 +136,7 @@ public class CfxStatusServiceTests
         var result = await service.GetStatusesAsync();
 
         // Then
+        Assert.NotNull(result);
         Assert.Equal(CfxStatus.Unknown, result[GameClient.FiveMEnhanced]);
     }
 
@@ -144,6 +151,7 @@ public class CfxStatusServiceTests
         var result = await service.GetStatusesAsync();
 
         // Then
+        Assert.NotNull(result);
         Assert.Equal(CfxStatus.Unknown, result[GameClient.FiveM]);
         Assert.Equal(CfxStatus.Operational, result[GameClient.RedM]);
         Assert.Equal(CfxStatus.Operational, result[GameClient.FiveMEnhanced]);
@@ -160,6 +168,7 @@ public class CfxStatusServiceTests
         var result = await service.GetStatusesAsync();
 
         // Then
+        Assert.NotNull(result);
         Assert.Equal(CfxStatus.PartialOutage, result[GameClient.FiveM]);
     }
 

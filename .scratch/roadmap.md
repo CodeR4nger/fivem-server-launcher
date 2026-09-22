@@ -148,3 +148,24 @@ carries no real information.
 label) from the official statuspage (`summary.json`); FiveM/RedM use their dedicated components,
 FiveM Enhanced uses the page-level indicator (no dedicated component exists). Refresh reuses the
 existing per-minute loop + startup; outage keeps last known / `UNKNOWN`, never crashes.
+
+## 7. Final project review + final release build
+
+**Status:** ✅ done (tickets `.scratch/final-review/` 01–03 resolved; suite 422 green;
+code review clean; final Release build 0 errors; one conventional commit).
+
+**Spec:** `.scratch/final-review/spec.md`
+
+**What:** project-wide audit (`find-untested-sources`) closed the genuine direct-test gaps:
+`CfxStatusItem` plus the four legacy data-only converters (`GameClientToBrushConverter`,
+`InverseBoolToVisibilityConverter`, `SelectionEqualityToVisibilityConverter`,
+`BytesToImageSourceConverter`) gained direct tests; `CfxStatusServiceTests` got the missing
+`Assert.NotNull` guards so the suite no longer carries CS8602/CS8604/CS8625 warnings. Real OS
+seams (`ProcessStarter`, `DnsResolver`, `UriSchemeRegistration`, `UriShellStarter`,
+`App.xaml.cs`, XAML code-behind) and internal infrastructure (`CfxVars`, `RelayCommand`,
+`AsyncRelayCommand`, `DevLaunchParams`) stay untested-by-design (faked via seams, no
+`InternalsVisibleTo`). Final release build: `dotnet build FiveMServerLauncher.slnx -c Release`
+(0 errors; artifacts under `src/FiveMServerLauncher/bin/Release/net10.0-windows/`).
+
+**Goal:** pin the last untested public logic types, review the closing diff, and produce the
+final Release build.
