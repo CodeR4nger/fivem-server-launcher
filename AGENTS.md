@@ -9,10 +9,16 @@ Windows-only C#/.NET 10 WPF launcher for FiveM. Design decisions and UX philosop
 - Publish portable single-file win-x64 (`CFXLauncher.exe`, self-contained, one file; native
   WPF libs self-extract to temp at startup). First build, then publish with `--no-build` (a
   publish that recompiles WPF markup in the `_wpftmp` temp project cannot resolve the
-  Grpc.Tools-generated `Master` types — CS0246):
-  `dotnet build src/FiveMServerLauncher/FiveMServerLauncher.csproj -c Release -r win-x64`
-  `dotnet publish src/FiveMServerLauncher/FiveMServerLauncher.csproj -c Release -r win-x64 --self-contained --no-build -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -p:DebugSymbols=false -o dist`
-  Single-file props stay on the command line, never in the csproj.
+  Grpc.Tools-generated `Master` types — CS0246). `-r win-x64` alone does NOT imply
+  self-contained (.NET 8+ breaking change), and a framework-dependent build output reused by
+  `--no-build` would publish without the runtime — so `SelfContained=true` is mandatory at
+  BUILD time:
+  `dotnet build src/FiveMServerLauncher/FiveMServerLauncher.csproj -c Release -r win-x64 -p:SelfContained=true`
+  `dotnet publish src/FiveMServerLauncher/FiveMServerLauncher.csproj -c Release -r win-x64 --self-contained --no-build -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:DebugType=none -p:DebugSymbols=false -o dist`
+  Single-file props stay on the command line, never in the csproj. Compression (`EnableCompressionInSingleFile`)
+  drops the deliverable from ~140 MB to ~62 MB with zero runtime risk; IL trimming is NOT used
+  (runs at build time, which the `--no-build`/`_wpftmp` constraint forbids, and WPF is reflection-heavy
+  so trimming risks runtime breakage — that's why `PublishTrimmed=false` stays in the csproj).
 - Solution uses the new `.slnx` format: `dotnet sln FiveMServerLauncher.slnx add <project>`.
 - Requires .NET 10 SDK. Verify with `dotnet --version` before running anything.
 

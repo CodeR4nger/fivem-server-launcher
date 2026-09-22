@@ -12,11 +12,14 @@ files land beside it (portable data working end-to-end).
 
 - [x] Publish command in AGENTS.md:
       `dotnet publish src/FiveMServerLauncher/FiveMServerLauncher.csproj -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -p:DebugSymbols=false -o dist`
-      IMPORTANT: run a `dotnet build -c Release -r win-x64` first, then publish with `--no-build`
-      (as of any source change the MarkupCompilePass in the single-file publish recompiles the WPF
-      `_wpftmp` temp project, which cannot resolve the Grpc.Tools-generated `Master` types — CS0246).
-      Single-file props live on the command line only (in the csproj they break Release builds the
-      same way).
+      IMPORTANT: run a `dotnet build -c Release -r win-x64 -p:SelfContained=true` FIRST, then
+      publish with `--no-build` (a publish that recompiles WPF markup in the `_wpftmp` temp
+      project cannot resolve the Grpc.Tools-generated `Master` types — CS0246). `-r win-x64`
+      alone does NOT imply self-contained (.NET 8+ breaking change); a framework-dependent
+      build reused by `--no-build` would publish an exe that REQUIRES the machine's .NET
+      runtime (verified: 227 KB vs 140 MB, and the prompt-to-update bug the user hit).
+      Single-file props live on the command line only (in the csproj they break Release builds
+      the same way).
 - [x] A publish run produces a single `CFXLauncher.exe` (~140 MB, self-contained, one file; no
       sibling native DLLs or PDB once `IncludeNativeLibrariesForSelfExtract` is set).
 - [x] Partial E2E: the published exe launched and stayed running (no startup crash), and the first
