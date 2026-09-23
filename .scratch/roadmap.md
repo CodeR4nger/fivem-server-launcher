@@ -200,7 +200,9 @@ rules are driven by a read-only spike against the real streamRedir snapshot (33,
 
 ## 9. Improvements & fixes (panel layout, dialog titles, port-less addresses, save-refresh)
 
-**Status:** tickets published (`.scratch/v1-1-polish-and-fixes/issues/` 01–08); in progress.
+**Status:** ✅ done (tickets `.scratch/v1-1-polish-and-fixes/issues/` 01–08 resolved; suite 474
+green; code review clean on both axes after fixing matching order + ambiguity fall-through;
+commit `66cb03a`). Visual verification of the compacted layout pending user eyeball.
 
 **Spec:** `.scratch/v1-1-polish-and-fixes/spec.md`
 
