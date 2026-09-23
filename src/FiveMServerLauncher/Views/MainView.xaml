@@ -9,6 +9,7 @@
 
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
         <views:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility"/>
+        <views:EmptyStringToVisibilityConverter x:Key="EmptyStringToVisibility"/>
         <views:BytesToImageSourceConverter x:Key="BytesToImageSourceConverter"/>
         <views:GameClientToBrushConverter x:Key="GameClientToBrushConverter"/>
         <views:CfxStatusToBrushConverter x:Key="CfxStatusToBrushConverter"/>
@@ -678,11 +679,17 @@
 
                     <DockPanel Margin="0,0,0,7">
 
+                        <TextBlock Text="SAVED SERVERS"
+                                   Style="{StaticResource SectionHeaderStyle}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,10,0"/>
+
                         <Button DockPanel.Dock="Right"
                                 Command="{Binding RefreshServersCommand}"
                                 ToolTip="Refresh server data"
                                 Cursor="Hand"
                                 Padding="4,0"
+                                Margin="6,0,0,0"
                                 VerticalAlignment="Center">
 
                             <Button.Template>
@@ -728,9 +735,30 @@
 
                         </Button>
 
-                        <TextBlock Text="SAVED SERVERS"
-                                   Style="{StaticResource SectionHeaderStyle}"
-                                   VerticalAlignment="Center"/>
+                        <Grid VerticalAlignment="Center">
+
+                            <TextBox x:Name="ServerSearchBox"
+                                     Text="{Binding ServerSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                     Background="{StaticResource PanelLightBrush}"
+                                     Foreground="{StaticResource TextBrush}"
+                                     BorderBrush="{StaticResource BorderBrush}"
+                                     BorderThickness="1"
+                                     Padding="8,2"
+                                     FontSize="11"
+                                     VerticalContentAlignment="Center"
+                                     MinHeight="24"/>
+
+                            <TextBlock Text="Search servers"
+                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       FontSize="11"
+                                       IsHitTestVisible="False"
+                                       VerticalAlignment="Center"
+                                       Margin="9,0,0,0"
+                                       Visibility="{Binding Text,
+                                                            ElementName=ServerSearchBox,
+                                                            Converter={StaticResource EmptyStringToVisibility}}"/>
+
+                        </Grid>
 
                     </DockPanel>
 
@@ -739,13 +767,13 @@
                             Background="{StaticResource PanelLightBrush}">
 
                         <ListBox x:Name="SavedServersList"
-                                 ItemsSource="{Binding SavedServers}"
+                                 ItemsSource="{Binding SavedServersView}"
                                  SelectedItem="{Binding SelectedServer}"
                                  Background="{StaticResource PanelLightBrush}"
                                  BorderThickness="0"
                                  HorizontalContentAlignment="Stretch"
                                  Padding="0,4,0,4"
-                                 MaxHeight="170">
+                                 Height="163">
 
                             <ListBox.ItemTemplate>
 

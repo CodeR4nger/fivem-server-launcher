@@ -228,7 +228,8 @@ streamRedir download can't be spammed. Depends on the forced-refresh seam from p
 
 ## 11. Saved-servers search bar
 
-**Status:** spec ready (`Status: ready-for-agent`).
+**Status:** implemented (tickets `.scratch/saved-servers-search/issues/` 01–02; suite 487
+green) — pending user visual verification before close.
 
 **Spec:** `.scratch/saved-servers-search/spec.md`
 
@@ -249,3 +250,14 @@ refresh sharing the phase 9/10 cooldown. Explicitly out of scope: column sorting
 join history, detail pane.
 
 **Depends on:** phases 9 and 10 (address matching + forced-refresh cooldown are shared).
+
+## 13. Single-instance enforcement
+
+**Status:** spec ready (`Status: ready-for-agent`).
+
+**Spec:** `.scratch/single-instance/spec.md`
+
+**What:** only one launcher instance may run: a second launch activates/focuses the existing
+window (restoring if minimized) and exits silently. Named-mutex guard at the composition root,
+bring-to-front behind an `IExistingWindowActivator`-style seam so unit tests never touch real
+windows. Independent of other v1.1 phases.

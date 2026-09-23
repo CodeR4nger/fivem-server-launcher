@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows.Data;
 using System.Windows.Input;
 using FiveMServerLauncher.Configuration;
 using FiveMServerLauncher.Core.Enums;
@@ -74,6 +75,8 @@ public class MainViewModel : INotifyPropertyChanged
 
         SavedServers = new ObservableCollection<SavedServerItem>(
             serverRepository.GetAll().Select(ToItem));
+        SavedServersView = CollectionViewSource.GetDefaultView(SavedServers);
+        SavedServersView.Filter = MatchesServerSearch;
         AvailableOpenClients = new ObservableCollection<InstalledClientOption>();
 
         FiveMStatus = new CfxStatusItem(GameClient.FiveM);
@@ -287,6 +290,34 @@ public class MainViewModel : INotifyPropertyChanged
     }
 
     public ObservableCollection<SavedServerItem> SavedServers { get; }
+
+    public ICollectionView SavedServersView { get; }
+
+    private string _serverSearchText = string.Empty;
+
+    public string ServerSearchText
+    {
+        get => _serverSearchText;
+        set
+        {
+            if (SetProperty(ref _serverSearchText, value))
+            {
+                SavedServersView.Refresh();
+            }
+        }
+    }
+
+    private bool MatchesServerSearch(object item)
+    {
+        if (string.IsNullOrWhiteSpace(_serverSearchText))
+        {
+            return true;
+        }
+
+        var server = (SavedServerItem)item;
+        return server.Name.Contains(_serverSearchText, StringComparison.OrdinalIgnoreCase)
+               || server.Address.Contains(_serverSearchText, StringComparison.OrdinalIgnoreCase);
+    }
 
     public ObservableCollection<InstalledClientOption> AvailableOpenClients { get; }
 

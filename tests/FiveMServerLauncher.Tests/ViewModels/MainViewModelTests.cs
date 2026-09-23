@@ -2147,6 +2147,89 @@ public class MainViewModelTests
         Assert.False(vm.IsRefreshingServers);
     }
 
+    [Fact]
+    public async Task ServerSearchText_WhenNameFragmentTyped_ShouldFilterVisibleRowsCaseInsensitive()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("Alpha Zone", "cfx.re/join/aaaaaa"));
+        repository.Add(SavedServer.Create("Beta World", "cfx.re/join/bbbbbb"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+        await vm.InitializeAsync();
+
+        // When
+        vm.ServerSearchText = "ALPHA";
+
+        // Then
+        var visible = vm.SavedServersView.Cast<SavedServerItem>().ToList();
+        Assert.Single(visible);
+        Assert.Equal("Alpha Zone", visible[0].Name);
+        Assert.Equal(2, vm.SavedServers.Count);
+    }
+
+    [Fact]
+    public async Task ServerSearchText_WhenAddressFragmentTyped_ShouldFilterVisibleRows()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("Alpha Zone", "149.56.120.52:30120"));
+        repository.Add(SavedServer.Create("Beta World", "10.0.0.1:30120"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+        await vm.InitializeAsync();
+
+        // When
+        vm.ServerSearchText = "149.56";
+
+        // Then
+        var visible = vm.SavedServersView.Cast<SavedServerItem>().ToList();
+        Assert.Single(visible);
+        Assert.Equal("Alpha Zone", visible[0].Name);
+    }
+
+    [Fact]
+    public async Task ServerSearchText_WhenCleared_ShouldRestoreAllRows()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("Alpha Zone", "cfx.re/join/aaaaaa"));
+        repository.Add(SavedServer.Create("Beta World", "cfx.re/join/bbbbbb"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+        await vm.InitializeAsync();
+        vm.ServerSearchText = "alpha";
+
+        // When
+        vm.ServerSearchText = "";
+
+        // Then
+        Assert.Equal(2, vm.SavedServersView.Cast<SavedServerItem>().Count());
+    }
+
+    [Fact]
+    public async Task ServerSearchText_WhenRowFilteredOut_ShouldStillReceiveEnrichment()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("Alpha Zone", "cfx.re/join/aaaaaa"));
+        var enrichment = new FakeServerEnrichmentService
+        {
+            Presence = new Dictionary<string, ServerPresence>
+            {
+                ["aaaaaa"] = new ServerPresence(true, 4, 32, GameClient.FiveM)
+            }
+        };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(), CfxJson("gta5"), repository, enrichment: enrichment);
+        await vm.InitializeAsync();
+        vm.ServerSearchText = "nothing-matches";
+
+        // When
+        await vm.RefreshServerInfoAsync();
+
+        // Then — hidden row still updates
+        Assert.Equal("4/32", vm.SavedServers[0].StatusLabel);
+        Assert.Empty(vm.SavedServersView.Cast<SavedServerItem>());
+    }
+
     private static MainViewModel CreateViewModel(
         IGameProcessLauncher processLauncher,
         string cfxJson,
