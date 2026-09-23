@@ -7,7 +7,13 @@ consistent with the dialog inputs (panel fill, border, 12px). XAML only binds; n
 
 **Blocked by:** 01 (Search filtering on MainViewModel).
 
-**Status:** ready-for-agent
+**Status:** resolved
+
+## Answer
+
+Search box placed inline in the SAVED SERVERS header (between title and ↻), "Search servers"
+placeholder via new `EmptyStringToVisibilityConverter`; list box fixed height per user
+feedback. Build + suite green, visually verified by user.
 
 - [ ] Search box visible above the list at all times (no toggle)
 - [ ] "Search servers" placeholder shown when empty

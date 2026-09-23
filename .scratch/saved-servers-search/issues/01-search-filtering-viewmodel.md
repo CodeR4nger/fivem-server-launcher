@@ -8,7 +8,13 @@ row filtered out of view is simply hidden. The search text is session-only (neve
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** resolved
+
+## Answer
+
+`ServerSearchText` + `SavedServersView` (ICollectionView.Filter) on MainViewModel; live
+case-insensitive substring on Name/Address; filtering never mutates the collection;
+enrichment applies to hidden rows (pinned by test). Suite green.
 
 - [ ] Typing a name fragment filters the visible rows (case-insensitive)
 - [ ] Typing an address fragment filters the visible rows

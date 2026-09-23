@@ -228,8 +228,8 @@ streamRedir download can't be spammed. Depends on the forced-refresh seam from p
 
 ## 11. Saved-servers search bar
 
-**Status:** implemented (tickets `.scratch/saved-servers-search/issues/` 01–02; suite 487
-green) — pending user visual verification before close.
+**Status:** ✅ done (tickets `.scratch/saved-servers-search/issues/` 01–02 resolved; suite 487
+green; commits `e768082` + user's height tweak included).
 
 **Spec:** `.scratch/saved-servers-search/spec.md`
 
