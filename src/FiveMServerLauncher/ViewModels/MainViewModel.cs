@@ -44,7 +44,8 @@ public class MainViewModel : INotifyPropertyChanged
         IClientInstallLocator installLocator,
         ConfigurationRepository settingsRepository,
         IServerEnrichmentService enrichment,
-        ICfxStatusService cfxStatus)
+        ICfxStatusService cfxStatus,
+        TimeSpan? refreshCooldown = null)
     {
         _resolver = resolver;
         _launcher = launcher;
@@ -54,6 +55,7 @@ public class MainViewModel : INotifyPropertyChanged
         _settingsRepository = settingsRepository;
         _enrichment = enrichment;
         _cfxStatus = cfxStatus;
+        _refreshCooldown = refreshCooldown ?? DefaultRefreshCooldown;
         _settings = settingsRepository.Load();
         ConnectCommand = new AsyncRelayCommand(ConnectAsync, CanConnect);
         DeleteServerCommand = new RelayCommand(DeleteServer, CanDeleteServer);
@@ -65,6 +67,7 @@ public class MainViewModel : INotifyPropertyChanged
         OpenEditServerDialogCommand = new RelayCommand(OpenEditServerDialog);
         SaveServerDialogCommand = new AsyncRelayCommand(SaveServerDialogAsync);
         CancelServerDialogCommand = new RelayCommand(CloseServerDialog);
+        RefreshServersCommand = new AsyncRelayCommand(RefreshServersAsync, () => !IsRefreshingServers);
         ToggleDevClientCommand = new RelayCommand(() =>
             DevClient = DevClient == GameClient.FiveM ? GameClient.RedM : GameClient.FiveM);
         DevLaunchCommand = new AsyncRelayCommand((object? secondClient) => DevLaunchAsync(secondClient is true), () => !IsBusy);
@@ -96,6 +99,39 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand SaveServerDialogCommand { get; }
 
     public ICommand CancelServerDialogCommand { get; }
+
+    public ICommand RefreshServersCommand { get; }
+
+    private bool _isRefreshingServers;
+
+    private static readonly TimeSpan DefaultRefreshCooldown = TimeSpan.FromSeconds(15);
+    private readonly TimeSpan _refreshCooldown;
+
+    public bool IsRefreshingServers
+    {
+        get => _isRefreshingServers;
+        private set => SetProperty(ref _isRefreshingServers, value);
+    }
+
+    private async Task RefreshServersAsync()
+    {
+        IsRefreshingServers = true;
+
+        try
+        {
+            await RefreshServerInfoAsync(forceRefresh: true);
+        }
+        catch (Exception)
+        {
+            // A failed manual refresh leaves rows untouched.
+        }
+
+        // Keep the command disabled for the shared cooldown so the expensive
+        // catalog download can't be spammed (scrolling must not re-enable it).
+        await Task.Delay(_refreshCooldown);
+        IsRefreshingServers = false;
+        CommandManager.InvalidateRequerySuggested();
+    }
 
     private SavedServerItem? _editingServer;
     private bool _isServerDialogOpen;

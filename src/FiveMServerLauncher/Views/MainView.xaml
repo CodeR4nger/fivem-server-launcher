@@ -676,9 +676,63 @@
 
                     <StackPanel Margin="20">
 
-                    <TextBlock Text="SAVED SERVERS"
-                               Style="{StaticResource SectionHeaderStyle}"
-                               Margin="0,0,0,7"/>
+                    <DockPanel Margin="0,0,0,7">
+
+                        <Button DockPanel.Dock="Right"
+                                Command="{Binding RefreshServersCommand}"
+                                ToolTip="Refresh server data"
+                                Cursor="Hand"
+                                Padding="4,0"
+                                VerticalAlignment="Center">
+
+                            <Button.Template>
+
+                                <ControlTemplate TargetType="{x:Type Button}">
+
+                                    <Border Background="Transparent" Padding="{TemplateBinding Padding}">
+
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                                    </Border>
+
+                                </ControlTemplate>
+
+                            </Button.Template>
+
+                            <TextBlock Text="↻">
+
+                                <TextBlock.Style>
+
+                                    <Style TargetType="{x:Type TextBlock}" BasedOn="{x:Null}">
+
+                                        <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}"/>
+
+                                        <Setter Property="IsEnabled" Value="True"/>
+
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                         Value="True">
+                                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                         Value="False">
+                                                <Setter Property="Foreground" Value="{StaticResource BorderBrush}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+
+                                    </Style>
+
+                                </TextBlock.Style>
+
+                            </TextBlock>
+
+                        </Button>
+
+                        <TextBlock Text="SAVED SERVERS"
+                                   Style="{StaticResource SectionHeaderStyle}"
+                                   VerticalAlignment="Center"/>
+
+                    </DockPanel>
 
                     <Border BorderBrush="{StaticResource BorderBrush}"
                             BorderThickness="1"

@@ -2051,6 +2051,102 @@ public class MainViewModelTests
         return $"{{\"data\":{{\"sv_projectName\":\"Test Server\",\"vars\":{{{vars}}}}}}}";
     }
 
+    [Fact]
+    public async Task RefreshServersCommand_ShouldForceRefreshAndUpdateRows()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/y4lg95"));
+        var enrichment = new FakeServerEnrichmentService
+        {
+            Presence = new Dictionary<string, ServerPresence>
+            {
+                ["y4lg95"] = new ServerPresence(true, 9, 32, GameClient.FiveM)
+            }
+        };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(), CfxJson("gta5"), repository, enrichment: enrichment);
+        await vm.InitializeAsync();
+
+        // When
+        vm.RefreshServersCommand.Execute(null);
+
+        // Then
+        Assert.Equal(1, enrichment.ForcedRefreshCalls);
+        Assert.Equal("9/32", vm.SavedServers[0].StatusLabel);
+        Assert.Equal("Ready", vm.StatusText);
+    }
+
+    [Fact]
+    public async Task RefreshServersCommand_WhenOutage_ShouldLeaveRowsUntouched()
+    {
+        // Given — presence null means outage; row keeps its prior state
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/y4lg95"));
+        var enrichment = new FakeServerEnrichmentService { Presence = null };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(), CfxJson("gta5"), repository, enrichment: enrichment);
+        await vm.InitializeAsync();
+        vm.SavedServers[0].ApplyPresence(new ServerPresence(true, 7, 32, GameClient.FiveM));
+
+        // When
+        vm.RefreshServersCommand.Execute(null);
+
+        // Then
+        Assert.Equal("7/32", vm.SavedServers[0].StatusLabel);
+    }
+
+    [Fact]
+    public async Task RefreshServersCommand_WhileRunning_ShouldBeDisabled()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        var enrichment = new FakeServerEnrichmentService();
+        var gate = new TaskCompletionSource();
+        enrichment.RefreshDelay = gate.Task;
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(), CfxJson("gta5"), repository,
+            enrichment: enrichment, refreshCooldown: TimeSpan.Zero);
+        await vm.InitializeAsync();
+
+        // When
+        vm.RefreshServersCommand.Execute(null);
+
+        // Then — mid-flight, the command refuses overlap
+        Assert.False(vm.RefreshServersCommand.CanExecute(null));
+        Assert.True(vm.IsRefreshingServers);
+
+        gate.SetResult();
+        await vm.WaitForPendingCapturesAsync();
+        await Task.Delay(50);
+
+        Assert.True(vm.RefreshServersCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task RefreshServersCommand_AfterRefresh_ShouldStayDisabledForCooldown()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        var enrichment = new FakeServerEnrichmentService();
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(), CfxJson("gta5"), repository,
+            enrichment: enrichment, refreshCooldown: TimeSpan.FromMilliseconds(400));
+        await vm.InitializeAsync();
+
+        // When — refresh completes instantly, but the cooldown window is still active
+        vm.RefreshServersCommand.Execute(null);
+        await Task.Delay(150);
+
+        // Then
+        Assert.False(vm.RefreshServersCommand.CanExecute(null));
+
+        // And re-enables once the cooldown elapses
+        await Task.Delay(400);
+        Assert.True(vm.RefreshServersCommand.CanExecute(null));
+        Assert.False(vm.IsRefreshingServers);
+    }
+
     private static MainViewModel CreateViewModel(
         IGameProcessLauncher processLauncher,
         string cfxJson,
@@ -2061,7 +2157,8 @@ public class MainViewModelTests
         IClientInstallLocator? installLocator = null,
         ConfigurationRepository? settings = null,
         IServerEnrichmentService? enrichment = null,
-        ICfxStatusService? cfxStatus = null)
+        ICfxStatusService? cfxStatus = null,
+        TimeSpan? refreshCooldown = null)
     {
         var resolver = new ServerResolver(
             new CfxService(
@@ -2090,6 +2187,7 @@ public class MainViewModelTests
             installLocator,
             settings ?? new ConfigurationRepository(new InMemorySettingsStorage()),
             enrichment ?? new FakeServerEnrichmentService(),
-            cfxStatus ?? new FakeCfxStatusService());
+            cfxStatus ?? new FakeCfxStatusService(),
+            refreshCooldown: refreshCooldown);
     }
 }

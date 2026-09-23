@@ -20,8 +20,20 @@ internal sealed class FakeServerEnrichmentService : IServerEnrichmentService
 
     public int ThrowOnRefreshCount { get; set; }
 
+    public Task? RefreshDelay { get; set; }
+
     public Task<IReadOnlyDictionary<string, ServerPresence>?> RefreshAsync(bool forceRefresh = false)
     {
+        return RefreshCoreAsync(forceRefresh);
+    }
+
+    private async Task<IReadOnlyDictionary<string, ServerPresence>?> RefreshCoreAsync(bool forceRefresh)
+    {
+        if (RefreshDelay is not null)
+        {
+            await RefreshDelay;
+        }
+
         RefreshCalls++;
         if (forceRefresh)
         {
@@ -34,7 +46,7 @@ internal sealed class FakeServerEnrichmentService : IServerEnrichmentService
             throw new InvalidOperationException("catalog corrupt");
         }
 
-        return Task.FromResult(Presence);
+        return Presence;
     }
 
     public Task<byte[]?> GetIconAsync(string cfxId)
