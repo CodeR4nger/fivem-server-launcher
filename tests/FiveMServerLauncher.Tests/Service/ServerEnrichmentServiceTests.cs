@@ -363,6 +363,120 @@ public class ServerEnrichmentServiceTests
         Assert.Null(result);
     }
 
+    [Fact]
+    public async Task ResolveCfxIdAsync_WithBareIpInCatalogOnDefaultPort_ShouldReturnEndPoint()
+    {
+        // Given
+        var handler = new RoutedHttpMessageHandler();
+        handler.AddBytesRoute(
+            "streamRedir",
+            HttpStatusCode.OK,
+            TestProtobufFrames.BuildFrameStream(new Master.Server
+            {
+                EndPoint = "y4lg95",
+                Data = new Master.ServerData { ConnectEndPoints = { "149.56.120.52:30120" } }
+            }));
+        using var httpClient = new HttpClient(handler);
+        var service = new ServerEnrichmentService(httpClient);
+
+        // When
+        var result = await service.ResolveCfxIdAsync("149.56.120.52");
+
+        // Then
+        Assert.Equal("y4lg95", result);
+    }
+
+    [Fact]
+    public async Task ResolveCfxIdAsync_WithBareDomainMatchingProxyEndpointHost_ShouldReturnEndPoint()
+    {
+        // Given
+        var handler = new RoutedHttpMessageHandler();
+        handler.AddBytesRoute(
+            "streamRedir",
+            HttpStatusCode.OK,
+            TestProtobufFrames.BuildFrameStream(new Master.Server
+            {
+                EndPoint = "y4lg95",
+                Data = new Master.ServerData { ConnectEndPoints = { "https://play.example.com:443/" } }
+            }));
+        using var httpClient = new HttpClient(handler);
+        var service = new ServerEnrichmentService(httpClient);
+
+        // When
+        var result = await service.ResolveCfxIdAsync("play.example.com");
+
+        // Then
+        Assert.Equal("y4lg95", result);
+    }
+
+    [Fact]
+    public async Task ResolveCfxIdAsync_WithBareDomainHostAmbiguous_ShouldReturnNull()
+    {
+        // Given
+        var handler = new RoutedHttpMessageHandler();
+        handler.AddBytesRoute(
+            "streamRedir",
+            HttpStatusCode.OK,
+            TestProtobufFrames.Join(
+                TestProtobufFrames.BuildFrameStream(new Master.Server
+                {
+                    EndPoint = "aaaaaa",
+                    Data = new Master.ServerData { ConnectEndPoints = { "https://proxy.shared.io/" } }
+                }),
+                TestProtobufFrames.BuildFrameStream(new Master.Server
+                {
+                    EndPoint = "bbbbbb",
+                    Data = new Master.ServerData { ConnectEndPoints = { "https://proxy.shared.io:443/" } }
+                })));
+        using var httpClient = new HttpClient(handler);
+        var service = new ServerEnrichmentService(httpClient, dnsResolver: new FakeDnsResolver());
+
+        // When
+        var result = await service.ResolveCfxIdAsync("proxy.shared.io");
+
+        // Then
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task ResolveCfxIdAsync_WithBareDomainResolvedToCatalogIpDefaultPort_ShouldReturnEndPoint()
+    {
+        // Given
+        var handler = new RoutedHttpMessageHandler();
+        handler.AddBytesRoute(
+            "streamRedir",
+            HttpStatusCode.OK,
+            TestProtobufFrames.BuildFrameStream(new Master.Server
+            {
+                EndPoint = "y4lg95",
+                Data = new Master.ServerData { ConnectEndPoints = { "149.56.120.52:30120" } }
+            }));
+        using var httpClient = new HttpClient(handler);
+        var service = new ServerEnrichmentService(
+            httpClient, dnsResolver: new FakeDnsResolver("149.56.120.52"));
+
+        // When
+        var result = await service.ResolveCfxIdAsync("direct.example.com");
+
+        // Then
+        Assert.Equal("y4lg95", result);
+    }
+
+    [Fact]
+    public async Task ResolveCfxIdAsync_WithBareIpNotInCatalog_ShouldReturnNull()
+    {
+        // Given
+        var handler = new RoutedHttpMessageHandler();
+        using var httpClient = new HttpClient(handler);
+        var service = new ServerEnrichmentService(httpClient);
+
+        // When
+        var result = await service.ResolveCfxIdAsync("10.0.0.1");
+
+        // Then
+        Assert.Null(result);
+    }
+
     private sealed class HttpMessageHandlerStub : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(
@@ -372,4 +486,82 @@ public class ServerEnrichmentServiceTests
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
         }
     }
+
+    [Fact]
+    public async Task RefreshAsync_WhenForced_ShouldBypassCatalogTtlAndFetch()
+    {
+        // Given
+        var handler = new RoutedHttpMessageHandler();
+        handler.AddBytesRoute(
+            "streamRedir",
+            HttpStatusCode.OK,
+            TestProtobufFrames.BuildFrameStream(new Master.Server
+            {
+                EndPoint = "y4lg95",
+                Data = new Master.ServerData { Clients = 3, SvMaxclients = 48 }
+            }));
+        using var httpClient = new HttpClient(handler);
+        var clock = new FakeTimeProvider();
+        var service = new ServerEnrichmentService(httpClient, clock, TimeSpan.FromMinutes(5));
+
+        // When
+        await service.RefreshAsync();
+        await service.RefreshAsync(forceRefresh: true);
+
+        // Then
+        Assert.Equal(2, handler.RequestCountByPath("streamRedir"));
+    }
+
+    [Fact]
+    public async Task RefreshAsync_WhenForcedInsideCooldown_ShouldServeCache()
+    {
+        // Given
+        var handler = new RoutedHttpMessageHandler();
+        handler.AddBytesRoute(
+            "streamRedir",
+            HttpStatusCode.OK,
+            TestProtobufFrames.BuildFrameStream(new Master.Server
+            {
+                EndPoint = "y4lg95",
+                Data = new Master.ServerData { Clients = 3, SvMaxclients = 48 }
+            }));
+        using var httpClient = new HttpClient(handler);
+        var clock = new FakeTimeProvider();
+        var service = new ServerEnrichmentService(httpClient, clock, TimeSpan.FromMinutes(5));
+
+        // When
+        await service.RefreshAsync(forceRefresh: true);
+        await service.RefreshAsync(forceRefresh: true);
+
+        // Then
+        Assert.Equal(1, handler.RequestCountByPath("streamRedir"));
+    }
+
+    [Fact]
+    public async Task RefreshAsync_WhenForcedAfterCooldown_ShouldRefetch()
+    {
+        // Given
+        var handler = new RoutedHttpMessageHandler();
+        handler.AddBytesRoute(
+            "streamRedir",
+            HttpStatusCode.OK,
+            TestProtobufFrames.BuildFrameStream(new Master.Server
+            {
+                EndPoint = "y4lg95",
+                Data = new Master.ServerData { Clients = 3, SvMaxclients = 48 }
+            }));
+        using var httpClient = new HttpClient(handler);
+        var clock = new FakeTimeProvider();
+        var service = new ServerEnrichmentService(
+            httpClient, clock, TimeSpan.FromMinutes(5), forceCooldown: TimeSpan.FromSeconds(15));
+
+        // When
+        await service.RefreshAsync(forceRefresh: true);
+        clock.Advance(TimeSpan.FromSeconds(16));
+        await service.RefreshAsync(forceRefresh: true);
+
+        // Then
+        Assert.Equal(2, handler.RequestCountByPath("streamRedir"));
+    }
 }
+

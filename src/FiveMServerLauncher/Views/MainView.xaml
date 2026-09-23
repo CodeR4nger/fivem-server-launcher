@@ -691,7 +691,7 @@
                                  BorderThickness="0"
                                  HorizontalContentAlignment="Stretch"
                                  Padding="0,4,0,4"
-                                 MaxHeight="110">
+                                 MaxHeight="220">
 
                             <ListBox.ItemTemplate>
 
@@ -829,7 +829,7 @@
 
                     <TextBlock Text="CONNECT ADDRESS"
                                Style="{StaticResource SectionHeaderStyle}"
-                               Margin="0,20,0,0"/>
+                               Margin="0,14,0,0"/>
 
                     <TextBox x:Name="ServerAddressBox"
                              Text="{Binding ServerAddress,
@@ -838,17 +838,17 @@
                              Foreground="{StaticResource TextBrush}"
                              BorderBrush="{StaticResource BorderBrush}"
                              BorderThickness="1"
-                             Padding="16,10"
-                             FontSize="13"
+                             Padding="12,6"
+                             FontSize="12"
                              VerticalContentAlignment="Center"
-                             MinHeight="40"
-                             Margin="0,7,0,0"/>
+                             MinHeight="32"
+                             Margin="0,5,0,0"/>
 
                     <TextBlock Text="{Binding StatusText}"
                                Foreground="{StaticResource SecondaryTextBrush}"
                                FontSize="11"
                                HorizontalAlignment="Center"
-                               Margin="0,10,0,0"/>
+                               Margin="0,6,0,0"/>
 
                     </StackPanel>
 
@@ -858,8 +858,8 @@
 
                 <Button Grid.Row="1"
                         Content="ENTER SERVER"
-                        Height="54"
-                        Margin="20,16,20,20"
+                        Height="48"
+                        Margin="20,10,20,16"
                         Style="{StaticResource MainButtonStyle}"
                         Command="{Binding ConnectCommand}"/>
 
@@ -891,6 +891,9 @@
                                Style="{StaticResource SectionHeaderStyle}"
                                Margin="0,0,0,12"/>
 
+                    <TextBlock Text="NAME"
+                               Style="{StaticResource SectionHeaderStyle}"/>
+
                     <TextBox Text="{Binding DialogServerName, UpdateSourceTrigger=PropertyChanged}"
                              Background="{StaticResource PanelLightBrush}"
                              Foreground="{StaticResource TextBrush}"
@@ -898,7 +901,12 @@
                              BorderThickness="1"
                              Padding="12,8"
                              FontSize="12"
-                             MinHeight="38"/>
+                             MinHeight="38"
+                             Margin="0,5,0,0"/>
+
+                    <TextBlock Text="ADDRESS"
+                               Style="{StaticResource SectionHeaderStyle}"
+                               Margin="0,10,0,0"/>
 
                     <TextBox Text="{Binding DialogServerAddress, UpdateSourceTrigger=PropertyChanged}"
                              Background="{StaticResource PanelLightBrush}"
@@ -908,7 +916,7 @@
                              Padding="12,8"
                              FontSize="12"
                              MinHeight="38"
-                             Margin="0,8,0,0"/>
+                             Margin="0,5,0,0"/>
 
                     <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
 

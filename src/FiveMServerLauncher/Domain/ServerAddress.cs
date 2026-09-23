@@ -6,12 +6,15 @@ public enum ServerAddressKind
     CfxId,
     CfxJoinUrl,
     IpPort,
-    DomainPort
+    DomainPort,
+    IpAddress,
+    DomainName
 }
 
 public static class ServerAddress
 {
     public const string Prefix = "cfx.re/join/";
+    public const int DefaultPort = 30120;
 
     public static ServerAddressKind Classify(string address)
     {
@@ -22,14 +25,27 @@ public static class ServerAddress
 
         if (!string.IsNullOrWhiteSpace(address) && !address.Any(char.IsWhiteSpace))
         {
-            if (IsIpPort(address))
+            if (TrySplitHostPort(address, out var host, out var port) && IsValidPort(port))
             {
-                return ServerAddressKind.IpPort;
+                if (IsIpv4(host))
+                {
+                    return ServerAddressKind.IpPort;
+                }
+
+                if (IsValidDomain(host))
+                {
+                    return ServerAddressKind.DomainPort;
+                }
             }
 
-            if (IsDomainPort(address))
+            if (IsIpv4(address))
             {
-                return ServerAddressKind.DomainPort;
+                return ServerAddressKind.IpAddress;
+            }
+
+            if (address.Contains('.') && IsValidDomain(address))
+            {
+                return ServerAddressKind.DomainName;
             }
 
             if (!address.Contains('.') && !address.Contains(':'))
@@ -55,26 +71,6 @@ public static class ServerAddress
     private static bool IsValidCfxId(string id)
     {
         return !string.IsNullOrWhiteSpace(id) && !id.Any(char.IsWhiteSpace);
-    }
-
-    private static bool IsIpPort(string address)
-    {
-        if (!TrySplitHostPort(address, out var host, out var port))
-        {
-            return false;
-        }
-
-        return IsValidPort(port) && IsIpv4(host);
-    }
-
-    private static bool IsDomainPort(string address)
-    {
-        if (!TrySplitHostPort(address, out var host, out var port))
-        {
-            return false;
-        }
-
-        return IsValidPort(port) && IsValidDomain(host);
     }
 
     private static bool IsValidDomain(string host)

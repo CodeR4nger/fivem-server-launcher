@@ -29,6 +29,8 @@ public class ServerResolver(
             ServerAddressKind.CfxId or ServerAddressKind.CfxJoinUrl => await ResolveCfxAsync(address),
             ServerAddressKind.IpPort => await ResolveIpPortAsync(address),
             ServerAddressKind.DomainPort => await ResolveDomainPortAsync(address),
+            ServerAddressKind.IpAddress => await ResolveBareIpAsync(address),
+            ServerAddressKind.DomainName => await ResolveBareDomainAsync(address),
             _ => throw new InvalidAddressException(address)
         };
 
@@ -71,19 +73,51 @@ public class ServerResolver(
     {
         ServerAddress.TrySplitHostPort(address, out var host, out var port);
 
-        var ip = await dnsResolver.ResolveToIpAsync(host);
-
-        if (ip is null)
+        var byHost = await FindUniqueByHostAsync(host);
+        if (byHost is not null)
         {
-            return BuildUnvalidatedProfile(address);
+            return BuildValidatedProfile(byHost);
         }
 
-        var server = await serverCatalog.LookupByIpPortAsync($"{ip}:{port}")
-                     ?? await serverCatalog.LookupByIpPortAsync(address);
+        var ip = await dnsResolver.ResolveToIpAsync(host);
+
+        if (ip is not null)
+        {
+            var byIp = await serverCatalog.LookupByIpPortAsync($"{ip}:{port}")
+                       ?? await serverCatalog.LookupByIpPortAsync(address);
+
+            if (byIp is not null)
+            {
+                return BuildValidatedProfile(byIp);
+            }
+        }
+
+        return BuildUnvalidatedProfile(address);
+    }
+
+    private async Task<ServerProfile> ResolveBareIpAsync(string address)
+    {
+        var server = await serverCatalog.LookupBareIpAsync(address);
 
         return server is not null
             ? BuildValidatedProfile(server)
             : BuildUnvalidatedProfile(address);
+    }
+
+    private async Task<ServerProfile> ResolveBareDomainAsync(string address)
+    {
+        var server = await serverCatalog.LookupBareDomainAsync(address);
+
+        return server is not null
+            ? BuildValidatedProfile(server)
+            : BuildUnvalidatedProfile(address);
+    }
+
+    private async Task<Master.Server?> FindUniqueByHostAsync(string host)
+    {
+        var matches = await serverCatalog.FindByEndpointHostAsync(host);
+
+        return matches.Count == 1 ? matches[0] : null;
     }
 
     private static ServerProfile BuildUnvalidatedProfile(string address)

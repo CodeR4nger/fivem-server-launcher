@@ -10,7 +10,7 @@ public sealed record ServerPresence(bool Online, int Players, int MaxPlayers, Ga
 
 public interface IServerEnrichmentService
 {
-    Task<IReadOnlyDictionary<string, ServerPresence>?> RefreshAsync();
+    Task<IReadOnlyDictionary<string, ServerPresence>?> RefreshAsync(bool forceRefresh = false);
 
     Task<byte[]?> GetIconAsync(string cfxId);
 
@@ -28,31 +28,48 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
     };
 
     private static readonly TimeSpan DefaultCacheTtl = TimeSpan.FromSeconds(45);
+    private static readonly TimeSpan DefaultForceCooldown = TimeSpan.FromSeconds(15);
 
     private readonly HttpClient _httpClient;
     private readonly ServerCatalog _catalog;
     private readonly IDnsResolver _dnsResolver;
+    private readonly TimeProvider _timeProvider;
+    private readonly TimeSpan _forceCooldown;
     private readonly Dictionary<(string CfxId, string Version), byte[]> _iconCache = new();
+    private DateTimeOffset _lastForcedAt = DateTimeOffset.MinValue;
 
-    public ServerEnrichmentService(ServerCatalog catalog, HttpClient httpClient, IDnsResolver? dnsResolver = null)
+    public ServerEnrichmentService(
+        ServerCatalog catalog,
+        HttpClient httpClient,
+        IDnsResolver? dnsResolver = null,
+        TimeProvider? timeProvider = null,
+        TimeSpan? forceCooldown = null)
     {
         _catalog = catalog;
         _httpClient = httpClient;
         _dnsResolver = dnsResolver ?? new DnsResolver();
+        _timeProvider = timeProvider ?? TimeProvider.System;
+        _forceCooldown = forceCooldown ?? DefaultForceCooldown;
     }
 
-    public ServerEnrichmentService(HttpClient httpClient, TimeProvider? timeProvider = null, TimeSpan? cacheTtl = null, IDnsResolver? dnsResolver = null)
-        : this(new ServerCatalog(httpClient, timeProvider, cacheTtl ?? DefaultCacheTtl), httpClient, dnsResolver)
+    public ServerEnrichmentService(HttpClient httpClient, TimeProvider? timeProvider = null, TimeSpan? cacheTtl = null, IDnsResolver? dnsResolver = null, TimeSpan? forceCooldown = null)
+        : this(new ServerCatalog(httpClient, timeProvider, cacheTtl ?? DefaultCacheTtl, dnsResolver), httpClient, dnsResolver, timeProvider, forceCooldown)
     {
     }
 
-    public async Task<IReadOnlyDictionary<string, ServerPresence>?> RefreshAsync()
+    public async Task<IReadOnlyDictionary<string, ServerPresence>?> RefreshAsync(bool forceRefresh = false)
     {
-        var snapshot = await _catalog.GetSnapshotAsync();
+        var mayForce = forceRefresh && _timeProvider.GetUtcNow() - _lastForcedAt >= _forceCooldown;
+        var snapshot = await _catalog.GetSnapshotAsync(mayForce);
 
         if (snapshot is null)
         {
             return null;
+        }
+
+        if (mayForce)
+        {
+            _lastForcedAt = _timeProvider.GetUtcNow();
         }
 
         return snapshot
@@ -104,6 +121,11 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
             return ServerAddress.ExtractCfxId(address);
         }
 
+        if (kind is ServerAddressKind.IpAddress or ServerAddressKind.DomainName)
+        {
+            return await ResolveBareAddressCfxIdAsync(address, kind);
+        }
+
         var ipPort = kind switch
         {
             ServerAddressKind.IpPort => address,
@@ -133,6 +155,15 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
         var ip = await _dnsResolver.ResolveToIpAsync(host);
 
         return ip is null ? null : $"{ip}:{port}";
+    }
+
+    private async Task<string?> ResolveBareAddressCfxIdAsync(string address, ServerAddressKind kind)
+    {
+        var server = kind == ServerAddressKind.DomainName
+            ? await _catalog.LookupBareDomainAsync(address)
+            : await _catalog.LookupBareIpAsync(address);
+
+        return server?.EndPoint;
     }
 
     private async Task<string?> GetIconVersionAsync(string cfxId)

@@ -1292,6 +1292,88 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public async Task SaveServerDialogCommand_OnAdd_ShouldForceRefreshAndEnrichNewRow()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        var enrichment = new FakeServerEnrichmentService
+        {
+            ResolvedCfxId = "abc123",
+            Presence = new Dictionary<string, ServerPresence>
+            {
+                ["abc123"] = new ServerPresence(true, 12, 48, GameClient.FiveM)
+            },
+            Icon = [1, 2, 3]
+        };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(), CfxJson("gta5"), repository, enrichment: enrichment);
+        await vm.InitializeAsync();
+        vm.OpenAddServerDialogCommand.Execute(null);
+        vm.DialogServerName = "New Server";
+        vm.DialogServerAddress = "149.56.120.52:30120";
+        var refreshCallsBefore = enrichment.RefreshCalls;
+
+        // When
+        vm.SaveServerDialogCommand.Execute(null);
+
+        // Then
+        Assert.Equal(1, enrichment.ForcedRefreshCalls);
+        Assert.True(enrichment.RefreshCalls > refreshCallsBefore);
+        Assert.Equal("12/48", vm.SavedServers[0].StatusLabel);
+        Assert.NotNull(vm.SavedServers[0].Icon);
+        Assert.Equal("Server saved", vm.StatusText);
+    }
+
+    [Fact]
+    public async Task SaveServerDialogCommand_OnEdit_ShouldForceRefresh()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("Old Name", "cfx.re/join/keep"));
+        var enrichment = new FakeServerEnrichmentService
+        {
+            Presence = new Dictionary<string, ServerPresence>
+            {
+                ["keep"] = new ServerPresence(true, 5, 32, GameClient.FiveM)
+            }
+        };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(), CfxJson("gta5"), repository, enrichment: enrichment);
+        await vm.InitializeAsync();
+        vm.OpenEditServerDialogCommand.Execute(vm.SavedServers[0]);
+
+        // When
+        vm.DialogServerName = "New Name";
+        vm.SaveServerDialogCommand.Execute(null);
+
+        // Then
+        Assert.Equal(1, enrichment.ForcedRefreshCalls);
+        Assert.Equal("Server saved", vm.StatusText);
+    }
+
+    [Fact]
+    public async Task SaveServerDialogCommand_WhenForcedRefreshFails_ShouldStillSaveAndClose()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        var enrichment = new FakeServerEnrichmentService { ThrowOnRefreshCount = 1 };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(), CfxJson("gta5"), repository, enrichment: enrichment);
+        await vm.InitializeAsync();
+        vm.OpenAddServerDialogCommand.Execute(null);
+        vm.DialogServerName = "New Server";
+        vm.DialogServerAddress = "cfx.re/join/abc123";
+
+        // When
+        vm.SaveServerDialogCommand.Execute(null);
+
+        // Then
+        Assert.False(vm.IsServerDialogOpen);
+        Assert.Single(vm.SavedServers);
+        Assert.Equal("Server saved", vm.StatusText);
+    }
+
+    [Fact]
     public async Task SaveServerDialogCommand_OnEdit_ShouldUpdateSameAddress()
     {
         // Given

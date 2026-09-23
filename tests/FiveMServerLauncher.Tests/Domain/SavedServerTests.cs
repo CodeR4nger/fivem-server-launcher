@@ -29,6 +29,34 @@ public class SavedServerTests
     }
 
     [Fact]
+    public void Create_WithBareIpAddress_ShouldReturnSavedServerWithoutCfxId()
+    {
+        // Given
+        const string address = "149.56.120.52";
+
+        // When
+        var result = SavedServer.Create("My Server", address);
+
+        // Then
+        Assert.Equal(address, result.Address);
+        Assert.Null(result.CfxId);
+    }
+
+    [Fact]
+    public void Create_WithBareDomainAddress_ShouldReturnSavedServerWithoutCfxId()
+    {
+        // Given
+        const string address = "play.example.com";
+
+        // When
+        var result = SavedServer.Create("My Server", address);
+
+        // Then
+        Assert.Equal(address, result.Address);
+        Assert.Null(result.CfxId);
+    }
+
+    [Fact]
     public void Create_WithCfxIdAddress_ShouldReturnSavedServer()
     {
         // Given

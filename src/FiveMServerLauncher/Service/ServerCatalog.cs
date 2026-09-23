@@ -1,17 +1,20 @@
 using System.Net.Http;
+using FiveMServerLauncher.Domain;
 
 namespace FiveMServerLauncher.Service;
 
 public class ServerCatalog(
     HttpClient httpClient,
     TimeProvider? timeProvider = null,
-    TimeSpan? cacheTtl = null)
+    TimeSpan? cacheTtl = null,
+    IDnsResolver? dnsResolver = null)
 {
     private static readonly string CatalogUrl = "https://frontend.cfx-services.net/api/servers/streamRedir/";
 
     private readonly HttpClient _httpClient = httpClient;
     private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
     private readonly TimeSpan _cacheTtl = cacheTtl ?? TimeSpan.FromMinutes(5);
+    private readonly IDnsResolver _dnsResolver = dnsResolver ?? new DnsResolver();
 
     private IReadOnlyList<Master.Server>? _cachedServers;
     private DateTimeOffset _cachedAt;
@@ -31,9 +34,64 @@ public class ServerCatalog(
         return servers.FirstOrDefault(s => s.EndPoint == endPoint);
     }
 
-    public async Task<IReadOnlyList<Master.Server>?> GetSnapshotAsync()
+    public async Task<IReadOnlyList<Master.Server>> FindByEndpointHostAsync(string host)
     {
-        if (IsCacheValid())
+        var servers = await GetServersAsync();
+
+        return servers
+            .Where(s => s.Data is not null && s.Data.ConnectEndPoints
+                .Select(NormalizeEndpointHost)
+                .Any(h => string.Equals(h, host, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+    }
+
+    public async Task<Master.Server?> LookupBareIpAsync(string ip)
+    {
+        return await LookupByIpPortAsync($"{ip}:{ServerAddress.DefaultPort}");
+    }
+
+    public async Task<Master.Server?> LookupBareDomainAsync(string domain)
+    {
+        var byHost = await FindByEndpointHostAsync(domain);
+
+        // An ambiguous shared proxy host must never guess one of its servers.
+        if (byHost.Count > 1)
+        {
+            return null;
+        }
+
+        if (byHost.Count == 1)
+        {
+            return byHost[0];
+        }
+
+        var ip = await _dnsResolver.ResolveToIpAsync(domain);
+
+        return ip is null ? null : await LookupByIpPortAsync($"{ip}:{ServerAddress.DefaultPort}");
+    }
+
+    internal static string NormalizeEndpointHost(string endpoint)
+    {
+        var withoutScheme = endpoint;
+        var schemeIndex = withoutScheme.IndexOf("://", StringComparison.Ordinal);
+        if (schemeIndex >= 0)
+        {
+            withoutScheme = withoutScheme[(schemeIndex + 3)..];
+        }
+
+        var pathIndex = withoutScheme.IndexOf('/');
+        if (pathIndex >= 0)
+        {
+            withoutScheme = withoutScheme[..pathIndex];
+        }
+
+        var portIndex = withoutScheme.IndexOf(':');
+        return portIndex >= 0 ? withoutScheme[..portIndex] : withoutScheme;
+    }
+
+    public async Task<IReadOnlyList<Master.Server>?> GetSnapshotAsync(bool forceRefresh = false)
+    {
+        if (!forceRefresh && IsCacheValid())
         {
             return _cachedServers!;
         }
@@ -47,7 +105,7 @@ public class ServerCatalog(
 
             if (!response.IsSuccessStatusCode)
             {
-                return null;
+                return forceRefresh ? _cachedServers : null;
             }
 
             var payload = await response.Content.ReadAsByteArrayAsync();
@@ -59,11 +117,11 @@ public class ServerCatalog(
         }
         catch (HttpRequestException)
         {
-            return null;
+            return forceRefresh ? _cachedServers : null;
         }
         catch (TaskCanceledException)
         {
-            return null;
+            return forceRefresh ? _cachedServers : null;
         }
     }
 

@@ -117,7 +117,9 @@ public sealed class FiveMLaunchOptions
         }
 
         var kind = ServerAddress.Classify(address);
-        if (kind is ServerAddressKind.CfxJoinUrl or ServerAddressKind.IpPort or ServerAddressKind.DomainPort)
+        if (kind is ServerAddressKind.CfxJoinUrl or ServerAddressKind.IpPort
+            or ServerAddressKind.DomainPort or ServerAddressKind.IpAddress
+            or ServerAddressKind.DomainName)
         {
             return;
         }

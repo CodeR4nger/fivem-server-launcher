@@ -95,6 +95,71 @@ public class ServerAddressTests
     }
 
     [Fact]
+    public void Classify_WhenBareIpWithoutPort_ShouldReturnIpAddress()
+    {
+        // Given
+        const string address = "149.56.120.52";
+
+        // When
+        var kind = ServerAddress.Classify(address);
+
+        // Then
+        Assert.Equal(ServerAddressKind.IpAddress, kind);
+    }
+
+    [Fact]
+    public void Classify_WhenBareDomainWithoutPort_ShouldReturnDomainName()
+    {
+        // Given
+        const string address = "play.example.com";
+
+        // When
+        var kind = ServerAddress.Classify(address);
+
+        // Then
+        Assert.Equal(ServerAddressKind.DomainName, kind);
+    }
+
+    [Fact]
+    public void Classify_WhenBareSingleLabel_ShouldReturnCfxId()
+    {
+        // Given
+        const string address = "localhost";
+
+        // When
+        var kind = ServerAddress.Classify(address);
+
+        // Then
+        Assert.Equal(ServerAddressKind.CfxId, kind);
+    }
+
+    [Fact]
+    public void Classify_WhenBareIpOctetOutOfRange_ShouldReturnUnknown()
+    {
+        // Given
+        const string address = "999.56.120.52";
+
+        // When
+        var kind = ServerAddress.Classify(address);
+
+        // Then
+        Assert.Equal(ServerAddressKind.Unknown, kind);
+    }
+
+    [Fact]
+    public void Classify_WhenBareDomainWithInvalidLabel_ShouldReturnUnknown()
+    {
+        // Given
+        const string address = "play.example!.com";
+
+        // When
+        var kind = ServerAddress.Classify(address);
+
+        // Then
+        Assert.Equal(ServerAddressKind.Unknown, kind);
+    }
+
+    [Fact]
     public void Classify_WhenSingleLabelHost_ShouldReturnDomainPort()
     {
         // Given

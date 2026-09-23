@@ -218,4 +218,173 @@ public class ServerCatalogTests
         // Then
         Assert.Null(result);
     }
+
+    [Fact]
+    public async Task FindByEndpointHost_WhenProxyUrlEndpointMatches_ShouldReturnServer()
+    {
+        // Given
+        var protoServer = new Master.Server
+        {
+            EndPoint = "y4lg95",
+            Data = new Master.ServerData
+            {
+                ConnectEndPoints = { "https://play.example.com:443/" }
+            }
+        };
+
+        var handler = new FakeHttpMessageHandler(
+            HttpStatusCode.OK,
+            TestProtobufFrames.BuildFrameStream(protoServer));
+        using var httpClient = new HttpClient(handler);
+        var catalog = new ServerCatalog(httpClient);
+
+        // When
+        var result = await catalog.FindByEndpointHostAsync("play.example.com");
+
+        // Then
+        var server = Assert.Single(result);
+        Assert.Equal("y4lg95", server.EndPoint);
+    }
+
+    [Fact]
+    public async Task FindByEndpointHost_WhenPlainHostPortEndpointMatches_ShouldReturnServer()
+    {
+        // Given
+        var protoServer = new Master.Server
+        {
+            EndPoint = "y4lg95",
+            Data = new Master.ServerData
+            {
+                ConnectEndPoints = { "play.example.com:30120" }
+            }
+        };
+
+        var handler = new FakeHttpMessageHandler(
+            HttpStatusCode.OK,
+            TestProtobufFrames.BuildFrameStream(protoServer));
+        using var httpClient = new HttpClient(handler);
+        var catalog = new ServerCatalog(httpClient);
+
+        // When
+        var result = await catalog.FindByEndpointHostAsync("PLAY.EXAMPLE.COM");
+
+        // Then
+        Assert.Single(result);
+    }
+
+    [Fact]
+    public async Task FindByEndpointHost_WhenHostSharedByMultipleServers_ShouldReturnAll()
+    {
+        // Given
+        var first = new Master.Server
+        {
+            EndPoint = "aaaaaa",
+            Data = new Master.ServerData { ConnectEndPoints = { "https://proxy.shared.io/" } }
+        };
+        var second = new Master.Server
+        {
+            EndPoint = "bbbbbb",
+            Data = new Master.ServerData { ConnectEndPoints = { "https://proxy.shared.io:443/" } }
+        };
+
+        var handler = new FakeHttpMessageHandler(
+            HttpStatusCode.OK,
+            TestProtobufFrames.Join(
+                TestProtobufFrames.BuildFrameStream(first),
+                TestProtobufFrames.BuildFrameStream(second)));
+        using var httpClient = new HttpClient(handler);
+        var catalog = new ServerCatalog(httpClient);
+
+        // When
+        var result = await catalog.FindByEndpointHostAsync("proxy.shared.io");
+
+        // Then
+        Assert.Equal(2, result.Count);
+    }
+
+    [Fact]
+    public async Task FindByEndpointHost_WhenNoMatch_ShouldReturnEmpty()
+    {
+        // Given
+        var protoServer = new Master.Server
+        {
+            EndPoint = "y4lg95",
+            Data = new Master.ServerData { ConnectEndPoints = { "149.56.120.52:30120" } }
+        };
+
+        var handler = new FakeHttpMessageHandler(
+            HttpStatusCode.OK,
+            TestProtobufFrames.BuildFrameStream(protoServer));
+        using var httpClient = new HttpClient(handler);
+        var catalog = new ServerCatalog(httpClient);
+
+        // When
+        var result = await catalog.FindByEndpointHostAsync("play.example.com");
+
+        // Then
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task GetSnapshot_WhenForcedInsideTtl_ShouldRefetch()
+    {
+        // Given
+        var protoServer = new Master.Server { EndPoint = "y4lg95" };
+        var handler = new FakeHttpMessageHandler(
+            HttpStatusCode.OK,
+            TestProtobufFrames.BuildFrameStream(protoServer));
+        using var httpClient = new HttpClient(handler);
+        var clock = new FakeTimeProvider();
+        var catalog = new ServerCatalog(httpClient, clock);
+
+        // When
+        await catalog.GetSnapshotAsync();
+        var forced = await catalog.GetSnapshotAsync(forceRefresh: true);
+
+        // Then
+        Assert.Equal(2, handler.RequestCount);
+        Assert.NotNull(forced);
+    }
+
+    [Fact]
+    public async Task GetSnapshot_WhenForcedFetchFailsWithWarmCache_ShouldReturnStaleCache()
+    {
+        // Given — handler route becomes unavailable after the first request
+        var handler = new FlakyOnceHttpMessageHandler(
+            TestProtobufFrames.BuildFrameStream(new Master.Server { EndPoint = "y4lg95" }));
+        using var httpClient = new HttpClient(handler);
+        var clock = new FakeTimeProvider();
+        var catalog = new ServerCatalog(httpClient, clock);
+
+        // When
+        var first = await catalog.GetSnapshotAsync();
+        var second = await catalog.GetSnapshotAsync(forceRefresh: true);
+
+        // Then
+        Assert.NotNull(first);
+        Assert.NotNull(second);
+        Assert.Same(first, second);
+        Assert.Equal(2, handler.RequestCount);
+    }
+
+    private sealed class FlakyOnceHttpMessageHandler(byte[] payload) : HttpMessageHandler
+    {
+        public int RequestCount { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            RequestCount++;
+            if (RequestCount > 1)
+            {
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(payload)
+            });
+        }
+    }
 }

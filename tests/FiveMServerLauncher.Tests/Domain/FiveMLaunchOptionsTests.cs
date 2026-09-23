@@ -112,6 +112,36 @@ public class FiveMLaunchOptionsTests
     }
 
     [Fact]
+    public void Create_WithBareIpAddress_ShouldAcceptAndEmitAsIs()
+    {
+        // Given
+        const string bareIp = "149.56.120.52";
+        const GameClient gameClient = GameClient.FiveM;
+
+        // When
+        var options = FiveMLaunchOptions.Create(bareIp, gameClient, null, null, false);
+
+        // Then
+        Assert.Equal(bareIp, options.Address);
+        Assert.Equal(new Uri($"fivem://connect/{bareIp}"), options.ToUri());
+    }
+
+    [Fact]
+    public void Create_WithBareDomainName_ShouldAcceptAndEmitAsIs()
+    {
+        // Given
+        const string bareDomain = "play.example.com";
+        const GameClient gameClient = GameClient.FiveM;
+
+        // When
+        var options = FiveMLaunchOptions.Create(bareDomain, gameClient, null, null, false);
+
+        // Then
+        Assert.Equal(bareDomain, options.Address);
+        Assert.Equal(new Uri($"fivem://connect/{bareDomain}"), options.ToUri());
+    }
+
+    [Fact]
     public void Create_WithAddressMissingId_ShouldThrow()
     {
         // Given

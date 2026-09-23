@@ -12,15 +12,22 @@ internal sealed class FakeServerEnrichmentService : IServerEnrichmentService
 
     public int RefreshCalls { get; private set; }
 
+    public int ForcedRefreshCalls { get; private set; }
+
     public int IconCalls { get; private set; }
 
     public int ResolveCalls { get; private set; }
 
     public int ThrowOnRefreshCount { get; set; }
 
-    public Task<IReadOnlyDictionary<string, ServerPresence>?> RefreshAsync()
+    public Task<IReadOnlyDictionary<string, ServerPresence>?> RefreshAsync(bool forceRefresh = false)
     {
         RefreshCalls++;
+        if (forceRefresh)
+        {
+            ForcedRefreshCalls++;
+        }
+
         if (ThrowOnRefreshCount > 0)
         {
             ThrowOnRefreshCount--;

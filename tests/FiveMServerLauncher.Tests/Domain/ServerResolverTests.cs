@@ -489,6 +489,250 @@ public class ServerResolverTests
     }
 
     [Fact]
+    public async Task Resolve_WhenBareIpWithDefaultPortInCatalog_ShouldReturnValidatedProfile()
+    {
+        // Given
+        const string address = "149.56.120.52";
+
+        var protoServer = new Master.Server
+        {
+            EndPoint = "y4lg95",
+            Data = new Master.ServerData
+            {
+                Vars = { ["sv_projectName"] = "Catalog Server", ["gamename"] = "gta5" },
+                ConnectEndPoints = { "149.56.120.52:30120" }
+            }
+        };
+        var resolver = CreateResolver(
+            catalogHttpClient: new HttpClient(new FakeHttpMessageHandler(
+                System.Net.HttpStatusCode.OK,
+                TestProtobufFrames.BuildFrameStream(protoServer))));
+
+        // When
+        var result = await resolver.ResolveAsync(address);
+
+        // Then
+        Assert.True(result.IsCfxValidated);
+        Assert.Equal("y4lg95", result.CfxId);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenBareIpNotInCatalog_ShouldReturnUnvalidatedProfile()
+    {
+        // Given
+        const string address = "149.56.120.52";
+
+        var resolver = CreateResolver(
+            catalogHttpClient: new HttpClient(new FakeHttpMessageHandler(
+                System.Net.HttpStatusCode.OK,
+                TestProtobufFrames.BuildFrameStream(new Master.Server { EndPoint = "other" }))));
+
+        // When
+        var result = await resolver.ResolveAsync(address);
+
+        // Then
+        Assert.False(result.IsCfxValidated);
+        Assert.Equal(address, result.Address);
+        Assert.Equal(string.Empty, result.CfxId);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenBareDomainMatchesProxyEndpointHost_ShouldReturnValidatedProfileWithoutDns()
+    {
+        // Given
+        const string address = "play.example.com";
+
+        var protoServer = new Master.Server
+        {
+            EndPoint = "y4lg95",
+            Data = new Master.ServerData
+            {
+                Vars = { ["sv_projectName"] = "Proxied Server", ["gamename"] = "gta5" },
+                ConnectEndPoints = { "https://play.example.com:443/" }
+            }
+        };
+        var dns = new FakeDnsResolver("104.26.1.1");
+        var resolver = CreateResolver(
+            catalogHttpClient: new HttpClient(new FakeHttpMessageHandler(
+                System.Net.HttpStatusCode.OK,
+                TestProtobufFrames.BuildFrameStream(protoServer))),
+            dnsResolver: dns);
+
+        // When
+        var result = await resolver.ResolveAsync(address);
+
+        // Then
+        Assert.True(result.IsCfxValidated);
+        Assert.Equal("y4lg95", result.CfxId);
+        Assert.False(dns.WasCalled);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenBareDomainMatchesViaDnsDefaultPort_ShouldReturnValidatedProfile()
+    {
+        // Given
+        const string address = "direct.example.com";
+
+        var protoServer = new Master.Server
+        {
+            EndPoint = "y4lg95",
+            Data = new Master.ServerData
+            {
+                Vars = { ["sv_projectName"] = "Direct Server" },
+                ConnectEndPoints = { "149.56.120.52:30120" }
+            }
+        };
+        var resolver = CreateResolver(
+            catalogHttpClient: new HttpClient(new FakeHttpMessageHandler(
+                System.Net.HttpStatusCode.OK,
+                TestProtobufFrames.BuildFrameStream(protoServer))),
+            dnsResolver: new FakeDnsResolver("149.56.120.52"));
+
+        // When
+        var result = await resolver.ResolveAsync(address);
+
+        // Then
+        Assert.True(result.IsCfxValidated);
+        Assert.Equal("y4lg95", result.CfxId);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenBareDomainNotInCatalog_ShouldReturnUnvalidatedProfile()
+    {
+        // Given
+        const string address = "unknown.example.com";
+
+        var resolver = CreateResolver(dnsResolver: new FakeDnsResolver("149.56.120.52"));
+
+        // When
+        var result = await resolver.ResolveAsync(address);
+
+        // Then
+        Assert.False(result.IsCfxValidated);
+        Assert.Equal(address, result.Address);
+        Assert.Equal(string.Empty, result.CfxId);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenBareDomainHostSharedByMultipleServers_ShouldReturnUnvalidatedProfile()
+    {
+        // Given
+        const string address = "proxy.shared.io";
+
+        var first = new Master.Server
+        {
+            EndPoint = "aaaaaa",
+            Data = new Master.ServerData { ConnectEndPoints = { "https://proxy.shared.io/" } }
+        };
+        var second = new Master.Server
+        {
+            EndPoint = "bbbbbb",
+            Data = new Master.ServerData { ConnectEndPoints = { "https://proxy.shared.io:443/" } }
+        };
+        var resolver = CreateResolver(
+            catalogHttpClient: new HttpClient(new FakeHttpMessageHandler(
+                System.Net.HttpStatusCode.OK,
+                TestProtobufFrames.Join(
+                    TestProtobufFrames.BuildFrameStream(first),
+                    TestProtobufFrames.BuildFrameStream(second)))),
+            dnsResolver: new FakeDnsResolver());
+
+        // When
+        var result = await resolver.ResolveAsync(address);
+
+        // Then
+        Assert.False(result.IsCfxValidated);
+        Assert.Equal(address, result.Address);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenBareDomainAndCatalogUnavailable_ShouldReturnUnvalidatedProfile()
+    {
+        // Given
+        const string address = "play.example.com";
+
+        var resolver = CreateResolver(
+            catalogHttpClient: new HttpClient(new FakeHttpMessageHandler(true)),
+            dnsResolver: new FakeDnsResolver("149.56.120.52"));
+
+        // When
+        var result = await resolver.ResolveAsync(address);
+
+        // Then
+        Assert.False(result.IsCfxValidated);
+        Assert.Equal(address, result.Address);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenBareDomainHostAmbiguousAndDnsWouldMatch_ShouldStayUnvalidated()
+    {
+        // Given — the shared proxy host is ambiguous; the resolved IP:30120 matches a
+        // different server. Ambiguity must not be "resolved" by the DNS fallback.
+        const string address = "proxy.shared.io";
+
+        var first = new Master.Server
+        {
+            EndPoint = "aaaaaa",
+            Data = new Master.ServerData { ConnectEndPoints = { "https://proxy.shared.io/" } }
+        };
+        var second = new Master.Server
+        {
+            EndPoint = "bbbbbb",
+            Data = new Master.ServerData { ConnectEndPoints = { "https://proxy.shared.io:443/" } }
+        };
+        var other = new Master.Server
+        {
+            EndPoint = "cccccc",
+            Data = new Master.ServerData { ConnectEndPoints = { "149.56.120.52:30120" } }
+        };
+        var resolver = CreateResolver(
+            catalogHttpClient: new HttpClient(new FakeHttpMessageHandler(
+                System.Net.HttpStatusCode.OK,
+                TestProtobufFrames.Join(
+                    TestProtobufFrames.BuildFrameStream(first),
+                    TestProtobufFrames.BuildFrameStream(second),
+                    TestProtobufFrames.BuildFrameStream(other)))),
+            dnsResolver: new FakeDnsResolver("149.56.120.52"));
+
+        // When
+        var result = await resolver.ResolveAsync(address);
+
+        // Then
+        Assert.False(result.IsCfxValidated);
+        Assert.Equal(address, result.Address);
+        Assert.Equal(string.Empty, result.CfxId);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenDomainPortMatchesProxyEndpointHost_ShouldReturnValidatedProfile()
+    {
+        // Given
+        const string address = "play.example.com:30120";
+
+        var protoServer = new Master.Server
+        {
+            EndPoint = "y4lg95",
+            Data = new Master.ServerData
+            {
+                Vars = { ["sv_projectName"] = "Proxied Server" },
+                ConnectEndPoints = { "https://play.example.com:443/" }
+            }
+        };
+        var resolver = CreateResolver(
+            catalogHttpClient: new HttpClient(new FakeHttpMessageHandler(
+                System.Net.HttpStatusCode.OK,
+                TestProtobufFrames.BuildFrameStream(protoServer))),
+            dnsResolver: new FakeDnsResolver("104.26.1.1"));
+
+        // When
+        var result = await resolver.ResolveAsync(address);
+
+        // Then
+        Assert.True(result.IsCfxValidated);
+        Assert.Equal("y4lg95", result.CfxId);
+    }
+
+    [Fact]
     public async Task Resolve_WhenSavedServerRequiresDiscord_ShouldApplyManualToValidatedProfile()
     {
         // Given
@@ -534,7 +778,8 @@ public class ServerResolverTests
             catalogHttpClient ?? new HttpClient(new FakeHttpMessageHandler(
                 System.Net.HttpStatusCode.OK, Array.Empty<byte>())),
             new FakeTimeProvider(),
-            TimeSpan.FromDays(1));
+            TimeSpan.FromDays(1),
+            dnsResolver ?? new FakeDnsResolver());
 
         return new ServerResolver(service, catalog, new ServerRequirementsResolver(),
             dnsResolver ?? new FakeDnsResolver());

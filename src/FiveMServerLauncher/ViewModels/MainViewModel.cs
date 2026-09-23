@@ -63,7 +63,7 @@ public class MainViewModel : INotifyPropertyChanged
         ToggleDevModeCommand = new RelayCommand(ToggleDevMode);
         OpenAddServerDialogCommand = new RelayCommand(OpenAddServerDialog);
         OpenEditServerDialogCommand = new RelayCommand(OpenEditServerDialog);
-        SaveServerDialogCommand = new RelayCommand(SaveServerDialog);
+        SaveServerDialogCommand = new AsyncRelayCommand(SaveServerDialogAsync);
         CancelServerDialogCommand = new RelayCommand(CloseServerDialog);
         ToggleDevClientCommand = new RelayCommand(() =>
             DevClient = DevClient == GameClient.FiveM ? GameClient.RedM : GameClient.FiveM);
@@ -371,7 +371,7 @@ public class MainViewModel : INotifyPropertyChanged
         EditingServer = null;
     }
 
-    private void SaveServerDialog(object? _ = null)
+    private async Task SaveServerDialogAsync()
     {
         var addressUnchanged = EditingServer is not null
             && string.Equals(EditingServer.Address, DialogServerAddress.Trim(), StringComparison.OrdinalIgnoreCase);
@@ -442,6 +442,17 @@ public class MainViewModel : INotifyPropertyChanged
             }
         }
 
+        await WaitForPendingCapturesAsync();
+
+        try
+        {
+            await RefreshServerInfoAsync(forceRefresh: true);
+        }
+        catch (Exception)
+        {
+            // Refresh failure must not fail the save itself.
+        }
+
         StatusText = "Server saved";
         CloseServerDialog();
     }
@@ -488,9 +499,9 @@ public class MainViewModel : INotifyPropertyChanged
         item.SetCfxId(cfxId);
     }
 
-    public async Task RefreshServerInfoAsync()
+    public async Task RefreshServerInfoAsync(bool forceRefresh = false)
     {
-        var presence = await _enrichment.RefreshAsync();
+        var presence = await _enrichment.RefreshAsync(forceRefresh);
 
         if (presence is null)
         {

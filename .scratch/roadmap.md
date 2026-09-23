@@ -2,6 +2,8 @@
 
 Status: active
 
+Current release line: **v1.1** (phases 9-12 below). v1.0 = phases 1-8, all done.
+
 Plan for the remaining phases of FiveMServerLauncher, in build order. Each phase follows the
 repo workflow: `to-spec` -> `to-tickets` -> `implement` (TDD) -> `code-review` -> commit.
 Phases listed as **Independent** have no ordering constraint and can be picked up at any time.
@@ -187,3 +189,59 @@ seam (+ one-time `%localappdata%` migration), and a self-contained **win-x64 sin
 publish (`PublishSingleFile`, no trimming) as the documented release artifact.
 
 **Goal:** shipping a single portable `CFXLauncher.exe` that carries its own data alongside it.
+
+---
+
+# v1.1
+
+Four phases, in build order. Decisions were grilled and settled (see specs); the domain fix
+rules are driven by a read-only spike against the real streamRedir snapshot (33,900 servers)
+— key facts inline in the phase 9 spec.
+
+## 9. Improvements & fixes (panel layout, dialog titles, port-less addresses, save-refresh)
+
+**Status:** tickets published (`.scratch/v1-1-polish-and-fixes/issues/` 01–08); in progress.
+
+**Spec:** `.scratch/v1-1-polish-and-fixes/spec.md`
+
+**What:** (a) taller saved-servers list by compacting the connect-address area (smaller text,
+removing wasted space above the ENTER SERVER button); (b) small field titles (Name / Address)
+in the add/edit server dialog; (c) domain fix — accept port-less addresses (bare domain / bare
+IP) and match them against the streamRedir catalog with data-driven rules (hostname
+string-match first, DNS+default-port second, unvalidated fallback with default port 30120);
+(d) saving a server in the dialog triggers an immediate data refresh instead of waiting for
+the per-minute cycle.
+
+## 10. Refresh button on the saved-servers list
+
+**Status:** spec ready (`Status: ready-for-agent`).
+
+**Spec:** `.scratch/saved-servers-refresh-button/spec.md`
+
+**What:** a refresh button at the top of the saved-servers panel forces a fresh update of the
+listed servers' data (bypassing the TTL cache), guarded by a shared cooldown so the expensive
+streamRedir download can't be spammed. Depends on the forced-refresh seam from phase 9.
+
+## 11. Saved-servers search bar
+
+**Status:** spec ready (`Status: ready-for-agent`).
+
+**Spec:** `.scratch/saved-servers-search/spec.md`
+
+**What:** a search box above the saved-servers list that filters rows live as you type,
+matching name and address (case-insensitive substring).
+
+## 12. Server browser view
+
+**Status:** spec ready (`Status: ready-for-agent`).
+
+**Spec:** `.scratch/server-browser-view/spec.md`
+
+**What:** a full content-area view swap (not a new window) listing all public CFX servers —
+icon, name, game, players/max — with filters (game, hide full, hide empty) and name search;
+per-server actions Connect (normal connect flow by cfx id, back to main view) and Save (adds
+to saved servers, prefilling the dialog). Data loads TTL-respecting on open, plus a manual
+refresh sharing the phase 9/10 cooldown. Explicitly out of scope: column sorting, favorites,
+join history, detail pane.
+
+**Depends on:** phases 9 and 10 (address matching + forced-refresh cooldown are shared).
