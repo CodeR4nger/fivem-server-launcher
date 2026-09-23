@@ -216,7 +216,9 @@ the per-minute cycle.
 
 ## 10. Refresh button on the saved-servers list
 
-**Status:** spec ready (`Status: ready-for-agent`).
+**Status:** ✅ done (tickets `.scratch/saved-servers-refresh-button/issues/` 01–02 resolved;
+suite 478 green; scroll-requery cooldown bug found in manual testing and fixed;
+commit `b1a9d91`).
 
 **Spec:** `.scratch/saved-servers-refresh-button/spec.md`
 

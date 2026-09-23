@@ -7,7 +7,14 @@ existing busy-flag pattern. XAML only binds; no code-behind.
 
 **Blocked by:** 01 (RefreshServersCommand on MainViewModel).
 
-**Status:** claimed
+**Status:** resolved
+
+## Answer
+
+Icon-only ↻ button in the SAVED SERVERS header (right-aligned via DockPanel), transparent
+template with secondary-grey → amber hover, dimmed when `CanExecute` is false. Bug found in
+manual testing (button re-enabled on scroll before cooldown) fixed by holding the disabled
+state through the cooldown window in the command itself. Suite 478 green.
 
 - [ ] Button visible at the top of the saved-servers panel, right-aligned in the header row
 - [ ] Executes `RefreshServersCommand`
