@@ -46,6 +46,7 @@ public class MainViewModel : INotifyPropertyChanged
         ConfigurationRepository settingsRepository,
         IServerEnrichmentService enrichment,
         ICfxStatusService cfxStatus,
+        ServerBrowserViewModel browserViewModel,
         TimeSpan? refreshCooldown = null)
     {
         _resolver = resolver;
@@ -56,6 +57,7 @@ public class MainViewModel : INotifyPropertyChanged
         _settingsRepository = settingsRepository;
         _enrichment = enrichment;
         _cfxStatus = cfxStatus;
+        Browser = browserViewModel;
         _refreshCooldown = refreshCooldown ?? DefaultRefreshCooldown;
         _settings = settingsRepository.Load();
         ConnectCommand = new AsyncRelayCommand(ConnectAsync, CanConnect);
@@ -69,6 +71,16 @@ public class MainViewModel : INotifyPropertyChanged
         SaveServerDialogCommand = new AsyncRelayCommand(SaveServerDialogAsync);
         CancelServerDialogCommand = new RelayCommand(CloseServerDialog);
         RefreshServersCommand = new AsyncRelayCommand(RefreshServersAsync, () => !IsRefreshingServers);
+        OpenServerBrowserCommand = new AsyncRelayCommand(OpenServerBrowserAsync);
+        CloseServerBrowserCommand = new RelayCommand(_ => IsServerBrowserOpen = false);
+        ConnectBrowserServerCommand = new AsyncRelayCommand(p => ConnectFromBrowserAsync((ServerBrowserItem)p!));
+        SaveBrowserServerCommand = new RelayCommand(p =>
+        {
+            if (p is ServerBrowserItem item)
+            {
+                SaveBrowserServer(item);
+            }
+        });
         ToggleDevClientCommand = new RelayCommand(() =>
             DevClient = DevClient == GameClient.FiveM ? GameClient.RedM : GameClient.FiveM);
         DevLaunchCommand = new AsyncRelayCommand((object? secondClient) => DevLaunchAsync(secondClient is true), () => !IsBusy);
@@ -104,6 +116,40 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand CancelServerDialogCommand { get; }
 
     public ICommand RefreshServersCommand { get; }
+
+    public ServerBrowserViewModel Browser { get; }
+
+    public ICommand OpenServerBrowserCommand { get; }
+
+    public ICommand CloseServerBrowserCommand { get; }
+
+    public ICommand ConnectBrowserServerCommand { get; }
+
+    public ICommand SaveBrowserServerCommand { get; }
+
+    private bool _isServerBrowserOpen;
+
+    public bool IsServerBrowserOpen
+    {
+        get => _isServerBrowserOpen;
+        private set => SetProperty(ref _isServerBrowserOpen, value);
+    }
+
+    private async Task OpenServerBrowserAsync()
+    {
+        IsSettingsOpen = false;
+        IsDevMode = false;
+        CloseServerDialog();
+        IsServerBrowserOpen = true;
+        await Browser.LoadAsync();
+    }
+
+    public async Task ConnectFromBrowserAsync(ServerBrowserItem item)
+    {
+        IsServerBrowserOpen = false;
+        ServerAddress = Domain.ServerAddress.FromCfxId(item.CfxId);
+        await ConnectAsync();
+    }
 
     private bool _isRefreshingServers;
 
@@ -416,6 +462,41 @@ public class MainViewModel : INotifyPropertyChanged
         IsServerDialogOpen = true;
     }
 
+    public void SaveBrowserServer(ServerBrowserItem item)
+    {
+        if (item.IsSaved)
+        {
+            return;
+        }
+
+        SavedServer savedServer;
+        try
+        {
+            savedServer = SavedServer.Create(item.Name, item.Address, cfxId: item.CfxId);
+        }
+        catch (ArgumentException)
+        {
+            return;
+        }
+
+        if (_serverRepository.FindByAddress(savedServer.Address) is not null)
+        {
+            item.SetSaved(true);
+            return;
+        }
+
+        AddSavedServerRow(savedServer);
+        item.SetSaved(true);
+    }
+
+    private void AddSavedServerRow(SavedServer savedServer)
+    {
+        _serverRepository.Add(savedServer);
+        var row = ToItem(savedServer);
+        SavedServers.Add(row);
+        TryCaptureCfxId(row);
+    }
+
     private void OpenEditServerDialog(object? row)
     {
         if (row is not SavedServerItem item)
@@ -471,10 +552,7 @@ public class MainViewModel : INotifyPropertyChanged
                 return;
             }
 
-            _serverRepository.Add(savedServer);
-            var item = ToItem(savedServer);
-            SavedServers.Add(item);
-            TryCaptureCfxId(item);
+            AddSavedServerRow(savedServer);
         }
         else
         {

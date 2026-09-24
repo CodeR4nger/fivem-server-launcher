@@ -16,6 +16,10 @@ internal sealed class FakeServerEnrichmentService : IServerEnrichmentService
 
     public int IconCalls { get; private set; }
 
+    public int DirectIconCalls { get; private set; }
+
+    public string? LastRequestedIconVersion { get; private set; }
+
     public int ResolveCalls { get; private set; }
 
     public int ThrowOnRefreshCount { get; set; }
@@ -52,6 +56,13 @@ internal sealed class FakeServerEnrichmentService : IServerEnrichmentService
     public Task<byte[]?> GetIconAsync(string cfxId)
     {
         IconCalls++;
+        return Task.FromResult(Icon);
+    }
+
+    public Task<byte[]?> GetIconAsync(string cfxId, string iconVersion)
+    {
+        DirectIconCalls++;
+        LastRequestedIconVersion = iconVersion;
         return Task.FromResult(Icon);
     }
 

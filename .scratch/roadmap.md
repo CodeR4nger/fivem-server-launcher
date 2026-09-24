@@ -238,7 +238,9 @@ matching name and address (case-insensitive substring).
 
 ## 12. Server browser view
 
-**Status:** spec ready (`Status: ready-for-agent`).
+**Status:** ✅ done (tickets `.scratch/server-browser-view/issues/` 01–06 resolved; suite 513
+green; user-driven UI corrections applied and verified empirically via UIAutomation — saved
+row name alignment root-caused to TextBlock MaxWidth + Stretch centering).
 
 **Spec:** `.scratch/server-browser-view/spec.md`
 

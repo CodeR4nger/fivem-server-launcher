@@ -2230,6 +2230,115 @@ public class MainViewModelTests
         Assert.Empty(vm.SavedServersView.Cast<SavedServerItem>());
     }
 
+    [Fact]
+    public async Task SaveBrowserServerCommand_WhenNotSaved_ShouldSaveDirectlyAndMarkRow()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+        await vm.InitializeAsync();
+        var item = ServerBrowserItem.FromServer(new Master.Server
+        {
+            EndPoint = "y4lg95",
+            Data = new Master.ServerData
+            {
+                Vars = { ["sv_projectName"] = "Discovered" },
+                ConnectEndPoints = { "149.56.120.52:30120" }
+            }
+        });
+
+        // When
+        vm.SaveBrowserServerCommand.Execute(item);
+        await vm.WaitForPendingCapturesAsync();
+
+        // Then — saved straight to the list, no dialog involved
+        Assert.False(vm.IsServerDialogOpen);
+        Assert.Single(vm.SavedServers);
+        Assert.Equal("Discovered", vm.SavedServers[0].Name);
+        Assert.Equal("149.56.120.52:30120", vm.SavedServers[0].Address);
+        Assert.Equal("y4lg95", repository.FindByAddress("149.56.120.52:30120")?.CfxId);
+        Assert.True(item.IsSaved);
+    }
+
+    [Fact]
+    public async Task SaveBrowserServerCommand_WhenAlreadySaved_ShouldDoNothing()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("Mine", "149.56.120.52:30120"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+        await vm.InitializeAsync();
+        var item = ServerBrowserItem.FromServer(new Master.Server
+        {
+            EndPoint = "y4lg95",
+            Data = new Master.ServerData
+            {
+                Vars = { ["sv_projectName"] = "Discovered" },
+                ConnectEndPoints = { "149.56.120.52:30120" }
+            }
+        });
+        item.SetSaved(true);
+
+        // When
+        vm.SaveBrowserServerCommand.Execute(item);
+
+        // Then
+        Assert.Single(vm.SavedServers);
+        Assert.False(vm.IsServerDialogOpen);
+    }
+
+    [Fact]
+    public async Task ConnectFromBrowserAsync_ShouldConnectByCfxIdCloseBrowserAndPersist()
+    {
+        // Given
+        const string address = "cfx.re/join/y4lg95";
+        var storage = new InMemorySettingsStorage();
+        var launcher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(
+            launcher, CfxJson("gta5"), settings: new ConfigurationRepository(storage));
+        await vm.InitializeAsync();
+        vm.OpenServerBrowserCommand.Execute(null);
+        await Task.Delay(100);
+        Assert.True(vm.IsServerBrowserOpen);
+        var item = ServerBrowserItem.FromServer(new Master.Server
+        {
+            EndPoint = "y4lg95",
+            Data = new Master.ServerData { ConnectEndPoints = { "149.56.120.52:30120" } }
+        });
+
+        // When
+        await vm.ConnectFromBrowserAsync(item);
+
+        // Then
+        Assert.False(vm.IsServerBrowserOpen);
+        Assert.Equal(address, vm.ServerAddress);
+        Assert.Single(launcher.Requests);
+        Assert.Equal(
+            address,
+            new ConfigurationRepository(storage).Load().LastServerAddress);
+    }
+
+    [Fact]
+    public async Task ConnectBrowserServerCommand_ShouldDelegateToConnectPipeline()
+    {
+        // Given
+        var launcher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(launcher, CfxJson("gta5"));
+        await vm.InitializeAsync();
+        var item = ServerBrowserItem.FromServer(new Master.Server
+        {
+            EndPoint = "y4lg95",
+            Data = new Master.ServerData { ConnectEndPoints = { "149.56.120.52:30120" } }
+        });
+
+        // When
+        vm.ConnectBrowserServerCommand.Execute(item);
+        await Task.Delay(100);
+
+        // Then
+        Assert.Single(launcher.Requests);
+    }
+
     private static MainViewModel CreateViewModel(
         IGameProcessLauncher processLauncher,
         string cfxJson,
@@ -2241,7 +2350,8 @@ public class MainViewModelTests
         ConfigurationRepository? settings = null,
         IServerEnrichmentService? enrichment = null,
         ICfxStatusService? cfxStatus = null,
-        TimeSpan? refreshCooldown = null)
+        TimeSpan? refreshCooldown = null,
+        ServerBrowserViewModel? browser = null)
     {
         var resolver = new ServerResolver(
             new CfxService(
@@ -2271,6 +2381,10 @@ public class MainViewModelTests
             settings ?? new ConfigurationRepository(new InMemorySettingsStorage()),
             enrichment ?? new FakeServerEnrichmentService(),
             cfxStatus ?? new FakeCfxStatusService(),
+            browser ?? new ServerBrowserViewModel(
+                new ServerCatalog(new HttpClient(new FakeHttpMessageHandler(true))),
+                enrichment ?? new FakeServerEnrichmentService(),
+                repository ?? new InMemoryServerRepository()),
             refreshCooldown: refreshCooldown);
     }
 }

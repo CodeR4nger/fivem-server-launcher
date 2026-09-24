@@ -109,7 +109,7 @@ public class ServerCatalog(
             }
 
             var payload = await response.Content.ReadAsByteArrayAsync();
-            var servers = ServerCatalogDecoder.Decode(payload);
+            var servers = await Task.Run(() => ServerCatalogDecoder.Decode(payload));
 
             CacheServers(servers);
 

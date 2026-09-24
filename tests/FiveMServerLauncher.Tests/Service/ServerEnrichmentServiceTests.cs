@@ -477,6 +477,41 @@ public class ServerEnrichmentServiceTests
         Assert.Null(result);
     }
 
+    [Fact]
+    public async Task GetIconAsync_WithKnownVersion_ShouldDownloadDirectlyWithoutSingleCall()
+    {
+        // Given
+        var handler = new RoutedHttpMessageHandler();
+        handler.AddBytesRoute("icon/y4lg95/55.png", HttpStatusCode.OK, [1, 2, 3]);
+        using var httpClient = new HttpClient(handler);
+        var service = new ServerEnrichmentService(httpClient);
+
+        // When
+        var icon = await service.GetIconAsync("y4lg95", "55");
+
+        // Then
+        Assert.Equal(new byte[] { 1, 2, 3 }, icon);
+        Assert.Equal(0, handler.RequestCountByPath("single"));
+    }
+
+    [Fact]
+    public async Task GetIconAsync_WithKnownVersion_ShouldCacheByIdAndVersion()
+    {
+        // Given
+        var handler = new RoutedHttpMessageHandler();
+        handler.AddBytesRoute("icon/y4lg95/55.png", HttpStatusCode.OK, [1, 2, 3]);
+        using var httpClient = new HttpClient(handler);
+        var service = new ServerEnrichmentService(httpClient);
+
+        // When
+        await service.GetIconAsync("y4lg95", "55");
+        var again = await service.GetIconAsync("y4lg95", "55");
+
+        // Then
+        Assert.Equal(new byte[] { 1, 2, 3 }, again);
+        Assert.Equal(1, handler.RequestCountByPath("icon/y4lg95/55.png"));
+    }
+
     private sealed class HttpMessageHandlerStub : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(

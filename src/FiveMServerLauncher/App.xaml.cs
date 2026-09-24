@@ -46,10 +46,11 @@ public partial class App : Application
         var cfxStatus = new CfxStatusService(httpClient);
 
         var window = new MainWindow();
+        var serverRepository = new FileServerRepository(dataDirectory.ServersPath);
         var viewModel = new MainViewModel(
             resolver,
             launcher,
-            new FileServerRepository(dataDirectory.ServersPath),
+            serverRepository,
             new ExternalAppPreparer(
                 readiness,
                 new ExternalAppStarter(new ProcessStarter(), new UriSchemeRegistration())),
@@ -57,7 +58,8 @@ public partial class App : Application
             new ConfigurationRepository(
                 new FileSettingsStorage(dataDirectory.SettingsPath)),
             enrichment,
-            cfxStatus);
+            cfxStatus,
+            new ServerBrowserViewModel(catalog, enrichment, serverRepository));
         window.DataContext = viewModel;
         window.Show();
         window.Dispatcher.InvokeAsync(viewModel.InitializeAsync);

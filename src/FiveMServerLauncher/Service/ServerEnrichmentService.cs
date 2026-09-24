@@ -14,6 +14,8 @@ public interface IServerEnrichmentService
 
     Task<byte[]?> GetIconAsync(string cfxId);
 
+    Task<byte[]?> GetIconAsync(string cfxId, string iconVersion);
+
     Task<string?> ResolveCfxIdAsync(string address);
 }
 
@@ -89,7 +91,12 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
             return null;
         }
 
-        var key = (cfxId, version);
+        return await GetIconAsync(cfxId, version);
+    }
+
+    public async Task<byte[]?> GetIconAsync(string cfxId, string iconVersion)
+    {
+        var key = (cfxId, iconVersion);
 
         if (_iconCache.TryGetValue(key, out var cached))
         {
@@ -98,7 +105,7 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
 
         try
         {
-            var icon = await _httpClient.GetByteArrayAsync(string.Format(IconUrl, cfxId, version));
+            var icon = await _httpClient.GetByteArrayAsync(string.Format(IconUrl, cfxId, iconVersion));
             _iconCache[key] = icon;
             return icon;
         }
