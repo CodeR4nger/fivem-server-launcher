@@ -21,6 +21,18 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        var singleInstance = new SingleInstanceGuard(
+            new MutexSingleInstanceLock(),
+            new Win32ExistingWindowActivator());
+
+        if (!singleInstance.TryStart())
+        {
+            Shutdown();
+            return;
+        }
+
+        Exit += (_, _) => singleInstance.Dispose();
+
         var dataDirectory = PortableDataDirectory.Default();
         LegacyDataMigration.Migrate(
             LegacyAppDataDirectory,

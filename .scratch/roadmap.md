@@ -2,7 +2,7 @@
 
 Status: active
 
-Current release line: **v1.1** (phases 9-12 below). v1.0 = phases 1-8, all done.
+Current release line: **v1.1 (complete)** — phases 9-13 below were delivered. v1.0 = phases 1-8.
 
 Plan for the remaining phases of FiveMServerLauncher, in build order. Each phase follows the
 repo workflow: `to-spec` -> `to-tickets` -> `implement` (TDD) -> `code-review` -> commit.
@@ -255,7 +255,10 @@ join history, detail pane.
 
 ## 13. Single-instance enforcement
 
-**Status:** spec ready (`Status: ready-for-agent`).
+**Status:** ✅ done (tickets `.scratch/single-instance/issues/` 01–02 resolved; suite 520
+green; manual double-launch + minimized-restore verified by user).
+
+**v1.1 complete.** Specs: phases 9–13 under `.scratch/*/spec.md`.
 
 **Spec:** `.scratch/single-instance/spec.md`
 
