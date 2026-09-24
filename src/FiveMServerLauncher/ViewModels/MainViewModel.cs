@@ -439,6 +439,11 @@ public class MainViewModel : INotifyPropertyChanged
             _selectedServer = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedServer)));
 
+            foreach (var item in SavedServers)
+            {
+                item.IsSelected = ReferenceEquals(item, value);
+            }
+
             if (value is not null)
             {
                 ServerAddress = value.Address;

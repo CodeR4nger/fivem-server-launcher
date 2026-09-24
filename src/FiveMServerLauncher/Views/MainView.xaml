@@ -808,7 +808,7 @@
                                                VerticalAlignment="Center"/>
 
                                         <TextBlock Grid.Column="1"
-                                                   Text="{Binding Name}"
+                                                   Text="{Binding TrimmedName}"
                                                    Foreground="{StaticResource TextBrush}"
                                                    FontWeight="SemiBold"
                                                    VerticalAlignment="Center"

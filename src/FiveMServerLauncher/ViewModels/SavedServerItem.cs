@@ -35,6 +35,34 @@ public class SavedServerItem : INotifyPropertyChanged
 
     public string Name { get; }
 
+    private const int UnselectedNameLimit = 30;
+    private const int SelectedNameLimit = 20;
+
+    public string TrimmedName => Trim(Name, _isSelected ? SelectedNameLimit : UnselectedNameLimit);
+
+    private bool _isSelected;
+
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected == value)
+            {
+                return;
+            }
+
+            _isSelected = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelected)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TrimmedName)));
+        }
+    }
+
+    private static string Trim(string name, int limit)
+    {
+        return name.Length <= limit ? name : string.Concat(name.AsSpan(0, limit - 1), "…");
+    }
+
     public string Address { get; }
 
     public string? CfxId { get; private set; }
