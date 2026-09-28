@@ -6,11 +6,11 @@ saved row's context when the user typed an id-form address instead of the stored
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The repository interface exposes a find-by-cfx-id lookup returning the saved server or none
-- [ ] The file-backed repository implements it (case-insensitive id match; corrupt/missing store
+- [x] The repository interface exposes a find-by-cfx-id lookup returning the saved server or none
+- [x] The file-backed repository implements it (case-insensitive id match; corrupt/missing store
       still degrades safely)
-- [ ] The in-memory repository used by tests implements it consistently
-- [ ] A miss returns none without throwing; an id shared by multiple rows returns the first match
+- [x] The in-memory repository used by tests implements it consistently
+- [x] A miss returns none without throwing; an id shared by multiple rows returns the first match
       (asserted as such)

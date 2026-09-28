@@ -29,6 +29,11 @@ public sealed class SavedServer
         return Address.Equals(address, StringComparison.OrdinalIgnoreCase);
     }
 
+    public bool MatchesCfxId(string cfxId)
+    {
+        return CfxId is not null && CfxId.Equals(cfxId, StringComparison.OrdinalIgnoreCase);
+    }
+
     public static SavedServer Create(
         string name,
         string address,

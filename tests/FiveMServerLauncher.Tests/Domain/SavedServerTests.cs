@@ -71,6 +71,36 @@ public class SavedServerTests
     }
 
     [Fact]
+    public void MatchesCfxId_WhenIdMatchesCaseInsensitively_ShouldReturnTrue()
+    {
+        // Given
+        var savedServer = SavedServer.Create("My Server", "149.56.120.52:30320", cfxId: "y4lg95");
+
+        // When / Then
+        Assert.True(savedServer.MatchesCfxId("Y4LG95"));
+    }
+
+    [Fact]
+    public void MatchesCfxId_WhenSavedIdIsNull_ShouldReturnFalse()
+    {
+        // Given
+        var savedServer = SavedServer.Create("My Server", "149.56.120.52:30320");
+
+        // When / Then
+        Assert.False(savedServer.MatchesCfxId("y4lg95"));
+    }
+
+    [Fact]
+    public void MatchesCfxId_WhenIdDiffers_ShouldReturnFalse()
+    {
+        // Given
+        var savedServer = SavedServer.Create("My Server", "149.56.120.52:30320", cfxId: "y4lg95");
+
+        // When / Then
+        Assert.False(savedServer.MatchesCfxId("other1"));
+    }
+
+    [Fact]
     public void Create_WithCfxIdAddress_ShouldReturnSavedServer()
     {
         // Given

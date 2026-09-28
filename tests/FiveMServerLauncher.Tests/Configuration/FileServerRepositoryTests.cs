@@ -263,6 +263,56 @@ public class FileServerRepositoryTests
     }
 
     [Fact]
+    public void FindByCfxId_WhenIdSaved_ShouldReturnServerCaseInsensitively()
+    {
+        // Given
+        using var tempDir = new TempSettingsDirectory();
+        var repository = new FileServerRepository(tempDir.FilePath);
+        repository.Add(SavedServer.Create("My Server", "149.56.120.52:30320", cfxId: "y4lg95"));
+        repository.Add(SavedServer.Create("Other Server", "localhost:30120"));
+
+        // When
+        var result = repository.FindByCfxId("Y4LG95");
+
+        // Then
+        Assert.NotNull(result);
+        Assert.Equal("My Server", result.Name);
+        Assert.Equal("149.56.120.52:30320", result.Address);
+    }
+
+    [Fact]
+    public void FindByCfxId_WhenIdNotSaved_ShouldReturnNull()
+    {
+        // Given
+        using var tempDir = new TempSettingsDirectory();
+        var repository = new FileServerRepository(tempDir.FilePath);
+        repository.Add(SavedServer.Create("My Server", "149.56.120.52:30320"));
+
+        // When
+        var result = repository.FindByCfxId("y4lg95");
+
+        // Then
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void FindByCfxId_WhenMultipleRowsShareId_ShouldReturnFirstMatch()
+    {
+        // Given
+        using var tempDir = new TempSettingsDirectory();
+        var repository = new FileServerRepository(tempDir.FilePath);
+        repository.Add(SavedServer.Create("First", "149.56.120.52:30320", cfxId: "y4lg95"));
+        repository.Add(SavedServer.Create("Second", "localhost:30120", cfxId: "y4lg95"));
+
+        // When
+        var result = repository.FindByCfxId("y4lg95");
+
+        // Then
+        Assert.NotNull(result);
+        Assert.Equal("First", result.Name);
+    }
+
+    [Fact]
     public void GetAll_WhenFileLacksCfxIdField_ShouldDeserializeWithNullCfxId()
     {
         // Given

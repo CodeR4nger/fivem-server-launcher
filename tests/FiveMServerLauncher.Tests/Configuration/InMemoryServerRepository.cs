@@ -17,6 +17,11 @@ public class InMemoryServerRepository : IServerRepository
         return _servers.FirstOrDefault(s => s.MatchesAddress(address));
     }
 
+    public SavedServer? FindByCfxId(string cfxId)
+    {
+        return _servers.FirstOrDefault(s => s.MatchesCfxId(cfxId));
+    }
+
     public void Add(SavedServer savedServer)
     {
         _servers.Add(savedServer);

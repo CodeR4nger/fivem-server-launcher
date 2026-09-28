@@ -63,6 +63,11 @@ public class FileServerRepository : IServerRepository
         return GetAll().FirstOrDefault(s => s.MatchesAddress(address));
     }
 
+    public SavedServer? FindByCfxId(string cfxId)
+    {
+        return GetAll().FirstOrDefault(s => s.MatchesCfxId(cfxId));
+    }
+
     public void Add(SavedServer savedServer)
     {
         ArgumentNullException.ThrowIfNull(savedServer);

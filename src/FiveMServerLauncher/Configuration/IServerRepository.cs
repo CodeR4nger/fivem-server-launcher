@@ -8,6 +8,8 @@ public interface IServerRepository
 
     SavedServer? FindByAddress(string address);
 
+    SavedServer? FindByCfxId(string cfxId);
+
     void Add(SavedServer savedServer);
 
     void Update(SavedServer savedServer);
