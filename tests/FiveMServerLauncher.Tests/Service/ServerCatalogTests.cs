@@ -1,5 +1,6 @@
 using System.Net;
 using FiveMServerLauncher.Service;
+using FiveMServerLauncher.Tests.Domain;
 using Xunit;
 namespace FiveMServerLauncher.Tests.Service;
 
@@ -191,6 +192,162 @@ public class ServerCatalogTests
         // Then
         Assert.NotNull(result);
         Assert.Equal("y4lg95", result.EndPoint);
+    }
+
+    [Fact]
+    public async Task LookupByIpPort_WhenOnlyLoopbackEndpointMatches_ShouldReturnNull()
+    {
+        // Given — a listed hidden server publishes a loopback endpoint (e.g. 8y6354);
+        // typed local addresses must never resolve to a stranger's hidden server.
+        var protoServer = new Master.Server
+        {
+            EndPoint = "8y6354",
+            Data = new Master.ServerData
+            {
+                ConnectEndPoints = { "127.0.0.1:30120" }
+            }
+        };
+
+        var handler = new FakeHttpMessageHandler(
+            HttpStatusCode.OK,
+            TestProtobufFrames.BuildFrameStream(protoServer));
+        using var httpClient = new HttpClient(handler);
+        var catalog = new ServerCatalog(httpClient);
+
+        // When
+        var result = await catalog.LookupByIpPortAsync("127.0.0.1:30120");
+
+        // Then
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task LookupByIpPort_WhenServerHasPublicAndLoopbackEndpoints_ShouldMatchPublicOnly()
+    {
+        // Given
+        var protoServer = new Master.Server
+        {
+            EndPoint = "y4lg95",
+            Data = new Master.ServerData
+            {
+                ConnectEndPoints = { "149.56.120.52:30320", "127.0.0.1:30120" }
+            }
+        };
+
+        var handler = new FakeHttpMessageHandler(
+            HttpStatusCode.OK,
+            TestProtobufFrames.BuildFrameStream(protoServer));
+        using var httpClient = new HttpClient(handler);
+        var catalog = new ServerCatalog(httpClient);
+
+        // When / Then
+        Assert.NotNull(await catalog.LookupByIpPortAsync("149.56.120.52:30320"));
+        Assert.Null(await catalog.LookupByIpPortAsync("127.0.0.1:30120"));
+    }
+
+    [Fact]
+    public async Task LookupBareIp_WhenOnlyLoopbackEndpointListed_ShouldReturnNull()
+    {
+        // Given
+        var protoServer = new Master.Server
+        {
+            EndPoint = "8y6354",
+            Data = new Master.ServerData
+            {
+                ConnectEndPoints = { "127.0.0.1:30120" }
+            }
+        };
+
+        var handler = new FakeHttpMessageHandler(
+            HttpStatusCode.OK,
+            TestProtobufFrames.BuildFrameStream(protoServer));
+        using var httpClient = new HttpClient(handler);
+        var catalog = new ServerCatalog(httpClient);
+
+        // When
+        var result = await catalog.LookupBareIpAsync("127.0.0.1");
+
+        // Then
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task LookupBareDomain_WhenDnsResolvesToLoopbackListedEndpoint_ShouldReturnNull()
+    {
+        // Given — `localhost` resolves to the loopback IP, but the only catalog entry behind
+        // it is a hidden server; the lookup must degrade to no match.
+        var protoServer = new Master.Server
+        {
+            EndPoint = "8y6354",
+            Data = new Master.ServerData
+            {
+                ConnectEndPoints = { "127.0.0.1:30120" }
+            }
+        };
+
+        var handler = new FakeHttpMessageHandler(
+            HttpStatusCode.OK,
+            TestProtobufFrames.BuildFrameStream(protoServer));
+        using var httpClient = new HttpClient(handler);
+        var catalog = new ServerCatalog(httpClient, dnsResolver: new FakeDnsResolver("127.0.0.1"));
+
+        // When
+        var result = await catalog.LookupBareDomainAsync("localhost");
+
+        // Then
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task FindByEndpointHost_WhenHostIsLoopback_ShouldNotMatch()
+    {
+        // Given
+        var protoServer = new Master.Server
+        {
+            EndPoint = "8y6354",
+            Data = new Master.ServerData
+            {
+                ConnectEndPoints = { "localhost:30120" }
+            }
+        };
+
+        var handler = new FakeHttpMessageHandler(
+            HttpStatusCode.OK,
+            TestProtobufFrames.BuildFrameStream(protoServer));
+        using var httpClient = new HttpClient(handler);
+        var catalog = new ServerCatalog(httpClient);
+
+        // When
+        var result = await catalog.FindByEndpointHostAsync("localhost");
+
+        // Then
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task LookupBareDomain_WhenSentinelHostTyped_ShouldReturnNull()
+    {
+        // Given — the hidden-server sentinel host is never matchable by address either.
+        var protoServer = new Master.Server
+        {
+            EndPoint = "r8q73g",
+            Data = new Master.ServerData
+            {
+                ConnectEndPoints = { "https://private-placeholder.cfx.re/" }
+            }
+        };
+
+        var handler = new FakeHttpMessageHandler(
+            HttpStatusCode.OK,
+            TestProtobufFrames.BuildFrameStream(protoServer));
+        using var httpClient = new HttpClient(handler);
+        var catalog = new ServerCatalog(httpClient, dnsResolver: new FakeDnsResolver("127.0.0.1"));
+
+        // When
+        var result = await catalog.LookupBareDomainAsync("private-placeholder.cfx.re");
+
+        // Then
+        Assert.Null(result);
     }
 
     [Fact]

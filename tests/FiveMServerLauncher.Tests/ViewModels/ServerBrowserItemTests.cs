@@ -81,6 +81,26 @@ public class ServerBrowserItemTests
     }
 
     [Fact]
+    public void FromServer_WhenEndpointIsLoopback_ShouldUseCfxJoinAddress()
+    {
+        // Given — a listed hidden server publishing a raw loopback endpoint stays id-only.
+        var server = new Master.Server
+        {
+            EndPoint = "8y6354",
+            Data = new Master.ServerData
+            {
+                ConnectEndPoints = { "127.0.0.1:30120" }
+            }
+        };
+
+        // When
+        var item = ServerBrowserItem.FromServer(server);
+
+        // Then
+        Assert.Equal("cfx.re/join/8y6354", item.Address);
+    }
+
+    [Fact]
     public void FromServer_WhenHiddenSentinel_ShouldUseCfxJoinAddress()
     {
         // Given

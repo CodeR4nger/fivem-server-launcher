@@ -788,17 +788,18 @@ public class ServerResolverTests
     }
 
     [Fact]
-    public async Task Resolve_WhenBareLocalhostListedInCatalog_ShouldReturnValidatedProfile()
+    public async Task Resolve_WhenBareLocalhostMatchesOnlyLoopbackCatalogEndpoint_ShouldStayUnvalidated()
     {
-        // Given — the local server is publicly listed under its loopback endpoint.
+        // Given — the only catalog entry behind the loopback IP is a hidden stranger's
+        // server; a typed localhost address must stay an unvalidated direct connect.
         const string address = "localhost";
 
         var protoServer = new Master.Server
         {
-            EndPoint = "y4lg95",
+            EndPoint = "8y6354",
             Data = new Master.ServerData
             {
-                Vars = { ["sv_projectName"] = "Local Dev Server" },
+                Vars = { ["sv_projectName"] = "Hidden Dev Server" },
                 ConnectEndPoints = { "127.0.0.1:30120" }
             }
         };
@@ -812,8 +813,9 @@ public class ServerResolverTests
         var result = await resolver.ResolveAsync(address);
 
         // Then
-        Assert.True(result.IsCfxValidated);
-        Assert.Equal("y4lg95", result.CfxId);
+        Assert.False(result.IsCfxValidated);
+        Assert.Equal(address, result.Address);
+        Assert.Equal(string.Empty, result.CfxId);
     }
 
     [Fact]

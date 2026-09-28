@@ -102,3 +102,8 @@ The fallback applies to every saved server, not only localhost entries.
 - The misclassification fix means previously-saved broken bare-`localhost` entries (stored as
   id-keyed) remain loadable but should be edited by the user; no data migration is added for them
   (corrupt/unknown entries already degrade safely).
+- Amendment (ticket 05): publicly listed *hidden* servers can publish raw loopback endpoints
+  (`127.0.0.1:30120`, e.g. cfx id `8y6354`). Those are never the user's own local server: catalog
+  address matching ignores hidden endpoints (sentinel and loopback), so a typed localhost address
+  always connects directly rather than hijacking a stranger's hidden server. A "listed local
+  server" therefore only validates when listed under a matchable (non-loopback) endpoint.

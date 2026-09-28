@@ -24,7 +24,9 @@ public class ServerCatalog(
         var servers = await GetServersAsync();
 
         return servers.FirstOrDefault(
-            s => s.Data is not null && s.Data.ConnectEndPoints.Contains(ipPort));
+            s => s.Data is not null && s.Data.ConnectEndPoints
+                .Where(e => !CatalogEndpoint.IsHidden(e))
+                .Contains(ipPort));
     }
 
     public async Task<Master.Server?> LookupByEndPointAsync(string endPoint)
@@ -40,7 +42,8 @@ public class ServerCatalog(
 
         return servers
             .Where(s => s.Data is not null && s.Data.ConnectEndPoints
-                .Select(NormalizeEndpointHost)
+                .Where(e => !CatalogEndpoint.IsHidden(e))
+                .Select(CatalogEndpoint.HostOf)
                 .Any(h => string.Equals(h, host, StringComparison.OrdinalIgnoreCase)))
             .ToList();
     }
@@ -68,25 +71,6 @@ public class ServerCatalog(
         var ip = await _dnsResolver.ResolveToIpAsync(domain);
 
         return ip is null ? null : await LookupByIpPortAsync($"{ip}:{ServerAddress.DefaultPort}");
-    }
-
-    internal static string NormalizeEndpointHost(string endpoint)
-    {
-        var withoutScheme = endpoint;
-        var schemeIndex = withoutScheme.IndexOf("://", StringComparison.Ordinal);
-        if (schemeIndex >= 0)
-        {
-            withoutScheme = withoutScheme[(schemeIndex + 3)..];
-        }
-
-        var pathIndex = withoutScheme.IndexOf('/');
-        if (pathIndex >= 0)
-        {
-            withoutScheme = withoutScheme[..pathIndex];
-        }
-
-        var portIndex = withoutScheme.IndexOf(':');
-        return portIndex >= 0 ? withoutScheme[..portIndex] : withoutScheme;
     }
 
     public async Task<IReadOnlyList<Master.Server>?> GetSnapshotAsync(bool forceRefresh = false)

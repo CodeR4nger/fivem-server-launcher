@@ -9,7 +9,6 @@ namespace FiveMServerLauncher.ViewModels;
 
 public sealed class ServerBrowserItem : INotifyPropertyChanged
 {
-    private const string HiddenEndpointHost = "private-placeholder.cfx.re";
     private static readonly Regex ColorCodePattern = new(@"\^[0-9r]", RegexOptions.Compiled);
 
     private ServerBrowserItem(string cfxId, string name, GameClient? game, int players, int maxPlayers, string address, string? iconVersion)
@@ -116,8 +115,7 @@ public sealed class ServerBrowserItem : INotifyPropertyChanged
     {
         var endpoint = server.Data.ConnectEndPoints.FirstOrDefault();
 
-        return string.IsNullOrEmpty(endpoint)
-               || endpoint.Contains(HiddenEndpointHost, StringComparison.OrdinalIgnoreCase)
+        return string.IsNullOrEmpty(endpoint) || CatalogEndpoint.IsHidden(endpoint)
             ? ServerAddress.FromCfxId(server.EndPoint)
             : endpoint;
     }

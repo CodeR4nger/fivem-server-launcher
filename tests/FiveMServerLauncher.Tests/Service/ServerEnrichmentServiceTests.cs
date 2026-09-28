@@ -364,17 +364,17 @@ public class ServerEnrichmentServiceTests
     }
 
     [Fact]
-    public async Task ResolveCfxIdAsync_WithLocalhostResolvedToLoopbackCatalogEndpoint_ShouldReturnEndPoint()
+    public async Task ResolveCfxIdAsync_WithLocalhostResolvedToLoopbackCatalogEndpoint_ShouldReturnNullBecauseEndpointIsHidden()
     {
-        // Given — a publicly listed local dev server: the loopback host resolves via DNS to
-        // the catalog endpoint, so saving localhost captures the id.
+        // Given — the catalog entry behind the loopback IP is a hidden server; saving a
+        // localhost address must never capture a stranger's id.
         var handler = new RoutedHttpMessageHandler();
         handler.AddBytesRoute(
             "streamRedir",
             HttpStatusCode.OK,
             TestProtobufFrames.BuildFrameStream(new Master.Server
             {
-                EndPoint = "y4lg95",
+                EndPoint = "8y6354",
                 Data = new Master.ServerData { ConnectEndPoints = { "127.0.0.1:30120" } }
             }));
         using var httpClient = new HttpClient(handler);
@@ -385,7 +385,7 @@ public class ServerEnrichmentServiceTests
         var result = await service.ResolveCfxIdAsync("localhost:30120");
 
         // Then
-        Assert.Equal("y4lg95", result);
+        Assert.Null(result);
     }
 
     [Fact]
@@ -409,16 +409,16 @@ public class ServerEnrichmentServiceTests
     }
 
     [Fact]
-    public async Task ResolveCfxIdAsync_WithBareLocalhostResolvedToLoopbackCatalogEndpoint_ShouldReturnEndPoint()
+    public async Task ResolveCfxIdAsync_WithBareLocalhostResolvedToLoopbackCatalogEndpoint_ShouldReturnNullBecauseEndpointIsHidden()
     {
-        // Given — the port-less localhost form (v1.2) captures through the same loopback path.
+        // Given — the port-less localhost form (v1.2) must not capture a hidden id either.
         var handler = new RoutedHttpMessageHandler();
         handler.AddBytesRoute(
             "streamRedir",
             HttpStatusCode.OK,
             TestProtobufFrames.BuildFrameStream(new Master.Server
             {
-                EndPoint = "y4lg95",
+                EndPoint = "8y6354",
                 Data = new Master.ServerData { ConnectEndPoints = { "127.0.0.1:30120" } }
             }));
         using var httpClient = new HttpClient(handler);
@@ -429,7 +429,7 @@ public class ServerEnrichmentServiceTests
         var result = await service.ResolveCfxIdAsync("localhost");
 
         // Then
-        Assert.Equal("y4lg95", result);
+        Assert.Null(result);
     }
 
     [Fact]

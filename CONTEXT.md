@@ -21,8 +21,9 @@ built lives in AGENTS.md / ADRs; what words *mean* lives here.
 - **Catalog endpoint** — the address a server publishes for itself. Almost always exactly one
   per server. Three shapes exist: `ip:port`, proxy-URL (e.g. `https://play.foo.io:443/`), and
   the hidden-server sentinel.
-- **Hidden server** — a server whose only catalog endpoint is the
-  `private-placeholder.cfx.re` sentinel: reachable by cfx id only, never by address.
+- **Hidden server** — a listed server whose catalog endpoints are never address-connectable:
+  the `private-placeholder.cfx.re` sentinel or a raw loopback endpoint (`127.0.0.1`,
+  `localhost`). Reachable by cfx id only; catalog address matching ignores it.
 - **Default port** — 30120, the FiveM presumption when an address carries none. Used as a
   matching/connect fallback only; never assumed when matching the catalog (most non-default
   servers matter).
