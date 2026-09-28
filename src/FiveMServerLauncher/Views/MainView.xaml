@@ -400,9 +400,19 @@
                         <TextBlock Text="PREFERRED OPEN CLIENT"
                                    Style="{StaticResource SectionHeaderStyle}"/>
 
-                        <ComboBox ItemsSource="{Binding AvailableOpenClients}"
-                                  DisplayMemberPath="DisplayName"
-                                  SelectedItem="{Binding PreferredClientOption}"
+                         <ComboBox ItemsSource="{Binding AvailableOpenClients}"
+                                   DisplayMemberPath="DisplayName"
+                                   SelectedItem="{Binding PreferredClientOption}"
+                                   Height="30"
+                                   Margin="0,6,0,10"
+                                   VerticalContentAlignment="Center"/>
+
+                        <TextBlock Text="LANGUAGE"
+                                   Style="{StaticResource SectionHeaderStyle}"/>
+
+                        <ComboBox ItemsSource="{Binding LanguageOptions}"
+                                  DisplayMemberPath="Label"
+                                  SelectedItem="{Binding SelectedLanguageOption}"
                                   Height="30"
                                   Margin="0,6,0,10"
                                   VerticalContentAlignment="Center"/>

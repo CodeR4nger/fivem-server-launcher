@@ -7,10 +7,10 @@ follow system) and applies immediately — the whole UI re-renders without resta
 
 **Blocked by:** 01 (localizer core with English dictionary).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Settings panel exposes the language picker (System default + shipped languages)
-- [ ] Picking a language activates it immediately (live, no restart)
-- [ ] The choice persists across restarts through the settings repository (immediate-save
+- [x] Settings panel exposes the language picker (System default + shipped languages)
+- [x] Picking a language activates it immediately (live, no restart)
+- [x] The choice persists across restarts through the settings repository (immediate-save
       pattern like the other preferences)
-- [ ] "System default" stores the follow-system sentinel and resolves via the culture provider
+- [x] "System default" stores the follow-system sentinel and resolves via the culture provider

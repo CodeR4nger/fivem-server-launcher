@@ -8,6 +8,7 @@ using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Domain;
 using FiveMServerLauncher.Domain.Exceptions;
 using FiveMServerLauncher.Launch;
+using FiveMServerLauncher.Localization;
 using FiveMServerLauncher.Service;
 
 namespace FiveMServerLauncher.ViewModels;
@@ -24,8 +25,10 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly ConfigurationRepository _settingsRepository;
     private readonly IServerEnrichmentService _enrichment;
     private readonly ICfxStatusService _cfxStatus;
+    private readonly ILocalizer _localizer;
     private readonly object _captureGate = new();
     private readonly List<Task> _pendingCaptures = [];
+    private LanguageSettingOption _selectedLanguageOption;
 
     private LauncherSettings _settings;
 
@@ -47,6 +50,7 @@ public class MainViewModel : INotifyPropertyChanged
         IServerEnrichmentService enrichment,
         ICfxStatusService cfxStatus,
         ServerBrowserViewModel browserViewModel,
+        ILocalizer localizer,
         TimeSpan? refreshCooldown = null)
     {
         _resolver = resolver;
@@ -57,9 +61,14 @@ public class MainViewModel : INotifyPropertyChanged
         _settingsRepository = settingsRepository;
         _enrichment = enrichment;
         _cfxStatus = cfxStatus;
+        _localizer = localizer;
         Browser = browserViewModel;
         _refreshCooldown = refreshCooldown ?? DefaultRefreshCooldown;
         _settings = settingsRepository.Load();
+        LanguageOptions = BuildLanguageOptions();
+        _selectedLanguageOption = LanguageOptions.FirstOrDefault(o => o.Tag == _settings.Language)
+            ?? LanguageOptions[0];
+        _localizer.SetLanguage(_settings.Language);
         ConnectCommand = new AsyncRelayCommand(ConnectAsync, CanConnect);
         DeleteServerCommand = new RelayCommand(DeleteServer, CanDeleteServer);
         OpenClientCommand = new AsyncRelayCommand(OpenClientAsync, CanOpenClient);
@@ -441,6 +450,31 @@ public class MainViewModel : INotifyPropertyChanged
     }
 
     public string SelectedOpenClientLabel => SelectedOpenClient?.DisplayName ?? string.Empty;
+
+    public IReadOnlyList<LanguageSettingOption> LanguageOptions { get; }
+
+    public LanguageSettingOption SelectedLanguageOption
+    {
+        get => _selectedLanguageOption;
+        set
+        {
+            if (value is null || !SetProperty(ref _selectedLanguageOption, value))
+            {
+                return;
+            }
+
+            _settings.Language = value.Tag;
+            SaveSettings();
+            _localizer.SetLanguage(value.Tag);
+        }
+    }
+
+    private IReadOnlyList<LanguageSettingOption> BuildLanguageOptions()
+    {
+        var options = new List<LanguageSettingOption> { new(null, "System default") };
+        options.AddRange(_localizer.Languages.Select(l => new LanguageSettingOption(l.Tag, l.DisplayName)));
+        return options;
+    }
 
     public bool AutoLaunch
     {

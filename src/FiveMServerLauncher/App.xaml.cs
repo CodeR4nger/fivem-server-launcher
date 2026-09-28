@@ -4,6 +4,7 @@ using System.Windows;
 using FiveMServerLauncher.Configuration;
 using FiveMServerLauncher.Domain;
 using FiveMServerLauncher.Launch;
+using FiveMServerLauncher.Localization;
 using FiveMServerLauncher.Service;
 using FiveMServerLauncher.ViewModels;
 
@@ -57,6 +58,8 @@ public partial class App : Application
 
         var cfxStatus = new CfxStatusService(httpClient);
 
+        var localizer = Localizer.FromEmbeddedResources();
+
         var window = new MainWindow();
         var serverRepository = new FileServerRepository(dataDirectory.ServersPath);
         var viewModel = new MainViewModel(
@@ -71,7 +74,8 @@ public partial class App : Application
                 new FileSettingsStorage(dataDirectory.SettingsPath)),
             enrichment,
             cfxStatus,
-            new ServerBrowserViewModel(catalog, enrichment, serverRepository));
+            new ServerBrowserViewModel(catalog, enrichment, serverRepository),
+            localizer);
         window.DataContext = viewModel;
         window.Show();
         window.Dispatcher.InvokeAsync(viewModel.InitializeAsync);

@@ -2,6 +2,7 @@ using System.Net;
 using FiveMServerLauncher.Configuration;
 using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Domain;
+using FiveMServerLauncher.Localization;
 using FiveMServerLauncher.Launch;
 using FiveMServerLauncher.Service;
 using FiveMServerLauncher.Tests.Configuration;
@@ -2606,8 +2607,123 @@ public class MainViewModelTests
         Assert.Single(launcher.Requests);
     }
 
-    private static MainViewModel CreateViewModel(
-        IGameProcessLauncher processLauncher,
+    private static ILocalizer CreateLocalizer(params (string Tag, string Json)[] dictionaries)
+    {
+        return new Localizer(Localizer.ParseDictionaries(dictionaries), () => "en-US");
+    }
+
+    private const string LanguageEnglishJson = """
+        {
+            "StatusReady": "Ready"
+        }
+        """;
+
+    private const string LanguageSpanishJson = """
+        {
+            "StatusReady": "Listo"
+        }
+        """;
+
+    [Fact]
+    public async Task LanguageOptions_ShouldOfferSystemDefaultPlusShippedLanguages()
+    {
+        // Given
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            localizer: CreateLocalizer(("en", LanguageEnglishJson), ("es", LanguageSpanishJson)));
+        await vm.InitializeAsync();
+
+        // When / Then
+        Assert.Equal(
+            ["System default", "English", "Español"],
+            vm.LanguageOptions.Select(o => o.Label).ToArray());
+        Assert.Null(vm.LanguageOptions[0].Tag);
+    }
+
+    [Fact]
+    public async Task SelectedLanguageOption_WhenSet_ShouldPersistAndApplyImmediately()
+    {
+        // Given
+        var storage = new InMemorySettingsStorage();
+        var localizer = CreateLocalizer(("en", LanguageEnglishJson), ("es", LanguageSpanishJson));
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            settings: new ConfigurationRepository(storage),
+            localizer: localizer);
+        await vm.InitializeAsync();
+
+        // When
+        vm.SelectedLanguageOption = vm.LanguageOptions.Single(o => o.Tag == "es");
+
+        // Then
+        Assert.Equal("es", new ConfigurationRepository(storage).Load().Language);
+        Assert.Equal("es", localizer.Language);
+    }
+
+    [Fact]
+    public async Task SelectedLanguageOption_WhenSystemDefaultChosen_ShouldPersistNullAndFollowSystem()
+    {
+        // Given
+        var storage = new InMemorySettingsStorage();
+        storage.Save(new LauncherSettings { Language = "es" });
+        var localizer = CreateLocalizer(("en", LanguageEnglishJson), ("es", LanguageSpanishJson));
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            settings: new ConfigurationRepository(storage),
+            localizer: localizer);
+        await vm.InitializeAsync();
+
+        // When
+        vm.SelectedLanguageOption = vm.LanguageOptions[0];
+
+        // Then
+        Assert.Null(new ConfigurationRepository(storage).Load().Language);
+        Assert.Equal("en", localizer.Language);
+    }
+
+    [Fact]
+    public async Task Constructor_WithPersistedLanguage_ShouldApplyItOnStartup()
+    {
+        // Given
+        var storage = new InMemorySettingsStorage();
+        storage.Save(new LauncherSettings { Language = "es" });
+        var localizer = CreateLocalizer(("en", LanguageEnglishJson), ("es", LanguageSpanishJson));
+
+        // When
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            settings: new ConfigurationRepository(storage),
+            localizer: localizer);
+
+        // Then
+        Assert.Equal("es", localizer.Language);
+        Assert.Equal("es", vm.SelectedLanguageOption.Tag);
+    }
+
+    [Fact]
+    public async Task Constructor_WithPersistedUnknownLanguageTag_ShouldFallBackToSystemDefault()
+    {
+        // Given — a tag that is no longer shipped selects the follow-system option.
+        var storage = new InMemorySettingsStorage();
+        storage.Save(new LauncherSettings { Language = "fr" });
+        var localizer = CreateLocalizer(("en", LanguageEnglishJson), ("es", LanguageSpanishJson));
+
+        // When
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            settings: new ConfigurationRepository(storage),
+            localizer: localizer);
+
+        // Then
+        Assert.Null(vm.SelectedLanguageOption.Tag);
+    }
+
+    private static MainViewModel CreateViewModel(        IGameProcessLauncher processLauncher,
         string cfxJson,
         IServerRepository? repository = null,
         IRequirementReadiness? readiness = null,
@@ -2619,7 +2735,8 @@ public class MainViewModelTests
         ICfxStatusService? cfxStatus = null,
         TimeSpan? refreshCooldown = null,
         ServerBrowserViewModel? browser = null,
-        HttpClient? cfxHttpClient = null)
+        HttpClient? cfxHttpClient = null,
+        ILocalizer? localizer = null)
     {
         var resolver = new ServerResolver(
             new CfxService(
@@ -2653,6 +2770,7 @@ public class MainViewModelTests
                 new ServerCatalog(new HttpClient(new FakeHttpMessageHandler(true))),
                 enrichment ?? new FakeServerEnrichmentService(),
                 repository ?? new InMemoryServerRepository()),
+            localizer ?? Localizer.FromEmbeddedResources(),
             refreshCooldown: refreshCooldown);
     }
 }
