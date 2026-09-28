@@ -2889,7 +2889,7 @@ public class MainViewModelTests
                 new ServerCatalog(new HttpClient(new FakeHttpMessageHandler(true))),
                 enrichment ?? new FakeServerEnrichmentService(),
                 repository ?? new InMemoryServerRepository()),
-            localizer ?? Localizer.FromEmbeddedResources(),
+            localizer ?? DefaultLocalizer.Get(),
             refreshCooldown: refreshCooldown);
     }
 }

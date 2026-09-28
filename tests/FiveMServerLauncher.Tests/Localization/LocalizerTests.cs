@@ -215,13 +215,25 @@ public class LocalizerTests
     public void FromEmbeddedResources_ShouldLoadEnglishDictionary()
     {
         // Given / When
-        var localizer = Localizer.FromEmbeddedResources();
+        var localizer = Localizer.FromEmbeddedResources(() => "en-US");
 
         // Then
         Assert.Equal("en", localizer.Language);
         Assert.Equal("⚙ SETTINGS", localizer.Get("SettingsButton"));
         Assert.Equal("ENTER SERVER", localizer.Get("EnterServerButton"));
         Assert.Contains(localizer.Languages, l => l.Tag == "en");
+    }
+
+    [Fact]
+    public void FromEmbeddedResources_WhenSystemLanguageShipped_ShouldResolveIt()
+    {
+        // Given / When — a Spanish system resolves to the shipped Spanish dictionary.
+        var localizer = Localizer.FromEmbeddedResources(() => "es-ES");
+
+        // Then
+        Assert.Equal("es", localizer.Language);
+        Assert.Equal("⚙ AJUSTES", localizer.Get("SettingsButton"));
+        Assert.Contains(localizer.Languages, l => l.Tag == "es");
     }
 
     [Fact]

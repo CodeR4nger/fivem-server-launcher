@@ -7,9 +7,9 @@ comment. The picker shows native names for all of them.
 
 **Blocked by:** 03 (final key set after migration).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Spanish dictionary complete and curated
-- [ ] Nine draft dictionaries complete per the audit (every English key present)
-- [ ] Drafts carry a community-review header note
-- [ ] Completeness audit test green across all eleven files
+- [x] Spanish dictionary complete and curated
+- [x] Nine draft dictionaries complete per the audit (every English key present)
+- [x] Drafts carry a community-review header note
+- [x] Completeness audit test green across all eleven files
