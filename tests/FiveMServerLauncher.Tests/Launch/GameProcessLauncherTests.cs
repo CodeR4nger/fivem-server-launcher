@@ -38,6 +38,21 @@ public class GameProcessLauncherTests
     }
 
     [Fact]
+    public async Task StartExecutableAsync_WhenPathContainsQuote_ShouldEscapeItInArguments()
+    {
+        // Given — a tampered registry path must not break out of its quoting.
+        var processStarter = new FakeProcessStarter();
+        var launcher = new GameProcessLauncher(processStarter, new FakeUriSchemeRegistration());
+
+        // When
+        await launcher.StartExecutableAsync(@"C:\weird""path\FiveM.exe");
+
+        // Then
+        var startInfo = Assert.Single(processStarter.Starts);
+        Assert.Equal(@"""C:\weird\""path\FiveM.exe""", startInfo.Arguments);
+    }
+
+    [Fact]
     public async Task StartExecutableAsync_WithArgs_ShouldStartExeThroughShellWithArgs()
     {
         // Given

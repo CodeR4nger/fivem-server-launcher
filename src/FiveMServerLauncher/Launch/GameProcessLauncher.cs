@@ -12,7 +12,9 @@ public sealed class GameProcessLauncher(IProcessStarter processStarter, IUriSche
 
     public Task StartExecutableAsync(string executablePath)
     {
-        processStarter.Start(new ProcessStartInfo("explorer.exe", $"\"{executablePath}\""));
+        processStarter.Start(new ProcessStartInfo(
+            "explorer.exe",
+            $"\"{executablePath.Replace("\"", "\\\"")}\""));
         return Task.CompletedTask;
     }
 

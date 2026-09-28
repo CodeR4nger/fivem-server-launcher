@@ -78,7 +78,7 @@ public static class ServerAddress
                 return ServerAddressKind.DomainName;
             }
 
-            if (!address.Contains('.') && !address.Contains(':'))
+            if (IsValidCfxId(address) && !address.Contains('.') && !address.Contains(':'))
             {
                 return ServerAddressKind.CfxId;
             }
@@ -98,9 +98,9 @@ public static class ServerAddress
         return IsValidCfxId(address[(index + Prefix.Length)..]);
     }
 
-    private static bool IsValidCfxId(string id)
+    public static bool IsValidCfxId(string id)
     {
-        return !string.IsNullOrWhiteSpace(id) && !id.Any(char.IsWhiteSpace);
+        return id.Length > 0 && id.All(c => char.IsLetterOrDigit(c) || c is '-' or '_');
     }
 
     private static bool IsLocalhost(string address)

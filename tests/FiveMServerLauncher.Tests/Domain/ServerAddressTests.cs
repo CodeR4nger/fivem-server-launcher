@@ -280,6 +280,39 @@ public class ServerAddressTests
     }
 
     [Theory]
+    [InlineData("ab\"c123")]
+    [InlineData("a&b123")]
+    [InlineData("a?b123")]
+    [InlineData("a#b123")]
+    [InlineData("a=b123")]
+    [InlineData("a%20b")]
+    [InlineData("a/b")]
+    [InlineData("a\\b123")]
+    [InlineData("a;b")]
+    public void Classify_WhenBareIdHasUnsafeCharacters_ShouldReturnUnknown(string address)
+    {
+        // Given / When / Then — shell/URI metacharacters can never pass as a cfx id.
+        Assert.Equal(ServerAddressKind.Unknown, ServerAddress.Classify(address));
+    }
+
+    [Theory]
+    [InlineData("y4lg95")]
+    [InlineData("abc-123")]
+    [InlineData("ABC123")]
+    public void Classify_WhenBareIdUsesSafeCharset_ShouldReturnCfxId(string address)
+    {
+        // Given / When / Then
+        Assert.Equal(ServerAddressKind.CfxId, ServerAddress.Classify(address));
+    }
+
+    [Fact]
+    public void Classify_WhenJoinUrlIdHasUnsafeCharacters_ShouldReturnUnknown()
+    {
+        // Given / When / Then
+        Assert.Equal(ServerAddressKind.Unknown, ServerAddress.Classify("cfx.re/join/ab\"cd"));
+    }
+
+    [Theory]
     [InlineData("localhost")]
     [InlineData("LOCALHOST")]
     [InlineData("127.0.0.1")]

@@ -132,6 +132,27 @@ public class SavedServerTests
     }
 
     [Fact]
+    public void Create_WithExplicitCfxIdContainingUnsafeCharacters_ShouldThrowArgumentException()
+    {
+        // Given / When / Then — a manually supplied id (local dev panel, imported files)
+        // must never carry shell/URI metacharacters into the connect pipeline.
+        Assert.Throws<ArgumentException>(() => SavedServer.Create(
+            "My Server", "localhost:30120", cfxId: "bad\"id"));
+        Assert.Throws<ArgumentException>(() => SavedServer.Create(
+            "My Server", "localhost:30120", cfxId: "a&b"));
+    }
+
+    [Fact]
+    public void Create_WithExplicitValidCfxId_ShouldPreserveIt()
+    {
+        // Given / When
+        var result = SavedServer.Create("My Server", "localhost:30120", cfxId: "8y6354");
+
+        // Then
+        Assert.Equal("8y6354", result.CfxId);
+    }
+
+    [Fact]
     public void Create_WithCfxIdAddress_ShouldReturnSavedServer()
     {
         // Given
