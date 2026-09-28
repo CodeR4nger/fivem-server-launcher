@@ -1,6 +1,7 @@
 using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Domain.Exceptions;
 using FiveMServerLauncher.Service;
+using System.Net.Http;
 
 namespace FiveMServerLauncher.Domain;
 
@@ -43,12 +44,10 @@ public class ServerResolver(
     {
         var cfxId = ServerAddress.ExtractCfxId(originalAddress);
 
-        var server = await cfxService.GetServerAsync(cfxId);
+        var server = await TryGetServerAsync(cfxId);
 
         if (server is null)
         {
-            // Id resolution failed (delisted server or CFX outage); a saved server that
-            // links this id to a direct address still connects directly.
             return BuildDirectFallbackProfile(savedServer)
                 ?? throw new InvalidAddressException(originalAddress);
         }
@@ -61,6 +60,22 @@ public class ServerResolver(
             Requirements = requirementsResolver.Resolve(server),
             IsCfxValidated = true
         };
+    }
+
+    private async Task<CfxServerInfo?> TryGetServerAsync(string cfxId)
+    {
+        try
+        {
+            return await cfxService.GetServerAsync(cfxId);
+        }
+        catch (HttpRequestException)
+        {
+            return null;
+        }
+        catch (TaskCanceledException)
+        {
+            return null;
+        }
     }
 
     private static ServerProfile? BuildDirectFallbackProfile(SavedServer? savedServer)

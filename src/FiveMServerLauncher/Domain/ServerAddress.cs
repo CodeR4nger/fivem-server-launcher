@@ -22,6 +22,11 @@ public static class ServerAddress
             or ServerAddressKind.IpAddress or ServerAddressKind.DomainName;
     }
 
+    public static bool IsIdForm(ServerAddressKind kind)
+    {
+        return kind is ServerAddressKind.CfxId or ServerAddressKind.CfxJoinUrl;
+    }
+
     public static ServerAddressKind Classify(string address)
     {
         if (IsCfxJoinUrlWithValidId(address))

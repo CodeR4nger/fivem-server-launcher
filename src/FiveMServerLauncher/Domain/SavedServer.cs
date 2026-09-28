@@ -51,7 +51,7 @@ public sealed class SavedServer
             throw new ArgumentException($"'{address}' is not a connectable server address.", nameof(address));
         }
 
-        var resolvedCfxId = cfxId ?? (kind is ServerAddressKind.CfxId or ServerAddressKind.CfxJoinUrl
+        var resolvedCfxId = cfxId ?? (ServerAddress.IsIdForm(kind)
             ? ServerAddress.ExtractCfxId(normalizedAddress)
             : null);
 

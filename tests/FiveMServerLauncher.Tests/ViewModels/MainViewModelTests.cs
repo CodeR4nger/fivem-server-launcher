@@ -108,6 +108,51 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public async Task ConnectAsync_WhenCfxServiceOutageAndSavedDirectAddressExists_ShouldConnectDirectly()
+    {
+        // Given — a real CFX outage (transport failure), not just a delisted id.
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("Local Dev", "localhost:30120", cfxId: "y4lg95"));
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(
+            processLauncher,
+            "{}",
+            repository: repository,
+            cfxHttpClient: new HttpClient(new FakeHttpMessageHandler(true)));
+        vm.ServerAddress = "y4lg95";
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Single(processLauncher.Requests);
+        Assert.Equal("fivem://connect/localhost:30120", processLauncher.Requests[0].AbsoluteUri);
+        Assert.Equal("Launching FiveM...", vm.StatusText);
+        Assert.False(vm.IsBusy);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_WhenCfxServiceOutageAndNoSavedRow_ShouldShowInvalidAddress()
+    {
+        // Given — during an outage an unknown id degrades to the invalid-address status
+        // instead of an unhandled transport failure.
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(
+            processLauncher,
+            "{}",
+            cfxHttpClient: new HttpClient(new FakeHttpMessageHandler(true)));
+        vm.ServerAddress = "y4lg95";
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Equal("Invalid address", vm.StatusText);
+        Assert.Empty(processLauncher.Requests);
+        Assert.False(vm.IsBusy);
+    }
+
+    [Fact]
     public async Task ConnectAsync_WithEnhancedServer_ShouldStartEnhancedExecutableAndShowOpenClientStatus()
     {
         // Given
@@ -2407,11 +2452,12 @@ public class MainViewModelTests
         IServerEnrichmentService? enrichment = null,
         ICfxStatusService? cfxStatus = null,
         TimeSpan? refreshCooldown = null,
-        ServerBrowserViewModel? browser = null)
+        ServerBrowserViewModel? browser = null,
+        HttpClient? cfxHttpClient = null)
     {
         var resolver = new ServerResolver(
             new CfxService(
-                new HttpClient(
+                cfxHttpClient ?? new HttpClient(
                     new FakeHttpMessageHandler(HttpStatusCode.OK, cfxJson))),
             new ServerCatalog(new HttpClient(new FakeHttpMessageHandler(true))),
             new ServerRequirementsResolver(),

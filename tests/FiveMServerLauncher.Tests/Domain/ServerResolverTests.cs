@@ -895,6 +895,36 @@ public class ServerResolverTests
         Assert.Equal("y4lg95", result.CfxId);
     }
 
+    [Fact]
+    public async Task Resolve_WhenCfxServiceOutageAndSavedServerHasDirectAddress_ShouldReturnUnvalidatedDirectProfile()
+    {
+        // Given — a genuine CFX outage (transport failure, not a 404) must also fall back.
+        const string address = "y4lg95";
+        var savedServer = SavedServer.Create("Local Dev", "localhost:30120", cfxId: address);
+        var resolver = CreateResolver(
+            cfxService: new CfxService(new HttpClient(new FakeHttpMessageHandler(true))));
+
+        // When
+        var result = await resolver.ResolveAsync(address, savedServer);
+
+        // Then
+        Assert.False(result.IsCfxValidated);
+        Assert.Equal("localhost:30120", result.Address);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenCfxServiceOutageAndNoSavedDirectAddress_ShouldThrowInvalidAddress()
+    {
+        // Given
+        const string address = "y4lg95";
+        var resolver = CreateResolver(
+            cfxService: new CfxService(new HttpClient(new FakeHttpMessageHandler(true))));
+
+        // When / Then
+        await Assert.ThrowsAsync<InvalidAddressException>(
+            () => resolver.ResolveAsync(address));
+    }
+
     private static ServerResolver CreateResolver(
         CfxService? cfxService = null,
         HttpClient? catalogHttpClient = null,

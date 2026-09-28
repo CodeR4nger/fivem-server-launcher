@@ -409,6 +409,30 @@ public class ServerEnrichmentServiceTests
     }
 
     [Fact]
+    public async Task ResolveCfxIdAsync_WithBareLocalhostResolvedToLoopbackCatalogEndpoint_ShouldReturnEndPoint()
+    {
+        // Given — the port-less localhost form (v1.2) captures through the same loopback path.
+        var handler = new RoutedHttpMessageHandler();
+        handler.AddBytesRoute(
+            "streamRedir",
+            HttpStatusCode.OK,
+            TestProtobufFrames.BuildFrameStream(new Master.Server
+            {
+                EndPoint = "y4lg95",
+                Data = new Master.ServerData { ConnectEndPoints = { "127.0.0.1:30120" } }
+            }));
+        using var httpClient = new HttpClient(handler);
+        var dns = new FakeDnsResolver("127.0.0.1");
+        var service = new ServerEnrichmentService(httpClient, dnsResolver: dns);
+
+        // When
+        var result = await service.ResolveCfxIdAsync("localhost");
+
+        // Then
+        Assert.Equal("y4lg95", result);
+    }
+
+    [Fact]
     public async Task ResolveCfxIdAsync_WithBareIpInCatalogOnDefaultPort_ShouldReturnEndPoint()
     {
         // Given

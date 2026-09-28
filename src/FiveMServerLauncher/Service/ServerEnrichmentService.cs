@@ -123,7 +123,7 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
     {
         var kind = ServerAddress.Classify(address);
 
-        if (kind is ServerAddressKind.CfxId or ServerAddressKind.CfxJoinUrl)
+        if (ServerAddress.IsIdForm(kind))
         {
             return ServerAddress.ExtractCfxId(address);
         }
