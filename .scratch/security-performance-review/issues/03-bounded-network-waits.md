@@ -7,10 +7,10 @@ response sizes at the seams.
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Shared HttpClient gets a short timeout set at the composition root; connect never stalls
+- [x] Shared HttpClient gets a short timeout set at the composition root; connect never stalls
       beyond it
-- [ ] DNS resolution on the connect path is bounded via a cancellation token on the resolver seam
-- [ ] Catalog and icon downloads enforce a maximum payload size; oversized responses degrade like
+- [x] DNS resolution on the connect path is bounded via a cancellation token on the resolver seam
+- [x] Catalog and icon downloads enforce a maximum payload size; oversized responses degrade like
       outages (no throw)

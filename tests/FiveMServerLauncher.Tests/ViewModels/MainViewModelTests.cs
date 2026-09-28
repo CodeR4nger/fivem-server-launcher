@@ -35,6 +35,43 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public void SaveServerDialogCommand_WhenIdCaptureFaults_ShouldStillSave()
+    {
+        // Given — a disk fault during the background id capture must not fail the save.
+        var repository = new InMemoryServerRepository();
+        var enrichment = new FakeServerEnrichmentService { ThrowOnResolve = true };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(), CfxJson("gta5"), repository, enrichment: enrichment);
+        vm.OpenAddServerDialogCommand.Execute(null);
+        vm.DialogServerName = "New Server";
+        vm.DialogServerAddress = "149.56.120.52:30120";
+
+        // When
+        vm.SaveServerDialogCommand.Execute(null);
+
+        // Then
+        Assert.False(vm.IsServerDialogOpen);
+        Assert.Single(vm.SavedServers);
+        Assert.Equal("Server saved", vm.StatusText);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_WhenInstallProbeFaults_ShouldDegradeWithoutCrash()
+    {
+        // Given — a locator IO fault during startup must not take the process down.
+        var installLocator = new FakeClientInstallLocator { ThrowOnIsInstalled = true };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(), CfxJson("gta5"), installLocator: installLocator);
+
+        // When
+        await vm.InitializeAsync();
+
+        // Then
+        Assert.False(vm.IsBusy);
+        Assert.Equal("Startup failed", vm.StatusText);
+    }
+
+    [Fact]
     public async Task ConnectAsync_WithInvalidAddress_ShouldShowErrorWithoutLaunching()
     {
         // Given

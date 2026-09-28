@@ -26,7 +26,16 @@ public class CfxService(HttpClient httpClient)
 
         var json = await response.Content.ReadAsStringAsync();
 
-        var cfxResponse = JsonSerializer.Deserialize<CfxServerResponse>(json,SerializerOptions);
+        CfxServerResponse? cfxResponse;
+
+        try
+        {
+            cfxResponse = JsonSerializer.Deserialize<CfxServerResponse>(json, SerializerOptions);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
 
         if (cfxResponse?.Data is null)
         {

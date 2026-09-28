@@ -64,5 +64,6 @@
   "GameClientNone": "Ninguno",
   "DialogLocalDevHeader": "DESARROLLO LOCAL",
   "LanguageHeader": "IDIOMA",
-  "LanguageSystemDefault": "Predeterminado del sistema"
+  "LanguageSystemDefault": "Predeterminado del sistema",
+  "StatusStartupFailed": "Error de inicio"
 }

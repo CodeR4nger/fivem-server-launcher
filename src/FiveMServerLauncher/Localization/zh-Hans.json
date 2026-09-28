@@ -64,5 +64,6 @@
   "GameClientNone": "无",
   "DialogLocalDevHeader": "本地开发",
   "LanguageHeader": "语言",
-  "LanguageSystemDefault": "跟随系统"
+  "LanguageSystemDefault": "跟随系统",
+  "StatusStartupFailed": "启动错误"
 }

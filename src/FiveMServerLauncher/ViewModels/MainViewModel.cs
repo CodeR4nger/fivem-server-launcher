@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows.Data;
 using System.Windows.Input;
@@ -765,25 +766,31 @@ public class MainViewModel : INotifyPropertyChanged
 
     private async Task CaptureCfxIdAsync(SavedServerItem item)
     {
-        var cfxId = await _enrichment.ResolveCfxIdAsync(item.Address);
-
-        if (cfxId is null)
+        try
         {
-            return;
+            var cfxId = await _enrichment.ResolveCfxIdAsync(item.Address);
+
+            if (cfxId is null)
+            {
+                return;
+            }
+
+            var saved = _serverRepository.FindByAddress(item.Address);
+
+            if (saved is null)
+            {
+                return;
+            }
+
+            var updated = SavedServer.Create(
+                saved.Name, saved.Address, saved.RequiresSteam, saved.RequiresDiscord, cfxId,
+                saved.GameBuild, saved.PureMode, saved.GameClient);
+            _serverRepository.Update(updated);
+            item.SetCfxId(cfxId);
         }
-
-        var saved = _serverRepository.FindByAddress(item.Address);
-
-        if (saved is null)
+        catch (IOException)
         {
-            return;
         }
-
-        var updated = SavedServer.Create(
-            saved.Name, saved.Address, saved.RequiresSteam, saved.RequiresDiscord, cfxId,
-            saved.GameBuild, saved.PureMode, saved.GameClient);
-        _serverRepository.Update(updated);
-        item.SetCfxId(cfxId);
     }
 
     public async Task RefreshServerInfoAsync(bool forceRefresh = false)
@@ -1029,30 +1036,37 @@ public class MainViewModel : INotifyPropertyChanged
 
     public async Task InitializeAsync()
     {
-        AvailableOpenClients.Clear();
-
-        foreach (var client in OpenCandidates)
+        try
         {
-            if (await _installLocator.IsInstalledAsync(client))
+            AvailableOpenClients.Clear();
+
+            foreach (var client in OpenCandidates)
             {
-                AvailableOpenClients.Add(new InstalledClientOption(client));
+                if (await _installLocator.IsInstalledAsync(client))
+                {
+                    AvailableOpenClients.Add(new InstalledClientOption(client));
+                }
+            }
+
+            if (AvailableOpenClients.Count > 0)
+            {
+                var preferred = AvailableOpenClients.FirstOrDefault(o => o.Client == _settings.PreferredClient);
+                SelectedOpenClient = preferred ?? AvailableOpenClients[0];
+                _preferredClientOption = SelectedOpenClient;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PreferredClientOption)));
+            }
+
+            await RefreshCfxStatusAsync();
+
+            if (_settings.AutoLaunch && !string.IsNullOrWhiteSpace(_settings.LastServerAddress))
+            {
+                ServerAddress = _settings.LastServerAddress;
+                await ConnectAsync();
             }
         }
-
-        if (AvailableOpenClients.Count > 0)
+        catch (IOException)
         {
-            var preferred = AvailableOpenClients.FirstOrDefault(o => o.Client == _settings.PreferredClient);
-            SelectedOpenClient = preferred ?? AvailableOpenClients[0];
-            _preferredClientOption = SelectedOpenClient;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PreferredClientOption)));
-        }
-
-        await RefreshCfxStatusAsync();
-
-        if (_settings.AutoLaunch && !string.IsNullOrWhiteSpace(_settings.LastServerAddress))
-        {
-            ServerAddress = _settings.LastServerAddress;
-            await ConnectAsync();
+            StatusText = _localizer.Get("StatusStartupFailed");
         }
     }
 

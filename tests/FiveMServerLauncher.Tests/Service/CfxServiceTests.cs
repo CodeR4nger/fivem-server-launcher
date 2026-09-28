@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Service;
 
@@ -448,6 +448,25 @@ public class CfxServiceTests
         // Then
         Assert.NotNull(result);
         Assert.Null(result.SteamEnforced);
+    }
+
+    [Fact]
+    public async Task GetServerAsync_WhenBodyIsCorrupt_ShouldReturnNull()
+    {
+        // Given — a malformed body (e.g. a proxy error page) degrades to
+        // "cannot resolve", never an uncaught JsonException.
+        var handler = new FakeHttpMessageHandler(
+            HttpStatusCode.OK,
+            "<html>proxy error page</html>");
+
+        using var httpClient = new HttpClient(handler);
+        var cfxService = new CfxService(httpClient);
+
+        // When
+        var result = await cfxService.GetServerAsync("y4lg95");
+
+        // Then
+        Assert.Null(result);
     }
 
 }

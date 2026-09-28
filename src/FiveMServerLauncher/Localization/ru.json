@@ -64,5 +64,6 @@
   "GameClientNone": "Нет",
   "DialogLocalDevHeader": "ЛОКАЛЬНАЯ РАЗРАБОТКА",
   "LanguageHeader": "ЯЗЫК",
-  "LanguageSystemDefault": "Как в системе"
+  "LanguageSystemDefault": "Как в системе",
+  "StatusStartupFailed": "Ошибка запуска"
 }

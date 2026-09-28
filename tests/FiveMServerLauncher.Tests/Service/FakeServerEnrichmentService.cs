@@ -22,6 +22,8 @@ internal sealed class FakeServerEnrichmentService : IServerEnrichmentService
 
     public int ResolveCalls { get; private set; }
 
+    public bool ThrowOnResolve { get; set; }
+
     public int ThrowOnRefreshCount { get; set; }
 
     public Task? RefreshDelay { get; set; }
@@ -69,6 +71,12 @@ internal sealed class FakeServerEnrichmentService : IServerEnrichmentService
     public Task<string?> ResolveCfxIdAsync(string address)
     {
         ResolveCalls++;
+
+        if (ThrowOnResolve)
+        {
+            throw new IOException("Simulated capture fault");
+        }
+
         return Task.FromResult(ResolvedCfxId);
     }
 }

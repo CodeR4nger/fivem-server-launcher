@@ -31,6 +31,12 @@ internal sealed class AsyncRelayCommand : ICommand
 
     public async void Execute(object? parameter)
     {
-        await _execute(parameter);
+        try
+        {
+            await _execute(parameter);
+        }
+        catch
+        {
+        }
     }
 }

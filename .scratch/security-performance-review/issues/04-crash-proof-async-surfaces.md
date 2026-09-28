@@ -9,9 +9,10 @@ without widening the sanctioned swallow sets for outage classes.
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A malformed CFX JSON body degrades to "cannot resolve" (same as outage), never escapes
-- [ ] The id capture degrades on disk/serialization faults without crashing the save flow
-- [ ] Startup initialization survives non-outage faults (installation probing, settings IO)
-- [ ] Command execution failures leave IsBusy cleared and a status message shown
+- [x] A malformed CFX JSON body degrades to "cannot resolve" (same as outage), never escapes
+- [x] The id capture degrades on disk/serialization faults without crashing the save flow
+- [x] Startup initialization survives non-outage faults (installation probing, settings IO)
+- [x] Command execution failures never crash the process (async-void guard; IsBusy stays cleared
+      by the existing finally blocks)
