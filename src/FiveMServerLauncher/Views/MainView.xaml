@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:sys="clr-namespace:System;assembly=System.Runtime"
              xmlns:viewModels="clr-namespace:FiveMServerLauncher.ViewModels"
+             xmlns:loc="clr-namespace:FiveMServerLauncher.Views"
              xmlns:views="clr-namespace:FiveMServerLauncher.Views">
 
     <UserControl.Resources>
@@ -369,13 +370,13 @@
 
                 <DockPanel Grid.Row="0" Margin="14,14,14,0">
 
-                    <Button Content="⚙ SETTINGS"
+                    <Button Content="{loc:Loc SettingsButton}"
                             MinHeight="34"
                             Padding="14,8"
                             Style="{StaticResource SecondaryButtonStyle}"
                             Command="{Binding SettingsCommand}"/>
 
-                    <Button Content="DEV MODE"
+                    <Button Content="{loc:Loc DevModeButton}"
                             MinHeight="34"
                             Padding="14,8"
                             Margin="8,0,0,0"
@@ -397,7 +398,7 @@
 
                     <StackPanel VerticalAlignment="Top">
 
-                        <TextBlock Text="PREFERRED OPEN CLIENT"
+                        <TextBlock Text="{loc:Loc PreferredOpenClientHeader}"
                                    Style="{StaticResource SectionHeaderStyle}"/>
 
                          <ComboBox ItemsSource="{Binding AvailableOpenClients}"
@@ -407,7 +408,7 @@
                                    Margin="0,6,0,10"
                                    VerticalContentAlignment="Center"/>
 
-                        <TextBlock Text="LANGUAGE"
+                        <TextBlock Text="{loc:Loc LanguageHeader}"
                                    Style="{StaticResource SectionHeaderStyle}"/>
 
                         <ComboBox ItemsSource="{Binding LanguageOptions}"
@@ -418,7 +419,7 @@
                                   VerticalContentAlignment="Center"/>
 
                         <CheckBox IsChecked="{Binding AutoLaunch}"
-                                  Content="Auto-launch last server on startup"
+                                  Content="{loc:Loc AutoLaunchCheckbox}"
                                   Foreground="{StaticResource TextBrush}"
                                   FontSize="12"/>
 
@@ -437,7 +438,7 @@
                                                  Converter={StaticResource InverseBoolToVisibility},
                                                  FallbackValue=Visible}">
 
-                    <TextBlock Text="CFX STATUS"
+                    <TextBlock Text="{loc:Loc CfxStatusHeader}"
                                Style="{StaticResource SectionHeaderStyle}"
                                HorizontalAlignment="Center"
                                Margin="0,0,0,10"/>
@@ -582,7 +583,7 @@
                             VerticalAlignment="Top"
                             Margin="20,8,20,0">
 
-                    <TextBlock Text="DEV MODE"
+                    <TextBlock Text="{loc:Loc DevModeButton}"
                                Style="{StaticResource SectionHeaderStyle}"
                                HorizontalAlignment="Center"
                                Margin="0,0,0,10"/>
@@ -593,7 +594,7 @@
                             Command="{Binding ToggleDevClientCommand}"
                             Margin="0,0,0,10"/>
 
-                    <TextBlock Text="GAME BUILD"
+                    <TextBlock Text="{loc:Loc GameBuildHeader}"
                                Foreground="{StaticResource SecondaryTextBrush}"
                                FontSize="10"
                                Margin="0,6,0,3"/>
@@ -606,7 +607,7 @@
                              Padding="10,8"
                              FontSize="12"/>
 
-                    <TextBlock Text="PURE MODE"
+                    <TextBlock Text="{loc:Loc PureModeHeader}"
                                Foreground="{StaticResource SecondaryTextBrush}"
                                FontSize="10"
                                Margin="0,10,0,3"/>
@@ -616,7 +617,7 @@
                               MinHeight="28"
                               VerticalContentAlignment="Center">
 
-                        <ComboBoxItem Content="None"/>
+                        <ComboBoxItem Content="{loc:Loc PureModeNone}"/>
                         <ComboBoxItem Content="0">
                             <ComboBoxItem.Tag><sys:Int32>0</sys:Int32></ComboBoxItem.Tag>
                         </ComboBoxItem>
@@ -641,13 +642,13 @@
                                                  Converter={StaticResource BoolToVisibility},
                                                  FallbackValue=Collapsed}">
 
-                    <Button Content="LAUNCH"
+                    <Button Content="{loc:Loc LaunchButton}"
                             MinHeight="50"
                             Style="{StaticResource MainButtonStyle}"
                             Command="{Binding DevLaunchCommand}"
                             CommandParameter="{x:Null}"/>
 
-                    <Button Content="LAUNCH WITH SECOND CLIENT (-cl2)"
+                    <Button Content="{loc:Loc LaunchSecondClientButton}"
                             MinHeight="50"
                             Margin="0,8,0,0"
                             Style="{StaticResource SecondaryButtonStyle}"
@@ -689,14 +690,14 @@
 
                     <DockPanel Margin="0,0,0,7">
 
-                        <TextBlock Text="SAVED SERVERS"
+                        <TextBlock Text="{loc:Loc SavedServersHeader}"
                                    Style="{StaticResource SectionHeaderStyle}"
                                    VerticalAlignment="Center"
                                    Margin="0,0,10,0"/>
 
                         <Button DockPanel.Dock="Right"
                                 Command="{Binding RefreshServersCommand}"
-                                ToolTip="Refresh server data"
+                                ToolTip="{loc:Loc RefreshTooltip}"
                                 Cursor="Hand"
                                 Padding="4,0"
                                 Margin="6,0,0,0"
@@ -758,7 +759,7 @@
                                      VerticalContentAlignment="Center"
                                      MinHeight="24"/>
 
-                            <TextBlock Text="Search servers"
+                            <TextBlock Text="{loc:Loc SearchServersPlaceholder}"
                                        Foreground="{StaticResource SecondaryTextBrush}"
                                        FontSize="11"
                                        IsHitTestVisible="False"
@@ -915,13 +916,13 @@
 
                     <DockPanel Margin="0,8,0,0">
 
-                        <Button Content="DELETE"
+                        <Button Content="{loc:Loc DeleteButton}"
                                 MinHeight="26"
                                 Padding="12,4"
                                 Style="{StaticResource SecondaryButtonStyle}"
                                 Command="{Binding DeleteServerCommand}"/>
 
-                        <Button Content="BROWSE"
+                        <Button Content="{loc:Loc BrowseButton}"
                                 MinHeight="26"
                                 Padding="12,4"
                                 HorizontalAlignment="Right"
@@ -929,7 +930,7 @@
                                 Margin="8,0,0,0"
                                 Command="{Binding OpenServerBrowserCommand}"/>
 
-                        <Button Content="+ NEW SERVER"
+                        <Button Content="{loc:Loc NewServerButton}"
                                 MinHeight="26"
                                 Padding="12,4"
                                 HorizontalAlignment="Right"
@@ -938,7 +939,7 @@
 
                     </DockPanel>
 
-                    <TextBlock Text="CONNECT ADDRESS"
+                    <TextBlock Text="{loc:Loc ConnectAddressHeader}"
                                Style="{StaticResource SectionHeaderStyle}"
                                Margin="0,14,0,0"/>
 
@@ -968,7 +969,7 @@
                 <!-- BOTON ENTRAR -->
 
                 <Button Grid.Row="1"
-                        Content="ENTER SERVER"
+                        Content="{loc:Loc EnterServerButton}"
                         Height="48"
                         Margin="20,0,20,16"
                         Style="{StaticResource MainButtonStyle}"
@@ -1004,7 +1005,7 @@
                                Style="{StaticResource SectionHeaderStyle}"
                                Margin="0,0,0,12"/>
 
-                    <TextBlock Text="NAME"
+                    <TextBlock Text="{loc:Loc NameField}"
                                Style="{StaticResource SectionHeaderStyle}"/>
 
                     <TextBox Text="{Binding DialogServerName, UpdateSourceTrigger=PropertyChanged}"
@@ -1017,7 +1018,7 @@
                              MinHeight="38"
                              Margin="0,5,0,0"/>
 
-                    <TextBlock Text="ADDRESS"
+                    <TextBlock Text="{loc:Loc AddressField}"
                                Style="{StaticResource SectionHeaderStyle}"
                                Margin="0,10,0,0"/>
 
@@ -1034,12 +1035,12 @@
                     <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
 
                         <CheckBox IsChecked="{Binding DialogRequiresSteam}"
-                                  Content="Requires Steam"
+                                  Content="{loc:Loc RequiresSteamCheckbox}"
                                   Foreground="{StaticResource SecondaryTextBrush}"
                                   FontSize="11"/>
 
                         <CheckBox IsChecked="{Binding DialogRequiresDiscord}"
-                                  Content="Requires Discord"
+                                  Content="{loc:Loc RequiresDiscordCheckbox}"
                                   Foreground="{StaticResource SecondaryTextBrush}"
                                   FontSize="11"
                                   Margin="16,0,0,0"/>
@@ -1054,13 +1055,13 @@
 
                     <DockPanel Margin="0,14,0,0">
 
-                        <Button Content="CANCEL"
+                        <Button Content="{loc:Loc CancelButton}"
                                 MinHeight="32"
                                 Style="{StaticResource SecondaryButtonStyle}"
                                 HorizontalAlignment="Left"
                                 Command="{Binding CancelServerDialogCommand}"/>
 
-                        <Button Content="SAVE"
+                        <Button Content="{loc:Loc SaveButton}"
                                 MinHeight="32"
                                 Style="{StaticResource MainButtonStyle}"
                                 HorizontalAlignment="Right"
@@ -1117,12 +1118,12 @@
 
                 <StackPanel VerticalAlignment="Top">
 
-                    <TextBlock Text="LOCAL DEV"
+                    <TextBlock Text="{loc:Loc DialogLocalDevHeader}"
                                Style="{StaticResource SectionHeaderStyle}"
                                HorizontalAlignment="Center"
                                Margin="0,0,0,12"/>
 
-                    <TextBlock Text="CFX ID"
+                    <TextBlock Text="{loc:Loc DialogCfxIdField}"
                                Style="{StaticResource SectionHeaderStyle}"/>
 
                     <TextBox Text="{Binding DialogCfxId, UpdateSourceTrigger=PropertyChanged}"
@@ -1135,7 +1136,7 @@
                              MinHeight="38"
                              Margin="0,5,0,0"/>
 
-                    <TextBlock Text="GAME BUILD"
+                    <TextBlock Text="{loc:Loc GameBuildHeader}"
                                Style="{StaticResource SectionHeaderStyle}"
                                Margin="0,10,0,0"/>
 
@@ -1149,7 +1150,7 @@
                              MinHeight="38"
                              Margin="0,5,0,0"/>
 
-                    <TextBlock Text="PURE MODE"
+                    <TextBlock Text="{loc:Loc PureModeHeader}"
                                Style="{StaticResource SectionHeaderStyle}"
                                Margin="0,10,0,0"/>
 
@@ -1159,7 +1160,7 @@
                               VerticalContentAlignment="Center"
                               Margin="0,5,0,0">
 
-                        <ComboBoxItem Content="None"/>
+                        <ComboBoxItem Content="{loc:Loc PureModeNone}"/>
                         <ComboBoxItem Content="0">
                             <ComboBoxItem.Tag><sys:Int32>0</sys:Int32></ComboBoxItem.Tag>
                         </ComboBoxItem>
@@ -1172,7 +1173,7 @@
 
                     </ComboBox>
 
-                    <TextBlock Text="GAME"
+                    <TextBlock Text="{loc:Loc DialogGameField}"
                                Style="{StaticResource SectionHeaderStyle}"
                                Margin="0,10,0,0"/>
 
@@ -1211,7 +1212,7 @@
 
                 <DockPanel Grid.Row="0" Margin="0,0,0,10">
 
-                    <Button Content="← BACK"
+                    <Button Content="{loc:Loc BackButton}"
                             MinHeight="30"
                             Padding="12,4"
                             Style="{StaticResource SecondaryButtonStyle}"
@@ -1219,7 +1220,7 @@
 
                     <Button DockPanel.Dock="Right"
                             Command="{Binding Browser.RefreshCommand}"
-                            ToolTip="Refresh server data"
+                            ToolTip="{loc:Loc RefreshTooltip}"
                             Cursor="Hand"
                             Padding="6,2"
                             VerticalAlignment="Center">
@@ -1265,7 +1266,7 @@
 
                     </Button>
 
-                    <TextBlock Text="BROWSE SERVERS"
+                    <TextBlock Text="{loc:Loc BrowseServersHeader}"
                                Style="{StaticResource SectionHeaderStyle}"
                                VerticalAlignment="Center"
                                Margin="12,0,0,0"/>
@@ -1282,14 +1283,14 @@
                               VerticalContentAlignment="Center"/>
 
                     <CheckBox IsChecked="{Binding Browser.HideFull}"
-                              Content="Hide full"
+                              Content="{loc:Loc HideFullCheckbox}"
                               Foreground="{StaticResource SecondaryTextBrush}"
                               FontSize="11"
                               VerticalAlignment="Center"
                               Margin="12,0,0,0"/>
 
                     <CheckBox IsChecked="{Binding Browser.HideEmpty}"
-                              Content="Hide empty"
+                              Content="{loc:Loc HideEmptyCheckbox}"
                               Foreground="{StaticResource SecondaryTextBrush}"
                               FontSize="11"
                               VerticalAlignment="Center"
@@ -1308,7 +1309,7 @@
                                  VerticalContentAlignment="Center"
                                  MinHeight="26"/>
 
-                        <TextBlock Text="Search by name"
+                        <TextBlock Text="{loc:Loc SearchByNamePlaceholder}"
                                    Foreground="{StaticResource SecondaryTextBrush}"
                                    FontSize="11"
                                    IsHitTestVisible="False"
@@ -1418,11 +1419,11 @@
 
                                                         <Style TargetType="{x:Type Button}" BasedOn="{StaticResource SecondaryButtonStyle}">
 
-                                                            <Setter Property="Content" Value="SAVE"/>
+                                                            <Setter Property="Content" Value="{loc:Loc SaveButton}"/>
 
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsSaved}" Value="True">
-                                                                    <Setter Property="Content" Value="SAVED"/>
+                                                                    <Setter Property="Content" Value="{loc:Loc SavedBrowserButton}"/>
                                                                     <Setter Property="IsEnabled" Value="False"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
@@ -1433,7 +1434,7 @@
 
                                                 </Button>
 
-                                                <Button Content="CONNECT"
+                                                <Button Content="{loc:Loc ConnectBrowserButton}"
                                                         MinHeight="24"
                                                         Padding="10,2"
                                                         Style="{StaticResource MainButtonStyle}"
@@ -1454,7 +1455,7 @@
 
                         </ListBox>
 
-                        <TextBlock Text="Could not load servers. Check your connection and try refreshing."
+                        <TextBlock Text="{loc:Loc BrowserLoadFailed}"
                                    Foreground="{StaticResource SecondaryTextBrush}"
                                    FontSize="12"
                                    HorizontalAlignment="Center"

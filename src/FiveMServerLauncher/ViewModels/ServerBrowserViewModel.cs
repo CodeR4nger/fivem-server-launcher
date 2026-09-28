@@ -5,6 +5,7 @@ using System.Windows.Data;
 using System.Windows.Input;
 using FiveMServerLauncher.Configuration;
 using FiveMServerLauncher.Core.Enums;
+using FiveMServerLauncher.Localization;
 using FiveMServerLauncher.Service;
 
 namespace FiveMServerLauncher.ViewModels;
@@ -22,15 +23,46 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
         ServerCatalog catalog,
         IServerEnrichmentService enrichment,
         IServerRepository repository,
-        TimeSpan? refreshCooldown = null)
+        TimeSpan? refreshCooldown = null,
+        ILocalizer? localizer = null)
     {
         _catalog = catalog;
         _enrichment = enrichment;
         _repository = repository;
+        _localizer = localizer ?? DefaultLocalizer.Get();
+        _localizer.LanguageChanged += OnLanguageChanged;
         _refreshCooldown = refreshCooldown ?? DefaultRefreshCooldown;
         Servers = new ObservableCollection<ServerBrowserItem>();
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => !IsRefreshing);
+        GameFilterOptions = BuildGameFilterOptions();
         _selectedGameFilterOption = GameFilterOptions[0];
+    }
+
+    private readonly ILocalizer _localizer;
+
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        var selectedGame = _selectedGameFilterOption.Game;
+        GameFilterOptions = BuildGameFilterOptions();
+        _selectedGameFilterOption = GameFilterOptions.Single(o => o.Game == selectedGame);
+
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(GameFilterOptions)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedGameFilterOption)));
+    }
+
+    public sealed record GameFilterOption(string Label, GameClient? Game);
+
+    public IReadOnlyList<GameFilterOption> GameFilterOptions { get; private set; }
+
+    private IReadOnlyList<GameFilterOption> BuildGameFilterOptions()
+    {
+        return
+        [
+            new GameFilterOption(_localizer.Get("GameFilterAll"), null),
+            new GameFilterOption(_localizer.Get("GameFilterFiveM"), GameClient.FiveM),
+            new GameFilterOption(_localizer.Get("GameFilterEnhanced"), GameClient.FiveMEnhanced),
+            new GameFilterOption(_localizer.Get("GameFilterRedM"), GameClient.RedM)
+        ];
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -56,16 +88,6 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
     public ICollectionView ServersView { get; private set; } = CollectionViewSource.GetDefaultView(new List<ServerBrowserItem>());
 
     public ICommand RefreshCommand { get; }
-
-    public sealed record GameFilterOption(string Label, GameClient? Game);
-
-    public IReadOnlyList<GameFilterOption> GameFilterOptions { get; } =
-    [
-        new GameFilterOption("ALL", null),
-        new GameFilterOption("FIVEM", GameClient.FiveM),
-        new GameFilterOption("ENHANCED", GameClient.FiveMEnhanced),
-        new GameFilterOption("REDM", GameClient.RedM)
-    ];
 
     private GameFilterOption _selectedGameFilterOption = null!;
 

@@ -61,5 +61,7 @@
   "DialogCfxIdField": "CFX ID",
   "DialogGameField": "GAME",
   "GameClientNone": "None",
-  "DialogLocalDevHeader": "LOCAL DEV"
+  "DialogLocalDevHeader": "LOCAL DEV",
+  "LanguageHeader": "LANGUAGE",
+  "LanguageSystemDefault": "System default"
 }

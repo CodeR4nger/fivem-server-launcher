@@ -2612,15 +2612,22 @@ public class MainViewModelTests
         return new Localizer(Localizer.ParseDictionaries(dictionaries), () => "en-US");
     }
 
+    private static ILocalizer CreateLocalizer(string systemCulture, params (string Tag, string Json)[] dictionaries)
+    {
+        return new Localizer(Localizer.ParseDictionaries(dictionaries), () => systemCulture);
+    }
+
     private const string LanguageEnglishJson = """
         {
-            "StatusReady": "Ready"
+            "StatusReady": "Ready",
+            "LanguageSystemDefault": "System default"
         }
         """;
 
     private const string LanguageSpanishJson = """
         {
-            "StatusReady": "Listo"
+            "StatusReady": "Listo",
+            "LanguageSystemDefault": "Predeterminado del sistema"
         }
         """;
 
@@ -2721,6 +2728,118 @@ public class MainViewModelTests
 
         // Then
         Assert.Null(vm.SelectedLanguageOption.Tag);
+    }
+
+    private const string VmSpanishJson = """
+        {
+            "StatusReady": "Listo",
+            "StatusResolving": "Resolviendo...",
+            "StatusStartingApp": "Iniciando {0}...",
+            "StatusCouldNotStartApp": "No se pudo iniciar {0}",
+            "StatusLaunchingFiveM": "Iniciando FiveM...",
+            "StatusOpeningClient": "Abriendo {0}...",
+            "StatusNotInstalled": "{0} no está instalado",
+            "StatusLaunchFailed": "Fallo al iniciar",
+            "StatusInvalidAddress": "Dirección inválida",
+            "StatusServerSaved": "Servidor guardado",
+            "DialogNewServer": "NUEVO SERVIDOR",
+            "DialogEditServer": "EDITAR SERVIDOR",
+            "DevClientButton": "CLIENTE: {0}",
+            "LanguageSystemDefault": "Predeterminado del sistema",
+            "GameClientNone": "Ninguno"
+        }
+        """;
+
+    [Fact]
+    public void StatusText_WhenSystemLanguageShipped_ShouldStartLocalized()
+    {
+        // Given
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            localizer: CreateLocalizer("es-ES", ("en", LanguageEnglishJson), ("es", VmSpanishJson)));
+
+        // When / Then
+        Assert.Equal("Listo", vm.StatusText);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_WithInvalidAddress_ShouldShowLocalizedError()
+    {
+        // Given
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            localizer: CreateLocalizer("es-ES", ("en", LanguageEnglishJson), ("es", VmSpanishJson)));
+        vm.ServerAddress = "9 92";
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Equal("Dirección inválida", vm.StatusText);
+    }
+
+    [Fact]
+    public void ServerDialogTitle_WhenLanguageSwitched_ShouldRefresh()
+    {
+        // Given
+        var localizer = CreateLocalizer(("en", LanguageEnglishJson), ("es", VmSpanishJson));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), localizer: localizer);
+        var raised = new List<string?>();
+        vm.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+        // When
+        localizer.SetLanguage("es");
+
+        // Then
+        Assert.Equal("NUEVO SERVIDOR", vm.ServerDialogTitle);
+        Assert.Contains(nameof(MainViewModel.ServerDialogTitle), raised);
+    }
+
+    [Fact]
+    public void DevClientButtonText_WhenLanguageSwitched_ShouldRefresh()
+    {
+        // Given
+        var localizer = CreateLocalizer(("en", LanguageEnglishJson), ("es", VmSpanishJson));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), localizer: localizer);
+
+        // When
+        localizer.SetLanguage("es");
+
+        // Then
+        Assert.Equal("CLIENTE: FiveM", vm.DevClientButtonText);
+    }
+
+    [Fact]
+    public void LanguageOptions_WhenLanguageSwitched_ShouldLocalizeSystemDefault()
+    {
+        // Given
+        var localizer = CreateLocalizer(("en", LanguageEnglishJson), ("es", VmSpanishJson));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), localizer: localizer);
+        var selected = vm.SelectedLanguageOption;
+
+        // When
+        localizer.SetLanguage("es");
+
+        // Then
+        Assert.Equal("Predeterminado del sistema", vm.LanguageOptions[0].Label);
+        Assert.Equal(selected.Tag, vm.SelectedLanguageOption.Tag);
+    }
+
+    [Fact]
+    public void DialogGameClientOptions_WhenLanguageSwitched_ShouldLocalizeNone()
+    {
+        // Given
+        var localizer = CreateLocalizer(("en", LanguageEnglishJson), ("es", VmSpanishJson));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), localizer: localizer);
+
+        // When
+        localizer.SetLanguage("es");
+
+        // Then
+        Assert.Equal("Ninguno", vm.DialogGameClientOptions[0].Label);
+        Assert.Equal("FiveM", vm.DialogGameClientOptions[1].Label);
     }
 
     private static MainViewModel CreateViewModel(        IGameProcessLauncher processLauncher,

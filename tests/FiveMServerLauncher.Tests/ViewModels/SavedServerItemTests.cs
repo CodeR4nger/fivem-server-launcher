@@ -1,5 +1,6 @@
 using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Domain;
+using FiveMServerLauncher.Localization;
 using FiveMServerLauncher.Service;
 using FiveMServerLauncher.ViewModels;
 
@@ -7,6 +8,30 @@ namespace FiveMServerLauncher.Tests.ViewModels;
 
 public class SavedServerItemTests
 {
+    private static ILocalizer CreateSpanishLocalizer()
+    {
+        return new Localizer(
+            Localizer.ParseDictionaries(
+                ("en", """{ "StatusUnresolved": "UNRESOLVED", "StatusOffline": "OFFLINE" }"""),
+                ("es", """{ "StatusUnresolved": "SIN RESOLVER", "StatusOffline": "DESCONECTADO" }""")),
+            () => "en-US");
+    }
+
+    [Fact]
+    public void StatusLabel_WhenLanguageSwitched_ShouldRefresh()
+    {
+        // Given
+        var localizer = CreateSpanishLocalizer();
+        var item = new SavedServerItem(
+            "My Server", "abc123", null, null, () => { }, localizer, cfxId: "y4lg95");
+
+        // When
+        localizer.SetLanguage("es");
+
+        // Then
+        Assert.Equal("DESCONECTADO", item.StatusLabel);
+    }
+
     [Fact]
     public void Ctor_ShouldExposeSavedServerValues()
     {

@@ -1,17 +1,26 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using FiveMServerLauncher.Core.Enums;
+using FiveMServerLauncher.Localization;
 
 namespace FiveMServerLauncher.ViewModels;
 
 public sealed class CfxStatusItem : INotifyPropertyChanged
 {
+    private readonly ILocalizer _localizer;
     private CfxStatus _status;
 
-    public CfxStatusItem(GameClient client)
+    public CfxStatusItem(GameClient client, ILocalizer? localizer = null)
     {
         Client = client;
+        _localizer = localizer ?? DefaultLocalizer.Get();
+        _localizer.LanguageChanged += OnLanguageChanged;
         _status = CfxStatus.Unknown;
+    }
+
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StatusLabel)));
     }
 
     public GameClient Client { get; }
@@ -32,12 +41,12 @@ public sealed class CfxStatusItem : INotifyPropertyChanged
 
     public string StatusLabel => Status switch
     {
-        CfxStatus.Operational => "OPERATIONAL",
-        CfxStatus.Degraded => "DEGRADED",
-        CfxStatus.PartialOutage => "PARTIAL OUTAGE",
-        CfxStatus.MajorOutage => "OUTAGE",
-        CfxStatus.Maintenance => "MAINTENANCE",
-        _ => "UNKNOWN"
+        CfxStatus.Operational => _localizer.Get("CfxStatusOperational"),
+        CfxStatus.Degraded => _localizer.Get("CfxStatusDegraded"),
+        CfxStatus.PartialOutage => _localizer.Get("CfxStatusPartialOutage"),
+        CfxStatus.MajorOutage => _localizer.Get("CfxStatusMajorOutage"),
+        CfxStatus.Maintenance => _localizer.Get("CfxStatusMaintenance"),
+        _ => _localizer.Get("CfxStatusUnknown")
     };
 
     public void Apply(CfxStatus status)

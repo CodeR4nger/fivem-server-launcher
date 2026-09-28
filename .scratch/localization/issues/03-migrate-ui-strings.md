@@ -8,11 +8,11 @@ event. The English UI must read exactly as before the migration.
 
 **Blocked by:** 01 (dictionary key set), 02 (live switch plumbing).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] XAML static labels render from keys through the markup extension and refresh on language
+- [x] XAML static labels render from keys through the markup extension and refresh on language
       change
-- [ ] Interpolated status messages localize with their parameters (app names, client names)
-- [ ] Dialog titles, validation errors, row tags, CFX status labels, browser filters and
+- [x] Interpolated status messages localize with their parameters (app names, client names)
+- [x] Dialog titles, validation errors, row tags, CFX status labels, browser filters and
       placeholders all localize
-- [ ] Switching language live updates every visible surface without restart
+- [x] Switching language live updates every visible surface without restart

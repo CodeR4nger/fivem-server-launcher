@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using FiveMServerLauncher.Core.Enums;
+using FiveMServerLauncher.Localization;
 using FiveMServerLauncher.Service;
 
 namespace FiveMServerLauncher.ViewModels;
@@ -8,6 +9,7 @@ namespace FiveMServerLauncher.ViewModels;
 public class SavedServerItem : INotifyPropertyChanged
 {
     private readonly Action _changeHandler;
+    private readonly ILocalizer _localizer;
 
     private bool _requiresSteam;
     private bool _requiresDiscord;
@@ -23,6 +25,7 @@ public class SavedServerItem : INotifyPropertyChanged
         bool? requiresSteam,
         bool? requiresDiscord,
         Action changeHandler,
+        ILocalizer? localizer = null,
         string? cfxId = null,
         int? gameBuild = null,
         int? pureMode = null,
@@ -37,6 +40,13 @@ public class SavedServerItem : INotifyPropertyChanged
         _requiresSteam = requiresSteam == true;
         _requiresDiscord = requiresDiscord == true;
         _changeHandler = changeHandler;
+        _localizer = localizer ?? DefaultLocalizer.Get();
+        _localizer.LanguageChanged += OnLanguageChanged;
+    }
+
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StatusLabel)));
     }
 
     public string Name { get; }
@@ -156,10 +166,10 @@ public class SavedServerItem : INotifyPropertyChanged
 
     public string StatusLabel =>
         !HasCfxId
-            ? "UNRESOLVED"
+            ? _localizer.Get("StatusUnresolved")
             : Online && Players is { } players && MaxPlayers is { } max
                 ? $"{players}/{max}"
-                : "OFFLINE";
+                : _localizer.Get("StatusOffline");
 
     public GameClient? Game
     {

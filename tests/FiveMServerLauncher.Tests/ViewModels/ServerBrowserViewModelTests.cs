@@ -2,6 +2,7 @@ using System.Net;
 using FiveMServerLauncher.Configuration;
 using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Domain;
+using FiveMServerLauncher.Localization;
 using FiveMServerLauncher.Service;
 using FiveMServerLauncher.Tests.Configuration;
 using FiveMServerLauncher.Tests.Service;
@@ -162,6 +163,32 @@ public class ServerBrowserViewModelTests
             new ServerCatalog(httpClient),
             new FakeServerEnrichmentService(),
             new InMemoryServerRepository());
+    }
+
+    [Fact]
+    public void GameFilterOptions_WhenLanguageSwitched_ShouldLocalizeAllLabelAndKeepSelection()
+    {
+        // Given
+        var localizer = new Localizer(
+            Localizer.ParseDictionaries(
+                ("en", """{ "GameFilterAll": "ALL", "GameFilterFiveM": "FIVEM", "GameFilterEnhanced": "ENHANCED", "GameFilterRedM": "REDM" }"""),
+                ("es", """{ "GameFilterAll": "TODO", "GameFilterFiveM": "FIVEM", "GameFilterEnhanced": "ENHANCED", "GameFilterRedM": "REDM" }""")),
+            () => "en-US");
+        var vm = new ServerBrowserViewModel(
+            new ServerCatalog(new HttpClient(new FakeHttpMessageHandler(true))),
+            new FakeServerEnrichmentService(),
+            new InMemoryServerRepository(),
+            localizer: localizer);
+        vm.SelectedGameFilterOption = vm.GameFilterOptions.Single(o => o.Game == GameClient.RedM);
+
+        // When
+        localizer.SetLanguage("es");
+
+        // Then
+        Assert.Equal("TODO", vm.GameFilterOptions[0].Label);
+        Assert.Equal("REDM", vm.SelectedGameFilterOption.Label);
+        Assert.Equal(GameClient.RedM, vm.SelectedGameFilterOption.Game);
+        Assert.Equal(GameClient.RedM, vm.GameFilter);
     }
 
     [Fact]

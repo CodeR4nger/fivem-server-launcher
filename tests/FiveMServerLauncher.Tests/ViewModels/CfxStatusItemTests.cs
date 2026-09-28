@@ -1,11 +1,35 @@
 using System.ComponentModel;
 using FiveMServerLauncher.Core.Enums;
+using FiveMServerLauncher.Localization;
 using FiveMServerLauncher.ViewModels;
 
 namespace FiveMServerLauncher.Tests.ViewModels;
 
 public class CfxStatusItemTests
 {
+    private static ILocalizer CreateSpanishLocalizer()
+    {
+        return new Localizer(
+            Localizer.ParseDictionaries(
+                ("en", """{ "CfxStatusOperational": "OPERATIONAL", "CfxStatusUnknown": "UNKNOWN" }"""),
+                ("es", """{ "CfxStatusOperational": "OPERATIVO", "CfxStatusUnknown": "DESCONOCIDO" }""")),
+            () => "en-US");
+    }
+
+    [Fact]
+    public void StatusLabel_WhenLanguageSwitched_ShouldRefresh()
+    {
+        // Given
+        var localizer = CreateSpanishLocalizer();
+        var item = new CfxStatusItem(GameClient.FiveM, localizer);
+        item.Apply(CfxStatus.Operational);
+
+        // When
+        localizer.SetLanguage("es");
+
+        // Then
+        Assert.Equal("OPERATIVO", item.StatusLabel);
+    }
     [Theory]
     [InlineData(GameClient.FiveM, "FiveM")]
     [InlineData(GameClient.FiveMEnhanced, "FiveM Enhanced")]

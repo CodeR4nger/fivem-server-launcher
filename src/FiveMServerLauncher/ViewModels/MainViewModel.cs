@@ -33,7 +33,7 @@ public class MainViewModel : INotifyPropertyChanged
     private LauncherSettings _settings;
 
     private string _serverAddress = string.Empty;
-    private string _statusText = "Ready";
+    private string _statusText = string.Empty;
     private bool _isBusy;
     private bool _isSettingsOpen;
     private SavedServerItem? _selectedServer;
@@ -69,6 +69,11 @@ public class MainViewModel : INotifyPropertyChanged
         _selectedLanguageOption = LanguageOptions.FirstOrDefault(o => o.Tag == _settings.Language)
             ?? LanguageOptions[0];
         _localizer.SetLanguage(_settings.Language);
+        _localizer.LanguageChanged += OnLanguageChanged;
+        StatusText = _localizer.Get("StatusReady");
+        FiveMStatus = new CfxStatusItem(GameClient.FiveM, _localizer);
+        FiveMEnhancedStatus = new CfxStatusItem(GameClient.FiveMEnhanced, _localizer);
+        RedMStatus = new CfxStatusItem(GameClient.RedM, _localizer);
         ConnectCommand = new AsyncRelayCommand(ConnectAsync, CanConnect);
         DeleteServerCommand = new RelayCommand(DeleteServer, CanDeleteServer);
         OpenClientCommand = new AsyncRelayCommand(OpenClientAsync, CanOpenClient);
@@ -100,9 +105,6 @@ public class MainViewModel : INotifyPropertyChanged
         SavedServersView.Filter = MatchesServerSearch;
         AvailableOpenClients = new ObservableCollection<InstalledClientOption>();
 
-        FiveMStatus = new CfxStatusItem(GameClient.FiveM);
-        FiveMEnhancedStatus = new CfxStatusItem(GameClient.FiveMEnhanced);
-        RedMStatus = new CfxStatusItem(GameClient.RedM);
         CfxStatuses = [FiveMStatus, FiveMEnhancedStatus, RedMStatus];
     }
 
@@ -222,7 +224,9 @@ public class MainViewModel : INotifyPropertyChanged
         private set => SetProperty(ref _isServerDialogOpen, value);
     }
 
-    public string ServerDialogTitle => EditingServer is null ? "NEW SERVER" : "EDIT SERVER";
+    public string ServerDialogTitle => EditingServer is null
+        ? _localizer.Get("DialogNewServer")
+        : _localizer.Get("DialogEditServer");
 
     public string DialogError
     {
@@ -278,7 +282,13 @@ public class MainViewModel : INotifyPropertyChanged
         set => SetProperty(ref _dialogGameClient, value);
     }
 
-    public IReadOnlyList<GameClientOption> DialogGameClientOptions => GameClientOption.DialogOptions;
+    public IReadOnlyList<GameClientOption> DialogGameClientOptions =>
+    [
+        new(null, _localizer.Get("GameClientNone")),
+        new(GameClient.FiveM, "FiveM"),
+        new(GameClient.FiveMEnhanced, "FiveM Enhanced"),
+        new(GameClient.RedM, "RedM")
+    ];
 
     private void UpdateIsDialogLocalhost()
     {
@@ -330,7 +340,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     public string DevClientLabel => InstalledClientOption.DisplayNameOf(DevClient);
 
-    public string DevClientButtonText => $"CLIENT: {DevClientLabel}";
+    public string DevClientButtonText => _localizer.Format("DevClientButton", DevClientLabel);
 
     public ICommand ToggleDevClientCommand { get; }
 
@@ -451,7 +461,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     public string SelectedOpenClientLabel => SelectedOpenClient?.DisplayName ?? string.Empty;
 
-    public IReadOnlyList<LanguageSettingOption> LanguageOptions { get; }
+    public IReadOnlyList<LanguageSettingOption> LanguageOptions { get; private set; }
 
     public LanguageSettingOption SelectedLanguageOption
     {
@@ -469,9 +479,23 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        var selectedTag = _selectedLanguageOption.Tag;
+        LanguageOptions = BuildLanguageOptions();
+        _selectedLanguageOption = LanguageOptions.FirstOrDefault(o => o.Tag == selectedTag)
+            ?? LanguageOptions[0];
+
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LanguageOptions)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedLanguageOption)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ServerDialogTitle)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevClientButtonText)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DialogGameClientOptions)));
+    }
+
     private IReadOnlyList<LanguageSettingOption> BuildLanguageOptions()
     {
-        var options = new List<LanguageSettingOption> { new(null, "System default") };
+        var options = new List<LanguageSettingOption> { new(null, _localizer.Get("LanguageSystemDefault")) };
         options.AddRange(_localizer.Languages.Select(l => new LanguageSettingOption(l.Tag, l.DisplayName)));
         return options;
     }
@@ -654,7 +678,7 @@ public class MainViewModel : INotifyPropertyChanged
         }
         catch (ArgumentException)
         {
-            DialogError = "Invalid name or address";
+            DialogError = _localizer.Get("DialogInvalidNameOrAddress");
             return;
         }
 
@@ -664,7 +688,7 @@ public class MainViewModel : INotifyPropertyChanged
         {
             if (conflicting is not null)
             {
-                DialogError = "Server already saved";
+                DialogError = _localizer.Get("DialogServerAlreadySaved");
                 return;
             }
 
@@ -675,7 +699,7 @@ public class MainViewModel : INotifyPropertyChanged
             if (conflicting is not null
                 && !conflicting.MatchesAddress(EditingServer.Address))
             {
-                DialogError = "Server already saved";
+                DialogError = _localizer.Get("DialogServerAlreadySaved");
                 return;
             }
 
@@ -714,7 +738,7 @@ public class MainViewModel : INotifyPropertyChanged
             // Refresh failure must not fail the save itself.
         }
 
-        StatusText = "Server saved";
+        StatusText = _localizer.Get("StatusServerSaved");
         CloseServerDialog();
     }
 
@@ -897,6 +921,7 @@ public class MainViewModel : INotifyPropertyChanged
             savedServer.RequiresSteam,
             savedServer.RequiresDiscord,
             () => PersistServer(item),
+            _localizer,
             savedServer.CfxId,
             savedServer.GameBuild,
             savedServer.PureMode,
@@ -927,7 +952,7 @@ public class MainViewModel : INotifyPropertyChanged
     public async Task ConnectAsync()
     {
         IsBusy = true;
-        StatusText = "Resolving...";
+        StatusText = _localizer.Get("StatusResolving");
 
         try
         {
@@ -937,11 +962,11 @@ public class MainViewModel : INotifyPropertyChanged
 
             foreach (var app in RequiredApps(profile.Requirements))
             {
-                StatusText = $"Starting {app}...";
+                StatusText = _localizer.Format("StatusStartingApp", app);
 
                 if (!await _preparer.TryPrepareAsync(app))
                 {
-                    StatusText = $"Could not start {app}";
+                    StatusText = _localizer.Format("StatusCouldNotStartApp", app);
                     return;
                 }
             }
@@ -958,7 +983,7 @@ public class MainViewModel : INotifyPropertyChanged
         }
         catch (InvalidAddressException)
         {
-            StatusText = "Invalid address";
+            StatusText = _localizer.Get("StatusInvalidAddress");
         }
         finally
         {
@@ -1089,14 +1114,14 @@ public class MainViewModel : INotifyPropertyChanged
         _settingsRepository.Save(_settings);
     }
 
-    private static string Describe(LaunchResult result)
+    private string Describe(LaunchResult result)
     {
         return result switch
         {
-            LaunchResult.Connect => "Launching FiveM...",
-            LaunchResult.OpenClient(var client) => $"Opening {InstalledClientOption.DisplayNameOf(client)}...",
-            LaunchResult.NotInstalled(var client) => $"{InstalledClientOption.DisplayNameOf(client)} is not installed",
-            LaunchResult.StartFailed => "Launch failed",
+            LaunchResult.Connect => _localizer.Get("StatusLaunchingFiveM"),
+            LaunchResult.OpenClient(var client) => _localizer.Format("StatusOpeningClient", InstalledClientOption.DisplayNameOf(client)),
+            LaunchResult.NotInstalled(var client) => _localizer.Format("StatusNotInstalled", InstalledClientOption.DisplayNameOf(client)),
+            LaunchResult.StartFailed => _localizer.Get("StatusLaunchFailed"),
             _ => throw new InvalidOperationException("Unknown LaunchResult"),
         };
     }
