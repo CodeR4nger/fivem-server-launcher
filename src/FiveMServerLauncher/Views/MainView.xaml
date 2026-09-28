@@ -388,6 +388,7 @@
                 <!-- SETTINGS PANEL -->
 
                 <Border Grid.Row="1"
+                        VerticalAlignment="Top"
                         Margin="14,10,14,0"
                         Padding="14"
                         Background="{StaticResource PanelLightBrush}"
@@ -405,7 +406,7 @@
                                    DisplayMemberPath="DisplayName"
                                    SelectedItem="{Binding PreferredClientOption}"
                                    Height="30"
-                                   Margin="0,6,0,10"
+                                   Margin="0,6,0,6"
                                    VerticalContentAlignment="Center"/>
 
                         <TextBlock Text="{loc:Loc LanguageHeader}"
@@ -415,7 +416,7 @@
                                   DisplayMemberPath="Label"
                                   SelectedItem="{Binding SelectedLanguageOption}"
                                   Height="30"
-                                  Margin="0,6,0,10"
+                                  Margin="0,6,0,6"
                                   VerticalContentAlignment="Center"/>
 
                         <CheckBox IsChecked="{Binding AutoLaunch}"
@@ -433,7 +434,7 @@
                 <StackPanel Grid.Row="2"
                             VerticalAlignment="Center"
                             HorizontalAlignment="Center"
-                            Margin="30"
+                            Margin="30,12"
                             Visibility="{Binding IsDevMode,
                                                  Converter={StaticResource InverseBoolToVisibility},
                                                  FallbackValue=Visible}">
