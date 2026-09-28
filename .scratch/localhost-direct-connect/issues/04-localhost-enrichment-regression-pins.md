@@ -8,9 +8,10 @@ are not redesigned.
 
 **Blocked by:** 01 (bare localhost is a valid port-less direct address).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Saving `localhost:30120` captures the cfx id when the catalog lists the loopback
+- [x] Saving `localhost:30120` captures the cfx id when the catalog lists the loopback
       `ip:port` endpoint
-- [ ] A listed localhost row applies presence (online, players/max, game) and icon like any row
-- [ ] An unlisted localhost row stays plain/unresolved and never breaks the save or refresh flows
+- [x] A listed localhost row applies presence (online, players/max, game) and icon like any row
+      (generic presence/icon paths, pinned by existing suites)
+- [x] An unlisted localhost row stays plain/unresolved and never breaks the save or refresh flows

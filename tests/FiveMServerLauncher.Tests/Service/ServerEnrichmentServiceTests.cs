@@ -364,6 +364,51 @@ public class ServerEnrichmentServiceTests
     }
 
     [Fact]
+    public async Task ResolveCfxIdAsync_WithLocalhostResolvedToLoopbackCatalogEndpoint_ShouldReturnEndPoint()
+    {
+        // Given — a publicly listed local dev server: the loopback host resolves via DNS to
+        // the catalog endpoint, so saving localhost captures the id.
+        var handler = new RoutedHttpMessageHandler();
+        handler.AddBytesRoute(
+            "streamRedir",
+            HttpStatusCode.OK,
+            TestProtobufFrames.BuildFrameStream(new Master.Server
+            {
+                EndPoint = "y4lg95",
+                Data = new Master.ServerData { ConnectEndPoints = { "127.0.0.1:30120" } }
+            }));
+        using var httpClient = new HttpClient(handler);
+        var dns = new FakeDnsResolver("127.0.0.1");
+        var service = new ServerEnrichmentService(httpClient, dnsResolver: dns);
+
+        // When
+        var result = await service.ResolveCfxIdAsync("localhost:30120");
+
+        // Then
+        Assert.Equal("y4lg95", result);
+    }
+
+    [Fact]
+    public async Task ResolveCfxIdAsync_WhenLocalhostUnlisted_ShouldReturnNullWithoutThrowing()
+    {
+        // Given — an unlisted local dev server stays plain; the capture degrades silently.
+        var handler = new RoutedHttpMessageHandler();
+        handler.AddBytesRoute(
+            "streamRedir",
+            HttpStatusCode.OK,
+            TestProtobufFrames.BuildFrameStream(new Master.Server { EndPoint = "other" }));
+        using var httpClient = new HttpClient(handler);
+        var dns = new FakeDnsResolver("127.0.0.1");
+        var service = new ServerEnrichmentService(httpClient, dnsResolver: dns);
+
+        // When
+        var result = await service.ResolveCfxIdAsync("localhost:30120");
+
+        // Then
+        Assert.Null(result);
+    }
+
+    [Fact]
     public async Task ResolveCfxIdAsync_WithBareIpInCatalogOnDefaultPort_ShouldReturnEndPoint()
     {
         // Given
