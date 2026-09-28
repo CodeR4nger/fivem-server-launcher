@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using FiveMServerLauncher.Core;
 using FiveMServerLauncher.Domain;
 
 namespace FiveMServerLauncher.Configuration;
@@ -112,13 +113,6 @@ public class FileServerRepository : IServerRepository
 
     private void WriteAll(List<SavedServer> servers)
     {
-        var directory = Path.GetDirectoryName(_filePath);
-
-        if (!string.IsNullOrEmpty(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        File.WriteAllText(_filePath, JsonSerializer.Serialize(servers, SerializerOptions));
+        AtomicFile.WriteAllText(_filePath, JsonSerializer.Serialize(servers, SerializerOptions));
     }
 }

@@ -1,4 +1,5 @@
 using System.IO;
+using FiveMServerLauncher.Core;
 
 namespace FiveMServerLauncher.Service;
 
@@ -46,7 +47,7 @@ public sealed class CitizenFxConfigWriter : ICitizenFxConfigWriter
         }
 
         var output = BuildOutput(lines, gameStart, gameEnd, values);
-        await File.WriteAllTextAsync(iniPath, string.Join(Environment.NewLine, output));
+        AtomicFile.WriteAllText(iniPath, string.Join(Environment.NewLine, output));
     }
 
     private static bool HasMatchingValue(

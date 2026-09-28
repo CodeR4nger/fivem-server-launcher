@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.IO;
 using System.Text.Json.Serialization;
+using FiveMServerLauncher.Core;
 
 
 namespace FiveMServerLauncher.Configuration;
@@ -28,16 +29,9 @@ public class FileSettingsStorage : ISettingsStorage
     {
         ArgumentNullException.ThrowIfNull(settings);
 
-        var directory = Path.GetDirectoryName(_filePath);
-
-        if (!string.IsNullOrEmpty(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
         var json = JsonSerializer.Serialize(settings, SerializerOptions);
 
-        File.WriteAllText(_filePath, json);
+        AtomicFile.WriteAllText(_filePath, json);
     }
     public LauncherSettings? Load()
     {
