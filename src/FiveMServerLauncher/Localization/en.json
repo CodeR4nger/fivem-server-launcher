@@ -60,5 +60,6 @@
   "CfxStatusUnknown": "UNKNOWN",
   "DialogCfxIdField": "CFX ID",
   "DialogGameField": "GAME",
-  "GameClientNone": "None"
+  "GameClientNone": "None",
+  "DialogLocalDevHeader": "LOCAL DEV"
 }

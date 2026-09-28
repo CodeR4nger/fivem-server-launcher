@@ -978,12 +978,14 @@
                                      Converter={StaticResource BoolToVisibility},
                                      FallbackValue=Collapsed}">
 
+            <StackPanel Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center">
+
             <Border Background="{StaticResource PanelBrush}"
                     BorderBrush="{StaticResource BorderBrush}"
                     BorderThickness="1"
                     Padding="20"
-                    VerticalAlignment="Center"
-                    HorizontalAlignment="Center"
                     MinWidth="320">
 
                 <StackPanel>
@@ -1018,76 +1020,6 @@
                              FontSize="12"
                              MinHeight="38"
                              Margin="0,5,0,0"/>
-
-                    <!-- LOCALHOST MANUAL PARAMETERS (sub Dev Mode) -->
-
-                    <StackPanel Visibility="{Binding IsDialogLocalhost,
-                                                     Converter={StaticResource BoolToVisibility}}">
-
-                        <TextBlock Text="CFX ID"
-                                   Style="{StaticResource SectionHeaderStyle}"
-                                   Margin="0,10,0,0"/>
-
-                        <TextBox Text="{Binding DialogCfxId, UpdateSourceTrigger=PropertyChanged}"
-                                 Background="{StaticResource PanelLightBrush}"
-                                 Foreground="{StaticResource TextBrush}"
-                                 BorderBrush="{StaticResource BorderBrush}"
-                                 BorderThickness="1"
-                                 Padding="12,8"
-                                 FontSize="12"
-                                 MinHeight="38"
-                                 Margin="0,5,0,0"/>
-
-                        <TextBlock Text="GAME BUILD"
-                                   Style="{StaticResource SectionHeaderStyle}"
-                                   Margin="0,10,0,0"/>
-
-                        <TextBox Text="{Binding DialogGameBuildText, UpdateSourceTrigger=PropertyChanged}"
-                                 Background="{StaticResource PanelLightBrush}"
-                                 Foreground="{StaticResource TextBrush}"
-                                 BorderBrush="{StaticResource BorderBrush}"
-                                 BorderThickness="1"
-                                 Padding="12,8"
-                                 FontSize="12"
-                                 MinHeight="38"
-                                 Margin="0,5,0,0"/>
-
-                        <TextBlock Text="PURE MODE"
-                                   Style="{StaticResource SectionHeaderStyle}"
-                                   Margin="0,10,0,0"/>
-
-                        <ComboBox SelectedValue="{Binding DialogPureMode}"
-                                  SelectedValuePath="Tag"
-                                  MinHeight="30"
-                                  VerticalContentAlignment="Center"
-                                  Margin="0,5,0,0">
-
-                            <ComboBoxItem Content="None"/>
-                            <ComboBoxItem Content="0">
-                                <ComboBoxItem.Tag><sys:Int32>0</sys:Int32></ComboBoxItem.Tag>
-                            </ComboBoxItem>
-                            <ComboBoxItem Content="1">
-                                <ComboBoxItem.Tag><sys:Int32>1</sys:Int32></ComboBoxItem.Tag>
-                            </ComboBoxItem>
-                            <ComboBoxItem Content="2">
-                                <ComboBoxItem.Tag><sys:Int32>2</sys:Int32></ComboBoxItem.Tag>
-                            </ComboBoxItem>
-
-                        </ComboBox>
-
-                        <TextBlock Text="GAME"
-                                   Style="{StaticResource SectionHeaderStyle}"
-                                   Margin="0,10,0,0"/>
-
-                        <ComboBox ItemsSource="{Binding DialogGameClientOptions}"
-                                  DisplayMemberPath="Label"
-                                  SelectedValuePath="Game"
-                                  SelectedValue="{Binding DialogGameClient}"
-                                  MinHeight="30"
-                                  VerticalContentAlignment="Center"
-                                  Margin="0,5,0,0"/>
-
-                    </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
 
@@ -1130,6 +1062,123 @@
                 </StackPanel>
 
             </Border>
+
+            <!-- LOCAL DEV SIDE PANEL (loopback addresses only, slides in from the right) -->
+
+            <Border Margin="10,0,0,0"
+                    Background="{StaticResource PanelBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    Padding="20"
+                    MinWidth="220"
+                    Visibility="{Binding IsDialogLocalhost,
+                                         Converter={StaticResource BoolToVisibility}}">
+
+                <Border.RenderTransform>
+                    <TranslateTransform/>
+                </Border.RenderTransform>
+
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsDialogLocalhost}" Value="True">
+                                <DataTrigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(TranslateTransform.X)"
+                                                             From="60"
+                                                             To="0"
+                                                             Duration="0:0:0.25">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut"/>
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                             From="0"
+                                                             To="1"
+                                                             Duration="0:0:0.25"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </DataTrigger.EnterActions>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+
+                <StackPanel VerticalAlignment="Top">
+
+                    <TextBlock Text="LOCAL DEV"
+                               Style="{StaticResource SectionHeaderStyle}"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,12"/>
+
+                    <TextBlock Text="CFX ID"
+                               Style="{StaticResource SectionHeaderStyle}"/>
+
+                    <TextBox Text="{Binding DialogCfxId, UpdateSourceTrigger=PropertyChanged}"
+                             Background="{StaticResource PanelLightBrush}"
+                             Foreground="{StaticResource TextBrush}"
+                             BorderBrush="{StaticResource BorderBrush}"
+                             BorderThickness="1"
+                             Padding="12,8"
+                             FontSize="12"
+                             MinHeight="38"
+                             Margin="0,5,0,0"/>
+
+                    <TextBlock Text="GAME BUILD"
+                               Style="{StaticResource SectionHeaderStyle}"
+                               Margin="0,10,0,0"/>
+
+                    <TextBox Text="{Binding DialogGameBuildText, UpdateSourceTrigger=PropertyChanged}"
+                             Background="{StaticResource PanelLightBrush}"
+                             Foreground="{StaticResource TextBrush}"
+                             BorderBrush="{StaticResource BorderBrush}"
+                             BorderThickness="1"
+                             Padding="12,8"
+                             FontSize="12"
+                             MinHeight="38"
+                             Margin="0,5,0,0"/>
+
+                    <TextBlock Text="PURE MODE"
+                               Style="{StaticResource SectionHeaderStyle}"
+                               Margin="0,10,0,0"/>
+
+                    <ComboBox SelectedValue="{Binding DialogPureMode}"
+                              SelectedValuePath="Tag"
+                              MinHeight="30"
+                              VerticalContentAlignment="Center"
+                              Margin="0,5,0,0">
+
+                        <ComboBoxItem Content="None"/>
+                        <ComboBoxItem Content="0">
+                            <ComboBoxItem.Tag><sys:Int32>0</sys:Int32></ComboBoxItem.Tag>
+                        </ComboBoxItem>
+                        <ComboBoxItem Content="1">
+                            <ComboBoxItem.Tag><sys:Int32>1</sys:Int32></ComboBoxItem.Tag>
+                        </ComboBoxItem>
+                        <ComboBoxItem Content="2">
+                            <ComboBoxItem.Tag><sys:Int32>2</sys:Int32></ComboBoxItem.Tag>
+                        </ComboBoxItem>
+
+                    </ComboBox>
+
+                    <TextBlock Text="GAME"
+                               Style="{StaticResource SectionHeaderStyle}"
+                               Margin="0,10,0,0"/>
+
+                    <ComboBox ItemsSource="{Binding DialogGameClientOptions}"
+                              DisplayMemberPath="Label"
+                              SelectedValuePath="Game"
+                              SelectedValue="{Binding DialogGameClient}"
+                              MinHeight="30"
+                              VerticalContentAlignment="Center"
+                              Margin="0,5,0,0"/>
+
+                </StackPanel>
+
+            </Border>
+
+            </StackPanel>
 
         </Border>
 
