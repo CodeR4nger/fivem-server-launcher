@@ -813,7 +813,8 @@ public class MainViewModel : INotifyPropertyChanged
 
         try
         {
-            var savedServer = _serverRepository.FindByAddress(ServerAddress);
+            var savedServer = _serverRepository.FindByAddress(ServerAddress)
+                ?? FindSavedContextById(ServerAddress);
             var profile = await _resolver.ResolveAsync(ServerAddress, savedServer);
 
             foreach (var app in RequiredApps(profile.Requirements))
@@ -845,6 +846,16 @@ public class MainViewModel : INotifyPropertyChanged
         {
             IsBusy = false;
         }
+    }
+
+    private SavedServer? FindSavedContextById(string address)
+    {
+        var kind = Domain.ServerAddress.Classify(address);
+
+        // Only id-form typed addresses can carry a cfx id to look up.
+        return kind is ServerAddressKind.CfxId or ServerAddressKind.CfxJoinUrl
+            ? _serverRepository.FindByCfxId(Domain.ServerAddress.ExtractCfxId(address))
+            : null;
     }
 
     private static List<ExternalApp> RequiredApps(ServerRequirements requirements)

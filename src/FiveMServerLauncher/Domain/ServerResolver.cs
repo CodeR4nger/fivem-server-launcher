@@ -26,7 +26,7 @@ public class ServerResolver(
 
         var profile = kind switch
         {
-            ServerAddressKind.CfxId or ServerAddressKind.CfxJoinUrl => await ResolveCfxAsync(address),
+            ServerAddressKind.CfxId or ServerAddressKind.CfxJoinUrl => await ResolveCfxAsync(address, savedServer),
             ServerAddressKind.IpPort => await ResolveIpPortAsync(address),
             ServerAddressKind.DomainPort => await ResolveDomainPortAsync(address),
             ServerAddressKind.IpAddress => await ResolveBareIpAsync(address),
@@ -39,7 +39,7 @@ public class ServerResolver(
         return profile;
     }
 
-    private async Task<ServerProfile> ResolveCfxAsync(string originalAddress)
+    private async Task<ServerProfile> ResolveCfxAsync(string originalAddress, SavedServer? savedServer)
     {
         var cfxId = ServerAddress.ExtractCfxId(originalAddress);
 
@@ -47,7 +47,10 @@ public class ServerResolver(
 
         if (server is null)
         {
-            throw new InvalidAddressException(originalAddress);
+            // Id resolution failed (delisted server or CFX outage); a saved server that
+            // links this id to a direct address still connects directly.
+            return BuildDirectFallbackProfile(savedServer)
+                ?? throw new InvalidAddressException(originalAddress);
         }
 
         return new ServerProfile
@@ -58,6 +61,18 @@ public class ServerResolver(
             Requirements = requirementsResolver.Resolve(server),
             IsCfxValidated = true
         };
+    }
+
+    private static ServerProfile? BuildDirectFallbackProfile(SavedServer? savedServer)
+    {
+        if (savedServer is null)
+        {
+            return null;
+        }
+
+        return ServerAddress.IsDirectAddress(ServerAddress.Classify(savedServer.Address))
+            ? BuildUnvalidatedProfile(savedServer.Address)
+            : null;
     }
 
     private async Task<ServerProfile> ResolveIpPortAsync(string address)

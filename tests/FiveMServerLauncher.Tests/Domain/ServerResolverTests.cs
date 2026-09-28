@@ -816,6 +816,85 @@ public class ServerResolverTests
         Assert.Equal("y4lg95", result.CfxId);
     }
 
+    [Fact]
+    public async Task Resolve_WhenCfxIdUnresolvableAndSavedServerHasDirectAddress_ShouldReturnUnvalidatedDirectProfile()
+    {
+        // Given — the CFX service cannot resolve the id (delisted server or outage) but the
+        // saved server links it to a direct connect address.
+        const string address = "y4lg95";
+        var savedServer = SavedServer.Create("Local Dev", "localhost:30120", cfxId: address);
+
+        var resolver = CreateResolver();
+
+        // When
+        var result = await resolver.ResolveAsync(address, savedServer);
+
+        // Then
+        Assert.False(result.IsCfxValidated);
+        Assert.Equal("localhost:30120", result.Address);
+        Assert.Equal(string.Empty, result.CfxId);
+        Assert.Null(result.GameClient);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenCfxIdUnresolvableAndSavedServerHasCfxFormAddress_ShouldThrow()
+    {
+        // Given — the saved row itself was stored by id, so no direct address is known.
+        const string address = "cfx.re/join/y4lg95";
+        var savedServer = SavedServer.Create("By Id", address);
+
+        var resolver = CreateResolver();
+
+        // When / Then
+        await Assert.ThrowsAsync<InvalidAddressException>(
+            () => resolver.ResolveAsync(address, savedServer));
+    }
+
+    [Fact]
+    public async Task Resolve_WhenFallingBackToDirectAddress_ShouldApplySavedManualRequirements()
+    {
+        // Given
+        const string address = "y4lg95";
+        var savedServer = SavedServer.Create("Local Dev", "127.0.0.1:30120", requiresSteam: true, cfxId: address);
+
+        var resolver = CreateResolver();
+
+        // When
+        var result = await resolver.ResolveAsync(address, savedServer);
+
+        // Then
+        Assert.False(result.IsCfxValidated);
+        Assert.True(result.Requirements.SteamRequired);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenCfxIdResolves_ShouldIgnoreSavedDirectAddress()
+    {
+        // Given — the validated path always wins over the saved direct address.
+        const string address = "y4lg95";
+        var savedServer = SavedServer.Create("Local Dev", "127.0.0.1:30120", cfxId: address);
+
+        var handler = new FakeHttpMessageHandler(
+            System.Net.HttpStatusCode.OK,
+            """
+            {
+                "EndPoint": "y4lg95",
+                "Data": {
+                    "sv_projectName": "Test Server"
+                }
+            }
+            """);
+        using var httpClient = new HttpClient(handler);
+        var resolver = CreateResolver(new CfxService(httpClient));
+
+        // When
+        var result = await resolver.ResolveAsync(address, savedServer);
+
+        // Then
+        Assert.True(result.IsCfxValidated);
+        Assert.Equal("y4lg95", result.CfxId);
+    }
+
     private static ServerResolver CreateResolver(
         CfxService? cfxService = null,
         HttpClient? catalogHttpClient = null,

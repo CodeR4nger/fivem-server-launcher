@@ -9,16 +9,16 @@ address the failure stays as today. Normal resolution is unchanged.
 
 **Blocked by:** 02 (find saved server by cfx id).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Resolver: id-form resolution failure + passed saved server with a direct-form address
+- [x] Resolver: id-form resolution failure + passed saved server with a direct-form address
       yields an unvalidated profile with that address (validated resolution unchanged)
-- [ ] Resolver: id-form failure with no direct address available still raises the invalid-address
+- [x] Resolver: id-form failure with no direct address available still raises the invalid-address
       failure
-- [ ] Resolver: the fallback profile's effective requirements merge the saved server's manual
+- [x] Resolver: the fallback profile's effective requirements merge the saved server's manual
       flags (additive Steam rule included)
-- [ ] Connect flow: saved context is matched by typed address first, else by cfx id when the
+- [x] Connect flow: saved context is matched by typed address first, else by cfx id when the
       typed address is a cfx form
-- [ ] End to end: saved direct server + its id typed while the CFX service is unavailable still
+- [x] End to end: saved direct server + its id typed while the CFX service is unavailable still
       launches a direct connect to the saved address
-- [ ] End to end: an unknown id with no saved row still shows the invalid-address status
+- [x] End to end: an unknown id with no saved row still shows the invalid-address status

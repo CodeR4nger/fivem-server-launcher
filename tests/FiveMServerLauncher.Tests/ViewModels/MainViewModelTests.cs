@@ -52,6 +52,62 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public async Task ConnectAsync_WhenCfxIdUnresolvableButSavedDirectAddressExists_ShouldConnectDirectly()
+    {
+        // Given — the server is delisted (id unresolvable) but a saved row links its id
+        // to a direct address.
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("Local Dev", "localhost:30120", cfxId: "y4lg95"));
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(processLauncher, "{}", repository: repository);
+        vm.ServerAddress = "y4lg95";
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Single(processLauncher.Requests);
+        Assert.Equal("fivem://connect/localhost:30120", processLauncher.Requests[0].AbsoluteUri);
+        Assert.Equal("Launching FiveM...", vm.StatusText);
+        Assert.False(vm.IsBusy);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_WhenJoinUrlUnresolvableButSavedDirectAddressExists_ShouldConnectDirectly()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("Local Dev", "127.0.0.1:30120", cfxId: "y4lg95"));
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(processLauncher, "{}", repository: repository);
+        vm.ServerAddress = "cfx.re/join/y4lg95";
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Single(processLauncher.Requests);
+        Assert.Equal("fivem://connect/127.0.0.1:30120", processLauncher.Requests[0].AbsoluteUri);
+        Assert.Equal("Launching FiveM...", vm.StatusText);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_WhenUnresolvableCfxIdAndNoSavedRow_ShouldShowInvalidAddress()
+    {
+        // Given — an unknown id with no saved context still fails as before.
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(processLauncher, "{}");
+        vm.ServerAddress = "y4lg95";
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Equal("Invalid address", vm.StatusText);
+        Assert.Empty(processLauncher.Requests);
+    }
+
+    [Fact]
     public async Task ConnectAsync_WithEnhancedServer_ShouldStartEnhancedExecutableAndShowOpenClientStatus()
     {
         // Given

@@ -237,6 +237,27 @@ public class ServerAddressTests
         Assert.Equal(ServerAddressKind.Unknown, kind);
     }
 
+    [Theory]
+    [InlineData(ServerAddressKind.IpPort)]
+    [InlineData(ServerAddressKind.DomainPort)]
+    [InlineData(ServerAddressKind.IpAddress)]
+    [InlineData(ServerAddressKind.DomainName)]
+    public void IsDirectAddress_WhenDirectKind_ShouldReturnTrue(ServerAddressKind kind)
+    {
+        // Given / When / Then
+        Assert.True(ServerAddress.IsDirectAddress(kind));
+    }
+
+    [Theory]
+    [InlineData(ServerAddressKind.Unknown)]
+    [InlineData(ServerAddressKind.CfxId)]
+    [InlineData(ServerAddressKind.CfxJoinUrl)]
+    public void IsDirectAddress_WhenNonDirectKind_ShouldReturnFalse(ServerAddressKind kind)
+    {
+        // Given / When / Then
+        Assert.False(ServerAddress.IsDirectAddress(kind));
+    }
+
     [Fact]
     public void HasServerFormWithNonEmptyId_WhenCfxJoinUrlWithoutScheme_ShouldReturnTrue()
     {

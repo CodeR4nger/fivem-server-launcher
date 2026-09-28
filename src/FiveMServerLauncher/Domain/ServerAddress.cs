@@ -16,6 +16,12 @@ public static class ServerAddress
     public const string Prefix = "cfx.re/join/";
     public const int DefaultPort = 30120;
 
+    public static bool IsDirectAddress(ServerAddressKind kind)
+    {
+        return kind is ServerAddressKind.IpPort or ServerAddressKind.DomainPort
+            or ServerAddressKind.IpAddress or ServerAddressKind.DomainName;
+    }
+
     public static ServerAddressKind Classify(string address)
     {
         if (IsCfxJoinUrlWithValidId(address))
