@@ -1369,6 +1369,172 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public async Task OpenAddServerDialogCommand_ShouldResetLoopbackManualFields()
+    {
+        // Given
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+        await vm.InitializeAsync();
+
+        // When
+        vm.OpenAddServerDialogCommand.Execute(null);
+
+        // Then
+        Assert.Equal(string.Empty, vm.DialogCfxId);
+        Assert.Equal(string.Empty, vm.DialogGameBuildText);
+        Assert.Null(vm.DialogPureMode);
+        Assert.Null(vm.DialogGameClient);
+        Assert.False(vm.IsDialogLocalhost);
+    }
+
+    [Fact]
+    public async Task DialogServerAddress_WhenLoopback_ShouldShowManualSection()
+    {
+        // Given
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+        await vm.InitializeAsync();
+        vm.OpenAddServerDialogCommand.Execute(null);
+
+        // When
+        vm.DialogServerAddress = "localhost:30120";
+
+        // Then
+        Assert.True(vm.IsDialogLocalhost);
+
+        // And when
+        vm.DialogServerAddress = "cfx.re/join/abc123";
+
+        // Then
+        Assert.False(vm.IsDialogLocalhost);
+    }
+
+    [Fact]
+    public async Task SaveServerDialogCommand_WhenLoopbackWithManualParameters_ShouldPersistOverrides()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+        await vm.InitializeAsync();
+        vm.OpenAddServerDialogCommand.Execute(null);
+        vm.DialogServerName = "Local Dev";
+        vm.DialogServerAddress = "localhost:30120";
+        vm.DialogCfxId = "8y6354";
+        vm.DialogGameBuildText = "3258";
+        vm.DialogPureMode = 2;
+        vm.DialogGameClient = GameClient.RedM;
+
+        // When
+        vm.SaveServerDialogCommand.Execute(null);
+
+        // Then
+        var row = Assert.Single(vm.SavedServers);
+        Assert.Equal("localhost:30120", row.Address);
+        Assert.Equal("8y6354", row.CfxId);
+        Assert.Equal(3258, row.GameBuild);
+        Assert.Equal(2, row.PureMode);
+        Assert.Equal(GameClient.RedM, row.GameClient);
+        Assert.Equal("8y6354", Assert.Single(repository.GetAll()).CfxId);
+    }
+
+    [Fact]
+    public async Task OpenEditServerDialogCommand_WhenLoopbackRow_ShouldPrefillManualParameters()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create(
+            "Local Dev", "localhost:30120",
+            cfxId: "8y6354", gameBuild: 3258, pureMode: 1, gameClient: GameClient.RedM));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+        await vm.InitializeAsync();
+
+        // When
+        vm.OpenEditServerDialogCommand.Execute(vm.SavedServers[0]);
+
+        // Then
+        Assert.True(vm.IsDialogLocalhost);
+        Assert.Equal("8y6354", vm.DialogCfxId);
+        Assert.Equal("3258", vm.DialogGameBuildText);
+        Assert.Equal(1, vm.DialogPureMode);
+        Assert.Equal(GameClient.RedM, vm.DialogGameClient);
+    }
+
+    [Fact]
+    public async Task SaveServerDialogCommand_WhenNonLoopback_ShouldNotPersistManualFields()
+    {
+        // Given — the manual section is loopback-only.
+        var repository = new InMemoryServerRepository();
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+        await vm.InitializeAsync();
+        vm.OpenAddServerDialogCommand.Execute(null);
+        vm.DialogServerName = "Remote";
+        vm.DialogServerAddress = "cfx.re/join/abc123";
+
+        // When
+        vm.SaveServerDialogCommand.Execute(null);
+
+        // Then
+        var row = Assert.Single(vm.SavedServers);
+        Assert.Null(row.GameBuild);
+        Assert.Null(row.PureMode);
+        Assert.Null(row.GameClient);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_WhenLoopbackRowWithManualOverrides_ShouldLaunchDirectWithFlags()
+    {
+        // Given — a delisted local server: manual parameters drive the launch.
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create(
+            "Local Dev", "localhost:30120",
+            gameBuild: 3258, pureMode: 1, gameClient: GameClient.RedM));
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(processLauncher, CfxJson("gta5"), repository);
+        vm.ServerAddress = "localhost:30120";
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Single(processLauncher.Requests);
+        Assert.Equal("redm://connect/localhost:30120?-b3258?-pure_1", processLauncher.Requests[0].AbsoluteUri);
+        Assert.Equal("Launching FiveM...", vm.StatusText);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_WhenLoopbackRowWithResolvableManualCfxId_ShouldUseIdRequirements()
+    {
+        // Given — the manual id resolves; its published build/pure win over manual values.
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create(
+            "Local Dev", "localhost:30120",
+            cfxId: "y4lg95", gameBuild: 9999, pureMode: 0, gameClient: GameClient.RedM));
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(
+            processLauncher,
+            """
+            {
+                "EndPoint": "y4lg95",
+                "Data": {
+                    "sv_projectName": "Local Dev",
+                    "vars": {
+                        "gamename": "gta5",
+                        "sv_enforceGameBuild": "3095",
+                        "sv_pureLevel": "2"
+                    }
+                }
+            }
+            """,
+            repository);
+        vm.ServerAddress = "localhost:30120";
+
+        // When
+        await vm.ConnectAsync();
+
+        // Then
+        Assert.Single(processLauncher.Requests);
+        Assert.Equal("fivem://connect/localhost:30120?-b3095?-pure_2", processLauncher.Requests[0].AbsoluteUri);
+    }
+
+    [Fact]
     public async Task SaveServerDialogCommand_OnAdd_ShouldPersistAndCloseDialog()
     {
         // Given

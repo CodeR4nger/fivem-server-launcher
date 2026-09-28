@@ -27,6 +27,25 @@ public static class ServerAddress
         return kind is ServerAddressKind.CfxId or ServerAddressKind.CfxJoinUrl;
     }
 
+    public static bool IsLoopbackAddress(string address)
+    {
+        var kind = Classify(address);
+
+        return kind switch
+        {
+            ServerAddressKind.IpPort or ServerAddressKind.DomainPort
+                when TrySplitHostPort(address, out var host, out _) && IsLoopbackHost(host) => true,
+            ServerAddressKind.IpAddress when IsLoopbackHost(address) => true,
+            ServerAddressKind.DomainName when IsLocalhost(address) => true,
+            _ => false
+        };
+    }
+
+    private static bool IsLoopbackHost(string host)
+    {
+        return host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase) || IsLocalhost(host);
+    }
+
     public static ServerAddressKind Classify(string address)
     {
         if (IsCfxJoinUrlWithValidId(address))

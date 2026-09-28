@@ -1,4 +1,5 @@
 using FiveMServerLauncher.Configuration;
+using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Domain;
 using Xunit;
 
@@ -310,6 +311,49 @@ public class FileServerRepositoryTests
         // Then
         Assert.NotNull(result);
         Assert.Equal("First", result.Name);
+    }
+
+    [Fact]
+    public void AddThenReopen_WhenServerHasManualOverrides_ShouldPersistThem()
+    {
+        // Given
+        using var tempDir = new TempSettingsDirectory();
+        var first = new FileServerRepository(tempDir.FilePath);
+        first.Add(SavedServer.Create(
+            "Local Dev", "localhost:30120",
+            cfxId: "8y6354", gameBuild: 3258, pureMode: 1, gameClient: GameClient.RedM));
+
+        // When (a fresh instance reads the same file)
+        var second = new FileServerRepository(tempDir.FilePath);
+        var server = Assert.Single(second.GetAll());
+
+        // Then
+        Assert.Equal("8y6354", server.CfxId);
+        Assert.Equal(3258, server.GameBuild);
+        Assert.Equal(1, server.PureMode);
+        Assert.Equal(GameClient.RedM, server.GameClient);
+    }
+
+    [Fact]
+    public void GetAll_WhenFileLacksOverrideFields_ShouldDeserializeWithNulls()
+    {
+        // Given — pre-v1.2 files carry no override fields.
+        using var tempDir = new TempSettingsDirectory();
+        Directory.CreateDirectory(tempDir.DirectoryPath);
+        File.WriteAllText(
+            tempDir.FilePath,
+            """[{"Name": "My Server", "Address": "localhost:30120", "CfxId": "8y6354"}]""");
+        var repository = new FileServerRepository(tempDir.FilePath);
+
+        // When
+        var result = repository.GetAll();
+
+        // Then
+        var server = Assert.Single(result);
+        Assert.Equal("8y6354", server.CfxId);
+        Assert.Null(server.GameBuild);
+        Assert.Null(server.PureMode);
+        Assert.Null(server.GameClient);
     }
 
     [Fact]

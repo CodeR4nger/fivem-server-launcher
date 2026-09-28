@@ -927,6 +927,163 @@ public class ServerResolverTests
             () => resolver.ResolveAsync(address));
     }
 
+    [Fact]
+    public async Task Resolve_WhenLoopbackWithResolvableManualCfxId_ShouldTakeRequirementsFromThatServerAndConnectDirect()
+    {
+        // Given — the manual id links the loopback address to one specific listed server;
+        // its published build/pure/game win over the manual values.
+        const string address = "localhost:30120";
+        var savedServer = SavedServer.Create(
+            "Local Dev", address,
+            cfxId: "8y6354", gameBuild: 9999, pureMode: 0, gameClient: Core.Enums.GameClient.RedM);
+
+        var handler = new FakeHttpMessageHandler(
+            System.Net.HttpStatusCode.OK,
+            """
+            {
+                "EndPoint": "8y6354",
+                "Data": {
+                    "sv_projectName": "Local Dev",
+                    "vars": {
+                        "gamename": "gta5enhanced",
+                        "sv_enforceGameBuild": "3095",
+                        "sv_pureLevel": "2"
+                    }
+                }
+            }
+            """);
+        using var httpClient = new HttpClient(handler);
+        var resolver = CreateResolver(new CfxService(httpClient));
+
+        // When
+        var result = await resolver.ResolveAsync(address, savedServer);
+
+        // Then
+        Assert.True(result.IsCfxValidated);
+        Assert.Equal(address, result.Address);
+        Assert.Equal(string.Empty, result.CfxId);
+        Assert.Equal(Core.Enums.GameClient.FiveMEnhanced, result.GameClient);
+        Assert.Equal(3095, result.Requirements.GameBuild);
+        Assert.Equal(2, result.Requirements.PureMode);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenLoopbackWithDelistedManualCfxId_ShouldApplyManualOverrides()
+    {
+        // Given — the id is delisted; the manual values carry the connection.
+        const string address = "localhost:30120";
+        var savedServer = SavedServer.Create(
+            "Local Dev", address,
+            cfxId: "8y6354", gameBuild: 3258, pureMode: 1, gameClient: Core.Enums.GameClient.RedM);
+
+        var resolver = CreateResolver();
+
+        // When
+        var result = await resolver.ResolveAsync(address, savedServer);
+
+        // Then
+        Assert.False(result.IsCfxValidated);
+        Assert.Equal(address, result.Address);
+        Assert.Equal(Core.Enums.GameClient.RedM, result.GameClient);
+        Assert.Equal(3258, result.Requirements.GameBuild);
+        Assert.Equal(1, result.Requirements.PureMode);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenLoopbackWithCfxServiceOutage_ShouldApplyManualOverrides()
+    {
+        // Given — a CFX outage degrades exactly like a delisted id.
+        const string address = "127.0.0.1:30120";
+        var savedServer = SavedServer.Create(
+            "Local Dev", address, gameBuild: 3095, pureMode: 2, gameClient: Core.Enums.GameClient.RedM);
+
+        var resolver = CreateResolver(
+            cfxService: new CfxService(new HttpClient(new FakeHttpMessageHandler(true))));
+
+        // When
+        var result = await resolver.ResolveAsync(address, savedServer);
+
+        // Then
+        Assert.False(result.IsCfxValidated);
+        Assert.Equal(address, result.Address);
+        Assert.Equal(Core.Enums.GameClient.RedM, result.GameClient);
+        Assert.Equal(3095, result.Requirements.GameBuild);
+        Assert.Equal(2, result.Requirements.PureMode);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenLoopbackWithoutOverrides_ShouldStayUnvalidatedDirect()
+    {
+        // Given — a plain loopback row keeps today's bare direct connect.
+        const string address = "localhost:30120";
+        var savedServer = SavedServer.Create("Local Dev", address);
+
+        var resolver = CreateResolver();
+
+        // When
+        var result = await resolver.ResolveAsync(address, savedServer);
+
+        // Then
+        Assert.False(result.IsCfxValidated);
+        Assert.Equal(address, result.Address);
+        Assert.Null(result.Requirements.GameBuild);
+        Assert.Null(result.Requirements.PureMode);
+        Assert.Null(result.GameClient);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenLoopbackManualRequiresSteam_ShouldApplyAdditivelyOverPublishedId()
+    {
+        // Given — the additive Steam rule survives the loopback path.
+        const string address = "localhost:30120";
+        var savedServer = SavedServer.Create(
+            "Local Dev", address, requiresSteam: true,
+            cfxId: "8y6354", gameBuild: 3258, gameClient: Core.Enums.GameClient.FiveM);
+
+        var handler = new FakeHttpMessageHandler(
+            System.Net.HttpStatusCode.OK,
+            """
+            {
+                "EndPoint": "8y6354",
+                "Data": {
+                    "vars": { "sv_enforceSteamAuth": "false" }
+                }
+            }
+            """);
+        using var httpClient = new HttpClient(handler);
+        var resolver = CreateResolver(new CfxService(httpClient));
+
+        // When
+        var result = await resolver.ResolveAsync(address, savedServer);
+
+        // Then
+        Assert.True(result.IsCfxValidated);
+        Assert.True(result.Requirements.SteamRequired);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenNonLoopbackSavedServerHasOverrides_ShouldIgnoreThem()
+    {
+        // Given — manual overrides are loopback-only; a normal address ignores them.
+        const string address = "149.56.120.52:30320";
+        var savedServer = SavedServer.Create(
+            "Remote", address, gameBuild: 3258, pureMode: 2, gameClient: Core.Enums.GameClient.RedM);
+
+        var resolver = CreateResolver(
+            catalogHttpClient: new HttpClient(new FakeHttpMessageHandler(
+                System.Net.HttpStatusCode.OK,
+                TestProtobufFrames.BuildFrameStream(new Master.Server { EndPoint = "other" }))));
+
+        // When
+        var result = await resolver.ResolveAsync(address, savedServer);
+
+        // Then
+        Assert.False(result.IsCfxValidated);
+        Assert.Null(result.Requirements.GameBuild);
+        Assert.Null(result.Requirements.PureMode);
+        Assert.Null(result.GameClient);
+    }
+
     private static ServerResolver CreateResolver(
         CfxService? cfxService = null,
         HttpClient? catalogHttpClient = null,

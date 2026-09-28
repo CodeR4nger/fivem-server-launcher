@@ -1,17 +1,29 @@
 using System.Text.Json.Serialization;
+using FiveMServerLauncher.Core.Enums;
 
 namespace FiveMServerLauncher.Domain;
 
 public sealed class SavedServer
 {
     [JsonConstructor]
-    private SavedServer(string name, string address, bool? requiresSteam, bool? requiresDiscord, string? cfxId)
+    private SavedServer(
+        string name,
+        string address,
+        bool? requiresSteam,
+        bool? requiresDiscord,
+        string? cfxId,
+        int? gameBuild,
+        int? pureMode,
+        GameClient? gameClient)
     {
         Name = name;
         Address = address;
         RequiresSteam = requiresSteam;
         RequiresDiscord = requiresDiscord;
         CfxId = cfxId;
+        GameBuild = gameBuild;
+        PureMode = pureMode;
+        GameClient = gameClient;
     }
 
     public string Name { get; }
@@ -23,6 +35,12 @@ public sealed class SavedServer
     public bool? RequiresDiscord { get; }
 
     public string? CfxId { get; }
+
+    public int? GameBuild { get; }
+
+    public int? PureMode { get; }
+
+    public GameClient? GameClient { get; }
 
     public bool MatchesAddress(string address)
     {
@@ -39,7 +57,10 @@ public sealed class SavedServer
         string address,
         bool? requiresSteam = null,
         bool? requiresDiscord = null,
-        string? cfxId = null)
+        string? cfxId = null,
+        int? gameBuild = null,
+        int? pureMode = null,
+        GameClient? gameClient = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(address);
@@ -55,6 +76,8 @@ public sealed class SavedServer
             ? ServerAddress.ExtractCfxId(normalizedAddress)
             : null);
 
-        return new SavedServer(name.Trim(), normalizedAddress, requiresSteam, requiresDiscord, resolvedCfxId);
+        return new SavedServer(
+            name.Trim(), normalizedAddress, requiresSteam, requiresDiscord,
+            resolvedCfxId, gameBuild, pureMode, gameClient);
     }
 }

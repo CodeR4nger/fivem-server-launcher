@@ -57,5 +57,8 @@
   "CfxStatusPartialOutage": "PARTIAL OUTAGE",
   "CfxStatusMajorOutage": "OUTAGE",
   "CfxStatusMaintenance": "MAINTENANCE",
-  "CfxStatusUnknown": "UNKNOWN"
+  "CfxStatusUnknown": "UNKNOWN",
+  "DialogCfxIdField": "CFX ID",
+  "DialogGameField": "GAME",
+  "GameClientNone": "None"
 }

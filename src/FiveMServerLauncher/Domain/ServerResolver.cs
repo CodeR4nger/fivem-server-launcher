@@ -25,6 +25,15 @@ public class ServerResolver(
 
         var kind = ServerAddress.Classify(address);
 
+        if (ServerAddress.IsLoopbackAddress(address)
+            && savedServer is not null
+            && HasManualConnectionData(savedServer))
+        {
+            var loopbackProfile = await ResolveLoopbackAsync(address, savedServer);
+            loopbackProfile.Requirements = ServerRequirements.ForConnection(loopbackProfile.Requirements, savedServer);
+            return loopbackProfile;
+        }
+
         var profile = kind switch
         {
             ServerAddressKind.CfxId or ServerAddressKind.CfxJoinUrl => await ResolveCfxAsync(address, savedServer),
@@ -59,6 +68,44 @@ public class ServerResolver(
             GameClient = server.GameClient,
             Requirements = requirementsResolver.Resolve(server),
             IsCfxValidated = true
+        };
+    }
+
+    private static bool HasManualConnectionData(SavedServer savedServer)
+    {
+        return savedServer.CfxId is not null
+            || savedServer.GameBuild.HasValue
+            || savedServer.PureMode.HasValue
+            || savedServer.GameClient.HasValue;
+    }
+
+    private async Task<ServerProfile> ResolveLoopbackAsync(string address, SavedServer savedServer)
+    {
+        // The manual cfx id links the loopback address to one specific listed server;
+        // its published facts win over the manual values whenever it resolves.
+        var server = savedServer.CfxId is null ? null : await TryGetServerAsync(savedServer.CfxId);
+
+        if (server is not null)
+        {
+            return new ServerProfile
+            {
+                Address = address,
+                GameClient = server.GameClient,
+                Requirements = requirementsResolver.Resolve(server),
+                IsCfxValidated = true
+            };
+        }
+
+        return new ServerProfile
+        {
+            Address = address,
+            GameClient = savedServer.GameClient,
+            Requirements = new ServerRequirements
+            {
+                GameBuild = savedServer.GameBuild,
+                PureMode = savedServer.PureMode
+            },
+            IsCfxValidated = false
         };
     }
 

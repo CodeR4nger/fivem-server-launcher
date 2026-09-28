@@ -189,6 +189,11 @@ public class MainViewModel : INotifyPropertyChanged
     private bool _dialogRequiresSteam;
     private bool _dialogRequiresDiscord;
     private string _dialogError = string.Empty;
+    private string _dialogCfxId = string.Empty;
+    private string _dialogGameBuildText = string.Empty;
+    private int? _dialogPureMode;
+    private GameClient? _dialogGameClient;
+    private bool _isDialogLocalhost;
 
     public SavedServerItem? EditingServer
     {
@@ -225,7 +230,51 @@ public class MainViewModel : INotifyPropertyChanged
     public string DialogServerAddress
     {
         get => _dialogServerAddress;
-        set => SetProperty(ref _dialogServerAddress, value);
+        set
+        {
+            if (SetProperty(ref _dialogServerAddress, value))
+            {
+                UpdateIsDialogLocalhost();
+            }
+        }
+    }
+
+    public bool IsDialogLocalhost
+    {
+        get => _isDialogLocalhost;
+        private set => SetProperty(ref _isDialogLocalhost, value);
+    }
+
+    public string DialogCfxId
+    {
+        get => _dialogCfxId;
+        set => SetProperty(ref _dialogCfxId, value);
+    }
+
+    public string DialogGameBuildText
+    {
+        get => _dialogGameBuildText;
+        set => SetProperty(ref _dialogGameBuildText, value);
+    }
+
+    public int? DialogPureMode
+    {
+        get => _dialogPureMode;
+        set => SetProperty(ref _dialogPureMode, value);
+    }
+
+    public GameClient? DialogGameClient
+    {
+        get => _dialogGameClient;
+        set => SetProperty(ref _dialogGameClient, value);
+    }
+
+    public IReadOnlyList<GameClientOption> DialogGameClientOptions => GameClientOption.DialogOptions;
+
+    private void UpdateIsDialogLocalhost()
+    {
+        var trimmed = _dialogServerAddress.Trim();
+        IsDialogLocalhost = trimmed.Length > 0 && Domain.ServerAddress.IsLoopbackAddress(trimmed);
     }
 
     public bool DialogRequiresSteam
@@ -463,6 +512,10 @@ public class MainViewModel : INotifyPropertyChanged
         DialogServerAddress = string.Empty;
         DialogRequiresSteam = false;
         DialogRequiresDiscord = false;
+        DialogCfxId = string.Empty;
+        DialogGameBuildText = string.Empty;
+        DialogPureMode = null;
+        DialogGameClient = null;
         DialogError = string.Empty;
         IsServerDialogOpen = true;
     }
@@ -514,6 +567,10 @@ public class MainViewModel : INotifyPropertyChanged
         DialogServerAddress = item.Address;
         DialogRequiresSteam = item.RequiresSteam;
         DialogRequiresDiscord = item.RequiresDiscord;
+        DialogCfxId = item.CfxId ?? string.Empty;
+        DialogGameBuildText = item.GameBuild?.ToString() ?? string.Empty;
+        DialogPureMode = item.PureMode;
+        DialogGameClient = item.GameClient;
         DialogError = string.Empty;
         IsServerDialogOpen = true;
     }
@@ -529,7 +586,24 @@ public class MainViewModel : INotifyPropertyChanged
         var addressUnchanged = EditingServer is not null
             && string.Equals(EditingServer.Address, DialogServerAddress.Trim(), StringComparison.OrdinalIgnoreCase);
 
-        var cfxId = addressUnchanged ? EditingServer!.CfxId : null;
+        string? cfxId;
+        int? gameBuild = null;
+        int? pureMode = null;
+        GameClient? gameClient = null;
+
+        if (IsDialogLocalhost)
+        {
+            var trimmedCfxId = DialogCfxId.Trim();
+            cfxId = trimmedCfxId.Length > 0 ? trimmedCfxId : null;
+            gameBuild = int.TryParse(DialogGameBuildText.Trim(), out var build) ? build : null;
+            pureMode = DialogPureMode;
+            gameClient = DialogGameClient;
+        }
+        else
+        {
+            cfxId = addressUnchanged ? EditingServer!.CfxId : null;
+        }
+
         SavedServer savedServer;
 
         try
@@ -539,7 +613,10 @@ public class MainViewModel : INotifyPropertyChanged
                 DialogServerAddress,
                 DialogRequiresSteam,
                 DialogRequiresDiscord,
-                cfxId);
+                cfxId,
+                gameBuild,
+                pureMode,
+                gameClient);
         }
         catch (ArgumentException)
         {
@@ -644,7 +721,9 @@ public class MainViewModel : INotifyPropertyChanged
             return;
         }
 
-        var updated = SavedServer.Create(saved.Name, saved.Address, saved.RequiresSteam, saved.RequiresDiscord, cfxId);
+        var updated = SavedServer.Create(
+            saved.Name, saved.Address, saved.RequiresSteam, saved.RequiresDiscord, cfxId,
+            saved.GameBuild, saved.PureMode, saved.GameClient);
         _serverRepository.Update(updated);
         item.SetCfxId(cfxId);
     }
@@ -784,14 +863,19 @@ public class MainViewModel : INotifyPropertyChanged
             savedServer.RequiresSteam,
             savedServer.RequiresDiscord,
             () => PersistServer(item),
-            savedServer.CfxId);
+            savedServer.CfxId,
+            savedServer.GameBuild,
+            savedServer.PureMode,
+            savedServer.GameClient);
 
         return item;
     }
 
     private void PersistServer(SavedServerItem item)
     {
-        _serverRepository.Update(SavedServer.Create(item.Name, item.Address, item.RequiresSteam, item.RequiresDiscord, item.CfxId));
+        _serverRepository.Update(SavedServer.Create(
+            item.Name, item.Address, item.RequiresSteam, item.RequiresDiscord, item.CfxId,
+            item.GameBuild, item.PureMode, item.GameClient));
     }
 
     private void DeleteServer()

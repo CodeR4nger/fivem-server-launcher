@@ -279,6 +279,33 @@ public class ServerAddressTests
         Assert.False(ServerAddress.IsIdForm(kind));
     }
 
+    [Theory]
+    [InlineData("localhost")]
+    [InlineData("LOCALHOST")]
+    [InlineData("127.0.0.1")]
+    [InlineData("localhost:30120")]
+    [InlineData("LOCALHOST:30120")]
+    [InlineData("127.0.0.1:30120")]
+    public void IsLoopbackAddress_WhenLoopbackForm_ShouldReturnTrue(string address)
+    {
+        // Given / When / Then
+        Assert.True(ServerAddress.IsLoopbackAddress(address));
+    }
+
+    [Theory]
+    [InlineData("192.168.1.10")]
+    [InlineData("192.168.1.10:30120")]
+    [InlineData("play.example.com")]
+    [InlineData("play.example.com:30120")]
+    [InlineData("abc123")]
+    [InlineData("cfx.re/join/abc123")]
+    [InlineData("")]
+    public void IsLoopbackAddress_WhenNonLoopbackForm_ShouldReturnFalse(string address)
+    {
+        // Given / When / Then
+        Assert.False(ServerAddress.IsLoopbackAddress(address));
+    }
+
     [Fact]
     public void HasServerFormWithNonEmptyId_WhenCfxJoinUrlWithoutScheme_ShouldReturnTrue()
     {

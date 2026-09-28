@@ -23,11 +23,17 @@ public class SavedServerItem : INotifyPropertyChanged
         bool? requiresSteam,
         bool? requiresDiscord,
         Action changeHandler,
-        string? cfxId = null)
+        string? cfxId = null,
+        int? gameBuild = null,
+        int? pureMode = null,
+        GameClient? gameClient = null)
     {
         Name = name;
         Address = address;
         CfxId = cfxId;
+        GameBuild = gameBuild;
+        PureMode = pureMode;
+        GameClient = gameClient;
         _requiresSteam = requiresSteam == true;
         _requiresDiscord = requiresDiscord == true;
         _changeHandler = changeHandler;
@@ -66,6 +72,12 @@ public class SavedServerItem : INotifyPropertyChanged
     public string Address { get; }
 
     public string? CfxId { get; private set; }
+
+    public int? GameBuild { get; }
+
+    public int? PureMode { get; }
+
+    public GameClient? GameClient { get; }
 
     public bool HasCfxId => CfxId is not null;
 

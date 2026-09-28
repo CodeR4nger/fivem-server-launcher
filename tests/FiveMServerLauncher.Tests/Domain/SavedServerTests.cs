@@ -101,6 +101,37 @@ public class SavedServerTests
     }
 
     [Fact]
+    public void Create_WithManualConnectionParameters_ShouldPreserveThem()
+    {
+        // Given
+        const string address = "localhost:30120";
+
+        // When
+        var result = SavedServer.Create(
+            "My Server", address,
+            cfxId: "8y6354", gameBuild: 3258, pureMode: 2, gameClient: Core.Enums.GameClient.RedM);
+
+        // Then
+        Assert.Equal("8y6354", result.CfxId);
+        Assert.Equal(3258, result.GameBuild);
+        Assert.Equal(2, result.PureMode);
+        Assert.Equal(Core.Enums.GameClient.RedM, result.GameClient);
+    }
+
+    [Fact]
+    public void Create_WithoutManualParameters_ShouldLeaveOverridesNull()
+    {
+        // Given / When
+        var result = SavedServer.Create("My Server", "localhost:30120");
+
+        // Then
+        Assert.Null(result.CfxId);
+        Assert.Null(result.GameBuild);
+        Assert.Null(result.PureMode);
+        Assert.Null(result.GameClient);
+    }
+
+    [Fact]
     public void Create_WithCfxIdAddress_ShouldReturnSavedServer()
     {
         // Given

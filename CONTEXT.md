@@ -39,3 +39,10 @@ built lives in AGENTS.md / ADRs; what words *mean* lives here.
   feature that can force one, protecting the expensive catalog download.
 - **View swap** — the app's pattern for replacing one view with another in the single fixed
   window (Dev Mode, settings, dialog overlay, server browser).
+
+## v1.2 terms
+
+- **Manual connection parameters** — per-saved-server overrides (cfx id, game build, pure
+  mode, game client) that only loopback servers (the "sub Dev Mode" dialog section) can
+  carry. A resolvable manual cfx id wins over the manual values; the connect address is
+  always the direct loopback address.

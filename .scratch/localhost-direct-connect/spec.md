@@ -107,3 +107,9 @@ The fallback applies to every saved server, not only localhost entries.
   address matching ignores hidden endpoints (sentinel and loopback), so a typed localhost address
   always connects directly rather than hijacking a stranger's hidden server. A "listed local
   server" therefore only validates when listed under a matchable (non-loopback) endpoint.
+- Amendment (ticket 06): saved loopback servers can carry manual connection parameters (sub Dev
+  Mode): a loopback-only dialog section collects an optional cfx id, game build, pure mode, and
+  game client on the saved server. At connect, a resolvable manual id wins over the manual values
+  (requirements and game client from that exact listed server — never "the first match in the
+  list"); a delisted id or no id applies the manual values; the connect stays a direct connect to
+  the loopback address in every case, so local dev servers connect even while delisted.
