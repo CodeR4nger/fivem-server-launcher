@@ -43,7 +43,7 @@ public static class ServerAddress
                 return ServerAddressKind.IpAddress;
             }
 
-            if (address.Contains('.') && IsValidDomain(address))
+            if (IsLocalhost(address) || (address.Contains('.') && IsValidDomain(address)))
             {
                 return ServerAddressKind.DomainName;
             }
@@ -71,6 +71,11 @@ public static class ServerAddress
     private static bool IsValidCfxId(string id)
     {
         return !string.IsNullOrWhiteSpace(id) && !id.Any(char.IsWhiteSpace);
+    }
+
+    private static bool IsLocalhost(string address)
+    {
+        return address.Equals("localhost", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsValidDomain(string host)

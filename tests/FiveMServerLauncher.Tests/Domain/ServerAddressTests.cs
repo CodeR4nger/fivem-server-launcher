@@ -121,10 +121,36 @@ public class ServerAddressTests
     }
 
     [Fact]
-    public void Classify_WhenBareSingleLabel_ShouldReturnCfxId()
+    public void Classify_WhenBareLocalhost_ShouldReturnDomainName()
     {
         // Given
         const string address = "localhost";
+
+        // When
+        var kind = ServerAddress.Classify(address);
+
+        // Then
+        Assert.Equal(ServerAddressKind.DomainName, kind);
+    }
+
+    [Fact]
+    public void Classify_WhenBareLocalhostUppercase_ShouldReturnDomainName()
+    {
+        // Given
+        const string address = "LOCALHOST";
+
+        // When
+        var kind = ServerAddress.Classify(address);
+
+        // Then
+        Assert.Equal(ServerAddressKind.DomainName, kind);
+    }
+
+    [Fact]
+    public void Classify_WhenBareSingleLabelOtherThanLocalhost_ShouldReturnCfxId()
+    {
+        // Given
+        const string address = "myserver";
 
         // When
         var kind = ServerAddress.Classify(address);

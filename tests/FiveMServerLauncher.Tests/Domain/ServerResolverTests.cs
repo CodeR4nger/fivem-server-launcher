@@ -765,6 +765,57 @@ public class ServerResolverTests
         Assert.True(result.Requirements.DiscordRequired);
     }
 
+    [Fact]
+    public async Task Resolve_WhenBareLocalhostNotInCatalog_ShouldReturnUnvalidatedProfile()
+    {
+        // Given — an unlisted local dev server: DNS resolves the loopback host but the
+        // catalog has no matching endpoint, so the profile stays unvalidated as-is.
+        const string address = "localhost";
+
+        var resolver = CreateResolver(
+            catalogHttpClient: new HttpClient(new FakeHttpMessageHandler(
+                System.Net.HttpStatusCode.OK,
+                TestProtobufFrames.BuildFrameStream(new Master.Server { EndPoint = "other" }))),
+            dnsResolver: new FakeDnsResolver("127.0.0.1"));
+
+        // When
+        var result = await resolver.ResolveAsync(address);
+
+        // Then
+        Assert.False(result.IsCfxValidated);
+        Assert.Equal(address, result.Address);
+        Assert.Equal(string.Empty, result.CfxId);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenBareLocalhostListedInCatalog_ShouldReturnValidatedProfile()
+    {
+        // Given — the local server is publicly listed under its loopback endpoint.
+        const string address = "localhost";
+
+        var protoServer = new Master.Server
+        {
+            EndPoint = "y4lg95",
+            Data = new Master.ServerData
+            {
+                Vars = { ["sv_projectName"] = "Local Dev Server" },
+                ConnectEndPoints = { "127.0.0.1:30120" }
+            }
+        };
+        var resolver = CreateResolver(
+            catalogHttpClient: new HttpClient(new FakeHttpMessageHandler(
+                System.Net.HttpStatusCode.OK,
+                TestProtobufFrames.BuildFrameStream(protoServer))),
+            dnsResolver: new FakeDnsResolver("127.0.0.1"));
+
+        // When
+        var result = await resolver.ResolveAsync(address);
+
+        // Then
+        Assert.True(result.IsCfxValidated);
+        Assert.Equal("y4lg95", result.CfxId);
+    }
+
     private static ServerResolver CreateResolver(
         CfxService? cfxService = null,
         HttpClient? catalogHttpClient = null,
