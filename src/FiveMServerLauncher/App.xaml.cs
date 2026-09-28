@@ -40,7 +40,10 @@ public partial class App : Application
             LegacyAppDataDirectory,
             new[] { dataDirectory.SettingsPath, dataDirectory.ServersPath });
 
-        var httpClient = new HttpClient();
+        var httpClient = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(15)
+        };
         var catalog = new ServerCatalog(httpClient);
         var resolver = new ServerResolver(
             new CfxService(httpClient),

@@ -187,6 +187,22 @@ public class ServerEnrichmentServiceTests
     }
 
     [Fact]
+    public async Task GetIconAsync_WhenIconExceedsMaxSize_ShouldReturnNull()
+    {
+        // Given — a decompression-bomb style icon is dropped, never decoded into the cache.
+        var handler = new RoutedHttpMessageHandler();
+        handler.AddBytesRoute("icon/y4lg95/7.png", HttpStatusCode.OK, new byte[500]);
+        using var httpClient = new HttpClient(handler);
+        var service = new ServerEnrichmentService(httpClient, maxIconBytes: 100);
+
+        // When
+        var result = await service.GetIconAsync("y4lg95", "7");
+
+        // Then
+        Assert.Null(result);
+    }
+
+    [Fact]
     public async Task GetIconAsync_WhenVersionUnchanged_ShouldServeCachedIconWithoutRedownload()
     {
         // Given

@@ -28,16 +28,18 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
     {
         PropertyNameCaseInsensitive = true
     };
-
     private static readonly TimeSpan DefaultCacheTtl = TimeSpan.FromSeconds(45);
     private static readonly TimeSpan DefaultForceCooldown = TimeSpan.FromSeconds(15);
+    private const long DefaultMaxIconBytes = 2 * 1024 * 1024;
 
     private readonly HttpClient _httpClient;
     private readonly ServerCatalog _catalog;
     private readonly IDnsResolver _dnsResolver;
     private readonly TimeProvider _timeProvider;
     private readonly TimeSpan _forceCooldown;
+    private readonly long _maxIconBytes;
     private readonly Dictionary<(string CfxId, string Version), byte[]> _iconCache = new();
+
     private DateTimeOffset _lastForcedAt = DateTimeOffset.MinValue;
 
     public ServerEnrichmentService(
@@ -45,17 +47,19 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
         HttpClient httpClient,
         IDnsResolver? dnsResolver = null,
         TimeProvider? timeProvider = null,
-        TimeSpan? forceCooldown = null)
+        TimeSpan? forceCooldown = null,
+        long? maxIconBytes = null)
     {
         _catalog = catalog;
         _httpClient = httpClient;
         _dnsResolver = dnsResolver ?? new DnsResolver();
         _timeProvider = timeProvider ?? TimeProvider.System;
         _forceCooldown = forceCooldown ?? DefaultForceCooldown;
+        _maxIconBytes = maxIconBytes ?? DefaultMaxIconBytes;
     }
 
-    public ServerEnrichmentService(HttpClient httpClient, TimeProvider? timeProvider = null, TimeSpan? cacheTtl = null, IDnsResolver? dnsResolver = null, TimeSpan? forceCooldown = null)
-        : this(new ServerCatalog(httpClient, timeProvider, cacheTtl ?? DefaultCacheTtl, dnsResolver), httpClient, dnsResolver, timeProvider, forceCooldown)
+    public ServerEnrichmentService(HttpClient httpClient, TimeProvider? timeProvider = null, TimeSpan? cacheTtl = null, IDnsResolver? dnsResolver = null, TimeSpan? forceCooldown = null, long? maxIconBytes = null)
+        : this(new ServerCatalog(httpClient, timeProvider, cacheTtl ?? DefaultCacheTtl, dnsResolver), httpClient, dnsResolver, timeProvider, forceCooldown, maxIconBytes)
     {
     }
 
@@ -105,7 +109,20 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
 
         try
         {
-            var icon = await _httpClient.GetByteArrayAsync(string.Format(IconUrl, cfxId, iconVersion));
+            var response = await _httpClient.GetAsync(string.Format(IconUrl, cfxId, iconVersion));
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            var icon = await BoundedContent.ReadAsByteArrayAsync(response.Content, _maxIconBytes);
+
+            if (icon is null)
+            {
+                return null;
+            }
+
             _iconCache[key] = icon;
             return icon;
         }

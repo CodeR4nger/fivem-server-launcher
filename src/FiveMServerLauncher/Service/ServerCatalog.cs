@@ -7,14 +7,17 @@ public class ServerCatalog(
     HttpClient httpClient,
     TimeProvider? timeProvider = null,
     TimeSpan? cacheTtl = null,
-    IDnsResolver? dnsResolver = null)
+    IDnsResolver? dnsResolver = null,
+    long? maxPayloadBytes = null)
 {
     private static readonly string CatalogUrl = "https://frontend.cfx-services.net/api/servers/streamRedir/";
+    private const long DefaultMaxPayloadBytes = 64 * 1024 * 1024;
 
     private readonly HttpClient _httpClient = httpClient;
     private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
     private readonly TimeSpan _cacheTtl = cacheTtl ?? TimeSpan.FromMinutes(5);
     private readonly IDnsResolver _dnsResolver = dnsResolver ?? new DnsResolver();
+    private readonly long _maxPayloadBytes = maxPayloadBytes ?? DefaultMaxPayloadBytes;
 
     private IReadOnlyList<Master.Server>? _cachedServers;
     private DateTimeOffset _cachedAt;
@@ -92,7 +95,13 @@ public class ServerCatalog(
                 return forceRefresh ? _cachedServers : null;
             }
 
-            var payload = await response.Content.ReadAsByteArrayAsync();
+            var payload = await BoundedContent.ReadAsByteArrayAsync(response.Content, _maxPayloadBytes);
+
+            if (payload is null)
+            {
+                return forceRefresh ? _cachedServers : null;
+            }
+
             var servers = await Task.Run(() => ServerCatalogDecoder.Decode(payload));
 
             CacheServers(servers);

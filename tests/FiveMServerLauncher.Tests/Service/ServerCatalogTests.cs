@@ -168,6 +168,23 @@ public class ServerCatalogTests
     }
 
     [Fact]
+    public async Task GetSnapshot_WhenPayloadExceedsMaxSize_ShouldDegradeToOutage()
+    {
+        // Given — an oversized payload is treated like an outage, never decoded or cached.
+        var handler = new FakeHttpMessageHandler(
+            HttpStatusCode.OK,
+            new byte[50]);
+        using var httpClient = new HttpClient(handler);
+        var catalog = new ServerCatalog(httpClient, maxPayloadBytes: 10);
+
+        // When
+        var result = await catalog.GetSnapshotAsync();
+
+        // Then
+        Assert.Null(result);
+    }
+
+    [Fact]
     public async Task LookupByIpPort_WhenServerListed_ShouldReturnServer()
     {
         // Given
