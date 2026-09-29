@@ -302,7 +302,7 @@ public class ServerBrowserViewModelTests
         // Given
         var enrichment = new FakeServerEnrichmentService { Icon = [9, 8, 7] };
         var server = Entry("aaaaaa", "Alpha", game: "gta5", players: 3, max: 32);
-        server.Data.Vars["iconVersion"] = "55";
+        server.Data.IconVersion = 55;
         var vm = CreateViewModel(CatalogBytes(server), enrichment: enrichment);
         await vm.LoadAsync();
         var row = vm.Servers[0];
@@ -366,7 +366,7 @@ public class ServerBrowserViewModelTests
         // Given
         var enrichment = new FakeServerEnrichmentService { Icon = [9, 8, 7] };
         var server = Entry("aaaaaa", "Alpha", game: "gta5", players: 3, max: 32);
-        server.Data.Vars["iconVersion"] = "55";
+        server.Data.IconVersion = 55;
         var vm = CreateViewModel(CatalogBytes(server), enrichment: enrichment);
         await vm.LoadAsync();
         var row = vm.Servers[0];

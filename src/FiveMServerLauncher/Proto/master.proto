@@ -16,6 +16,10 @@ message ServerData
     string gametype = 5;
     string mapname = 6;
     string server = 9;
+    // Verified against the live streamRedir payload: iconVersion is a typed field
+    // (field 11), never a var. Zero (field absent) = no icon; any non-zero value —
+    // including negative — is a valid icon version.
+    int64 iconVersion = 11;
     map<string, string> vars = 12;
     repeated string connectEndPoints = 18;
 }

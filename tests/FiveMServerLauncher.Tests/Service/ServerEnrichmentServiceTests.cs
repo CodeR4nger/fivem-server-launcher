@@ -171,11 +171,13 @@ public class ServerEnrichmentServiceTests
     }
 
     [Fact]
-    public async Task RefreshAsync_WhenIconVersionVarPresentOrAbsent_ShouldExposeItOnPresence()
+    public async Task RefreshAsync_WhenIconVersionPublishedInSnapshot_ShouldExposeItOnPresence()
     {
-        // Given — the catalog snapshot already carries each server's iconVersion in the
-        // vars, so the enrichment loop can use the direct icon path without probing
-        // /single/ per row.
+        // Given — the catalog snapshot carries each server's iconVersion as a typed
+        // proto field (field 11): any non-zero value (including negative) means the
+        // server has an icon; only zero (field absent) means it has none. The
+        // enrichment loop uses the direct icon path with no /single/ probes; a stale
+        // version that 404s degrades to a null icon in the download step.
         var handler = new RoutedHttpMessageHandler();
         handler.AddBytesRoute(
             "streamRedir",
@@ -184,7 +186,12 @@ public class ServerEnrichmentServiceTests
                 TestProtobufFrames.BuildFrameStream(new Master.Server
                 {
                     EndPoint = "withicon",
-                    Data = new Master.ServerData { Vars = { ["iconVersion"] = "288154985" } }
+                    Data = new Master.ServerData { IconVersion = 288154985 }
+                }),
+                TestProtobufFrames.BuildFrameStream(new Master.Server
+                {
+                    EndPoint = "negativeicon",
+                    Data = new Master.ServerData { IconVersion = -208647301, Clients = 1, SvMaxclients = 32 }
                 }),
                 TestProtobufFrames.BuildFrameStream(new Master.Server
                 {
@@ -199,6 +206,7 @@ public class ServerEnrichmentServiceTests
 
         // Then
         Assert.Equal("288154985", result!["withicon"].IconVersion);
+        Assert.Equal("-208647301", result["negativeicon"].IconVersion);
         Assert.Null(result["noicon"].IconVersion);
     }
 

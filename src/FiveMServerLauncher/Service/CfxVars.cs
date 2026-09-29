@@ -4,6 +4,18 @@ namespace FiveMServerLauncher.Service;
 
 internal static class CfxVars
 {
+    public static string? TryGetIconVersion(Master.ServerData data)
+    {
+        // The catalog's iconVersion is a typed proto field, never a var. Any non-zero
+        // value — including negative — means the server has an icon at that version
+        // (verified live: negative-version icon URLs return 200 + PNG); only zero
+        // (field absent) means no icon. A version that unexpectedly 404s degrades to
+        // a null icon in the download step.
+        return data.IconVersion != 0
+            ? data.IconVersion.ToString()
+            : null;
+    }
+
     public static GameClient? TryGetGameClient(IDictionary<string, string>? variables)
     {
         var game = GetVariable(variables, "gamename");

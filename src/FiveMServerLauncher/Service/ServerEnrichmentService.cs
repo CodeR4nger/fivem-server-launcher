@@ -104,7 +104,7 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
                         server.Data!.Clients,
                         server.Data.SvMaxclients,
                         CfxVars.TryGetGameClient(server.Data.Vars),
-                        CfxVars.TryGetString(server.Data.Vars, "iconVersion"));
+                        CfxVars.TryGetIconVersion(server.Data));
                 });
     }
 

@@ -101,7 +101,7 @@ public sealed class ServerBrowserItem : INotifyPropertyChanged
             data.Clients,
             data.SvMaxclients,
             address,
-            CfxVars.TryGetString(data.Vars, "iconVersion"));
+            CfxVars.TryGetIconVersion(data));
     }
 
     private static string ResolveName(Master.ServerData data)

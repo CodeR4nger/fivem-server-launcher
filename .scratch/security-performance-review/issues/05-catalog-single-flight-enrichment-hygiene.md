@@ -27,6 +27,9 @@ fires one unbounded icon GET per realized row, and the icon cache never evicts.
   loop and the browser both skip rows without a published `iconVersion`, so enrichment traffic
   never touches `/single/` (the browser's per-open repeated probes for version-less rows were the
   hygiene leak). Accepted trade-off: an icon added within the catalog TTL shows up to ~5 min late.
+  Correction (ticket 10): the snapshot proof is the typed `iconVersion` proto field (field 11),
+  never a var — this decision was initially wired to a `vars["iconVersion"]` lookup that matches
+  nothing in the real payload, which made icons disappear from both lists until fixed.
 - Icon in-flight tasks are registered *before* the download starts (TCS + driver). Registering
   after let a synchronously completing download park its completed task as in-flight, which then
   served stale bytes with no network call after an LRU eviction — found by review, fixed, pinned by
