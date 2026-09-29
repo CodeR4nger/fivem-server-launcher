@@ -174,10 +174,9 @@ final Release build.
 
 ## 8. Product name "CFX Launcher" + portable single-file build
 
-**Status:** ✅ done pending commit (tickets `.scratch/product-name-and-portable/` 01–04 resolved;
-suite 439 green; code review clean on both axes after the findings were fixed; single-file
-publish verified; final manual smoke run left to the user — the machine-wide .NET update dialog
-interrupts agent-driven launches)
+**Status:** ✅ done (tickets `.scratch/product-name-and-portable/` 01–04 resolved; suite 439
+green; code review clean on both axes after the findings were fixed; single-file publish
+verified; commit `8b88b86`; final manual smoke run done successfully by the user 2026-09-28)
 
 **Spec:** `.scratch/product-name-and-portable/spec.md` (status `done`)
 

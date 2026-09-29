@@ -8,7 +8,7 @@ files land beside it (portable data working end-to-end).
 
 **Blocked by:** 02 (portable data directory), 03 (exe name).
 
-**Status:** resolved (single-file publish + AGENTS.md + partial E2E; final manual smoke run pending on the user's machine — the machine-wide .NET update dialog interrupts agent runs)
+**Status:** resolved (single-file publish + AGENTS.md + full E2E; final manual smoke run done successfully by the user 2026-09-28)
 
 - [x] Publish command in AGENTS.md:
       `dotnet publish src/FiveMServerLauncher/FiveMServerLauncher.csproj -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -p:DebugSymbols=false -o dist`

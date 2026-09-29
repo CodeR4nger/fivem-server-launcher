@@ -4,9 +4,9 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] `Launch/GameProcessLauncher.cs` with `StartAsync(Uri) → Process.Start(...UseShellExecute = true)`.
-- [ ] Compiles. Suite green.
+- [x] `Launch/GameProcessLauncher.cs` with `StartAsync(Uri) → Process.Start(...UseShellExecute = true)` (later refined to the `explorer.exe` shell route via `UriShellStarter`, commit `9c65106` — shell context required by FiveM's launcher check).
+- [x] Compiles. Suite green.
 
 ## Comments

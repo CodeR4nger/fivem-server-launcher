@@ -4,9 +4,9 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] `Service/DnsResolver.cs` with `ResolveToIpAsync(string)` IPv4. And if it does not resolve → null.
-- [ ] Compiles. Suite green.
+- [x] `Service/DnsResolver.cs` with `ResolveToIpAsync(string)` IPv4. And if it does not resolve → null.
+- [x] Compiles. Suite green.
 
 ## Comments

@@ -4,10 +4,10 @@
 
 **Blocked by:** 01, 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] `App.xaml.cs` `OnStartup` builds the graph manually (no DI container).
-- [ ] UI shows during the real application.
-- [ ] Compiles. Suite green.
+- [x] `App.xaml.cs` `OnStartup` builds the graph manually (no DI container).
+- [x] UI shows during the real application.
+- [x] Compiles. Suite green.
 
 ## Comments

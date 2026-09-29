@@ -8,8 +8,8 @@ re-saving an enriched CfxId.
 
 **Blocked by:** none.
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] `SavedServer` carries optional `CfxId`; JSON round-trips, null when absent.
-- [ ] CFX-form `Create` stores the extracted id; IP/port and domain forms leave it null.
-- [ ] Repository `Update` persists CfxId without changing identity/duplicate semantics.
+- [x] `SavedServer` carries optional `CfxId`; JSON round-trips, null when absent.
+- [x] CFX-form `Create` stores the extracted id; IP/port and domain forms leave it null.
+- [x] Repository `Update` persists CfxId without changing identity/duplicate semantics.

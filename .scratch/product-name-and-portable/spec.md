@@ -1,7 +1,8 @@
 # App product name "CFX Launcher" + portable single-file build
 
 **Status:** done (tickets 01–04 resolved; suite 439 green; code review clean on both axes after
-findings fixed; single-file publish verified; final manual smoke run left to the user)
+findings fixed; single-file publish verified; final manual smoke run done successfully by the
+user 2026-09-28)
 
 ## Problem Statement
 

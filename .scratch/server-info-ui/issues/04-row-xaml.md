@@ -9,11 +9,11 @@ enrichment service + timer into the VM.
 
 **Blocked by:** 03.
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Enriched row layout (icon + name + `players/max`); plain fallback for null.
 - [x] Offline absence signal without fabricated players.
-- [x] Composition root wiring done; manual visual verification PENDING (awaiting user to run app).
+- [x] Composition root wiring done; manual visual verification done (user E2E).
 - [x] Per-game colored tag right of the name (`GameClientToBrushConverter`, shows via `HasGame`).
 - [x] Status slot shows `OFFLINE`/`UNRESOLVED` text instead of a fabricated count.
 

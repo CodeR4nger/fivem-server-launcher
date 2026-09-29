@@ -9,8 +9,8 @@ update, never throws.
 
 **Blocked by:** none.
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Catalog frame → presence/players/max map; online = catalog presence.
-- [ ] Icon bytes fetched per (CfxId, iconVersion), cached, re-fetched only on version change.
-- [ ] Outage/corrupt frames and failed icon fetches degrade silently (never throw).
+- [x] Catalog frame → presence/players/max map; online = catalog presence.
+- [x] Icon bytes fetched per (CfxId, iconVersion), cached, re-fetched only on version change.
+- [x] Outage/corrupt frames and failed icon fetches degrade silently (never throw).

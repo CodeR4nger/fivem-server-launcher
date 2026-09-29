@@ -6,7 +6,7 @@ in the background, no enrichment for unresolvable ids, error-free when CFX is do
 
 **Blocked by:** 04.
 
-**Status:** in-progress
+**Status:** resolved
 
 - [x] Full suite green (357 tests, build clean, 0 errors besides pre-existing CS8619).
 - [x] Docs reconciled (AGENTS.md; roadmap status; spec status `done`; ticket checkboxes).
@@ -15,4 +15,12 @@ in the background, no enrichment for unresolvable ids, error-free when CFX is do
       payload; enrichment loop survives a throwing refresh; removed unused `AddressKind` and
       `Enrichment` test hook; added repository `Update` CfxId-persistence test.
 - [x] Manual E2E verified by the user (all rows, tags, colors, OFFLINE/UNRESOLVED working).
-- [ ] Commit.
+- [x] Commit (`0ebc5f2`).
+
+## Comments
+
+- 2026-09-28: ticket statuses in 01–05 were stale (`ready-for-agent`/`in-progress` although the
+  phase shipped in `0ebc5f2` on 2026-09-22). Re-verified each ticket's claims against the code
+  (`SavedServer.CfxId` + `IsValidCfxId` gate; `ServerEnrichmentService` presence map +
+  `(cfxId, iconVersion)` icon cache; `SavedServerItem` enrichment state; `MainViewModel`
+  capture/refresh loop; row XAML converters) and closed them all.

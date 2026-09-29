@@ -8,7 +8,7 @@ a CfxId and leaves others plain, running while the window is open.
 
 **Blocked by:** 01, 02.
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Save-time capture: CFX-form immediate; IP:port/domain background lookup + persist; dialog never blocked.
 - [x] SavedServerItem exposes enrichment state with PropertyChanged wiring.
