@@ -22,6 +22,9 @@ public class ServerCatalog(
     private IReadOnlyList<Master.Server>? _cachedServers;
     private DateTimeOffset _cachedAt;
 
+    private readonly object _snapshotGate = new();
+    private Task<IReadOnlyList<Master.Server>?>? _snapshotFetch;
+
     public async Task<Master.Server?> LookupByIpPortAsync(string ipPort)
     {
         var servers = await GetServersAsync();
@@ -76,13 +79,41 @@ public class ServerCatalog(
         return ip is null ? null : await LookupByIpPortAsync($"{ip}:{ServerAddress.DefaultPort}");
     }
 
-    public async Task<IReadOnlyList<Master.Server>?> GetSnapshotAsync(bool forceRefresh = false)
+    public Task<IReadOnlyList<Master.Server>?> GetSnapshotAsync(bool forceRefresh = false)
     {
-        if (!forceRefresh && IsCacheValid())
+        Task<IReadOnlyList<Master.Server>?> fetch;
+
+        // The gate owns both cache fields and the in-flight task, so the cache write
+        // is coherent with every read.
+        lock (_snapshotGate)
         {
-            return _cachedServers!;
+            if (!forceRefresh && IsCacheValid())
+            {
+                return Task.FromResult<IReadOnlyList<Master.Server>?>(_cachedServers!);
+            }
+
+            // Single-flight: concurrent callers (connect, enrichment loop, browser)
+            // share one in-flight download; only that task writes the cache. A forced
+            // refresh joins an in-flight download too — it is fresher than any cache.
+            if (_snapshotFetch is null || _snapshotFetch.IsCompleted)
+            {
+                _snapshotFetch = DownloadSnapshotAsync();
+            }
+
+            fetch = _snapshotFetch;
         }
 
+        return forceRefresh ? ServeWarmCacheWhenOutageAsync(fetch) : fetch;
+    }
+
+    private async Task<IReadOnlyList<Master.Server>?> ServeWarmCacheWhenOutageAsync(
+        Task<IReadOnlyList<Master.Server>?> fetch)
+    {
+        return await fetch ?? _cachedServers;
+    }
+
+    private async Task<IReadOnlyList<Master.Server>?> DownloadSnapshotAsync()
+    {
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, CatalogUrl);
@@ -92,14 +123,14 @@ public class ServerCatalog(
 
             if (!response.IsSuccessStatusCode)
             {
-                return forceRefresh ? _cachedServers : null;
+                return null;
             }
 
             var payload = await BoundedContent.ReadAsByteArrayAsync(response.Content, _maxPayloadBytes);
 
             if (payload is null)
             {
-                return forceRefresh ? _cachedServers : null;
+                return null;
             }
 
             var servers = await Task.Run(() => ServerCatalogDecoder.Decode(payload));
@@ -110,11 +141,11 @@ public class ServerCatalog(
         }
         catch (HttpRequestException)
         {
-            return forceRefresh ? _cachedServers : null;
+            return null;
         }
         catch (TaskCanceledException)
         {
-            return forceRefresh ? _cachedServers : null;
+            return null;
         }
     }
 
@@ -131,7 +162,10 @@ public class ServerCatalog(
 
     private void CacheServers(IReadOnlyList<Master.Server> servers)
     {
-        _cachedServers = servers;
-        _cachedAt = _timeProvider.GetUtcNow();
+        lock (_snapshotGate)
+        {
+            _cachedServers = servers;
+            _cachedAt = _timeProvider.GetUtcNow();
+        }
     }
 }

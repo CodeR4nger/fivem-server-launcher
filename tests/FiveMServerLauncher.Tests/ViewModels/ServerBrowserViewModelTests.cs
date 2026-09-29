@@ -301,9 +301,9 @@ public class ServerBrowserViewModelTests
     {
         // Given
         var enrichment = new FakeServerEnrichmentService { Icon = [9, 8, 7] };
-        var vm = CreateViewModel(
-            CatalogBytes(Entry("aaaaaa", "Alpha", game: "gta5", players: 3, max: 32)),
-            enrichment: enrichment);
+        var server = Entry("aaaaaa", "Alpha", game: "gta5", players: 3, max: 32);
+        server.Data.Vars["iconVersion"] = "55";
+        var vm = CreateViewModel(CatalogBytes(server), enrichment: enrichment);
         await vm.LoadAsync();
         var row = vm.Servers[0];
 
@@ -313,8 +313,29 @@ public class ServerBrowserViewModelTests
         await Task.Delay(50);
 
         // Then
-        Assert.Equal(1, enrichment.IconCalls);
+        Assert.Equal(1, enrichment.DirectIconCalls);
         Assert.Equal(new byte[] { 9, 8, 7 }, row.Icon);
+    }
+
+    [Fact]
+    public async Task RowIcon_WhenCatalogPublishesNoIconVersion_ShouldNotProbeForOne()
+    {
+        // Given — the snapshot is the proof: a server publishing no iconVersion has no
+        // icon, so the row never falls back to a /single/ probe (request hygiene).
+        var enrichment = new FakeServerEnrichmentService { Icon = [9, 8, 7] };
+        var vm = CreateViewModel(
+            CatalogBytes(Entry("aaaaaa", "Alpha", game: "gta5", players: 3, max: 32)),
+            enrichment: enrichment);
+        await vm.LoadAsync();
+        var row = vm.Servers[0];
+
+        // When
+        _ = row.Icon;
+        await Task.Delay(50);
+
+        // Then
+        Assert.Equal(0, enrichment.DirectIconCalls);
+        Assert.Null(row.Icon);
     }
 
     [Fact]

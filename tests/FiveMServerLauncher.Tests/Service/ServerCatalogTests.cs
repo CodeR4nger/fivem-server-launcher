@@ -541,6 +541,61 @@ public class ServerCatalogTests
         Assert.Equal(2, handler.RequestCount);
     }
 
+    [Fact]
+    public async Task GetSnapshot_WhenConcurrentCallsWithColdCache_ShouldShareOneInFlightDownload()
+    {
+        // Given — the multi-megabyte catalog must be downloaded once no matter how many
+        // callers hit a cold cache at the same time (connect, enrichment loop, browser).
+        var handler = new GatedHttpMessageHandler(
+            TestProtobufFrames.BuildFrameStream(new Master.Server { EndPoint = "y4lg95" }));
+        using var httpClient = new HttpClient(handler);
+        var clock = new FakeTimeProvider();
+        var catalog = new ServerCatalog(httpClient, clock);
+
+        // When
+        var first = catalog.GetSnapshotAsync();
+        var second = catalog.GetSnapshotAsync();
+        Assert.Equal(1, handler.RequestCount);
+        handler.Release();
+        var firstResult = await first;
+        var secondResult = await second;
+
+        // Then
+        Assert.NotNull(firstResult);
+        Assert.NotNull(secondResult);
+        Assert.Same(firstResult, secondResult);
+        Assert.Equal(1, handler.RequestCount);
+
+        var cached = await catalog.GetSnapshotAsync();
+        Assert.Same(firstResult, cached);
+        Assert.Equal(1, handler.RequestCount);
+    }
+
+    [Fact]
+    public async Task GetSnapshot_WhenForcedCallOverlapsInFlightFetch_ShouldJoinIt()
+    {
+        // Given — a forced refresh arriving while a download is in flight reuses it;
+        // the in-flight download is fresher than any cache could be.
+        var handler = new GatedHttpMessageHandler(
+            TestProtobufFrames.BuildFrameStream(new Master.Server { EndPoint = "y4lg95" }));
+        using var httpClient = new HttpClient(handler);
+        var clock = new FakeTimeProvider();
+        var catalog = new ServerCatalog(httpClient, clock);
+
+        // When
+        var inFlight = catalog.GetSnapshotAsync();
+        var forced = catalog.GetSnapshotAsync(forceRefresh: true);
+        Assert.Equal(1, handler.RequestCount);
+        handler.Release();
+        var inFlightResult = await inFlight;
+        var forcedResult = await forced;
+
+        // Then
+        Assert.NotNull(forcedResult);
+        Assert.Same(inFlightResult, forcedResult);
+        Assert.Equal(1, handler.RequestCount);
+    }
+
     private sealed class FlakyOnceHttpMessageHandler(byte[] payload) : HttpMessageHandler
     {
         public int RequestCount { get; private set; }
@@ -559,6 +614,32 @@ public class ServerCatalogTests
             {
                 Content = new ByteArrayContent(payload)
             });
+        }
+    }
+
+    private sealed class GatedHttpMessageHandler(byte[] payload) : HttpMessageHandler
+    {
+        private readonly TaskCompletionSource _gate =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _requests;
+
+        public int RequestCount => Volatile.Read(ref _requests);
+
+        public void Release()
+        {
+            _gate.TrySetResult();
+        }
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref _requests);
+            await _gate.Task;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(payload)
+            };
         }
     }
 }

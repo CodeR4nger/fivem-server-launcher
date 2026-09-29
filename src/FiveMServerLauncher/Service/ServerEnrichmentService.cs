@@ -1,18 +1,22 @@
-using System.Net;
 using System.Net.Http;
-using System.Text.Json;
 using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Domain;
 
 namespace FiveMServerLauncher.Service;
 
-public sealed record ServerPresence(bool Online, int Players, int MaxPlayers, GameClient? Game);
+public sealed record ServerPresence(
+    bool Online,
+    int Players,
+    int MaxPlayers,
+    GameClient? Game,
+    string? IconVersion = null)
+{
+    public static ServerPresence Offline { get; } = new(false, 0, 0, null);
+}
 
 public interface IServerEnrichmentService
 {
     Task<IReadOnlyDictionary<string, ServerPresence>?> RefreshAsync(bool forceRefresh = false);
-
-    Task<byte[]?> GetIconAsync(string cfxId);
 
     Task<byte[]?> GetIconAsync(string cfxId, string iconVersion);
 
@@ -21,16 +25,13 @@ public interface IServerEnrichmentService
 
 public sealed class ServerEnrichmentService : IServerEnrichmentService
 {
-    private const string SingleUrl = "https://frontend.cfx-services.net/api/servers/single/{0}";
     private const string IconUrl = "https://frontend.cfx-services.net/api/servers/icon/{0}/{1}.png";
 
-    private static readonly JsonSerializerOptions SerializerOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
     private static readonly TimeSpan DefaultCacheTtl = TimeSpan.FromSeconds(45);
     private static readonly TimeSpan DefaultForceCooldown = TimeSpan.FromSeconds(15);
     private const long DefaultMaxIconBytes = 2 * 1024 * 1024;
+    private const int DefaultMaxConcurrentIconDownloads = 4;
+    private const int DefaultMaxCachedIcons = 256;
 
     private readonly HttpClient _httpClient;
     private readonly ServerCatalog _catalog;
@@ -38,7 +39,14 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
     private readonly TimeProvider _timeProvider;
     private readonly TimeSpan _forceCooldown;
     private readonly long _maxIconBytes;
-    private readonly Dictionary<(string CfxId, string Version), byte[]> _iconCache = new();
+    private readonly int _maxCachedIcons;
+    private readonly SemaphoreSlim _iconDownloadSlots;
+    private readonly object _iconGate = new();
+    private readonly LinkedList<(string CfxId, string Version)> _iconLruOrder = new();
+    private readonly Dictionary<
+        (string CfxId, string Version),
+        (byte[] Icon, LinkedListNode<(string CfxId, string Version)> Node)> _iconCache = new();
+    private readonly Dictionary<(string CfxId, string Version), Task<byte[]?>> _inFlightIcons = new();
 
     private DateTimeOffset _lastForcedAt = DateTimeOffset.MinValue;
 
@@ -48,7 +56,9 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
         IDnsResolver? dnsResolver = null,
         TimeProvider? timeProvider = null,
         TimeSpan? forceCooldown = null,
-        long? maxIconBytes = null)
+        long? maxIconBytes = null,
+        int? maxConcurrentIconDownloads = null,
+        int? maxCachedIcons = null)
     {
         _catalog = catalog;
         _httpClient = httpClient;
@@ -56,10 +66,12 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
         _timeProvider = timeProvider ?? TimeProvider.System;
         _forceCooldown = forceCooldown ?? DefaultForceCooldown;
         _maxIconBytes = maxIconBytes ?? DefaultMaxIconBytes;
+        _maxCachedIcons = Math.Max(1, maxCachedIcons ?? DefaultMaxCachedIcons);
+        _iconDownloadSlots = new SemaphoreSlim(Math.Max(1, maxConcurrentIconDownloads ?? DefaultMaxConcurrentIconDownloads));
     }
 
-    public ServerEnrichmentService(HttpClient httpClient, TimeProvider? timeProvider = null, TimeSpan? cacheTtl = null, IDnsResolver? dnsResolver = null, TimeSpan? forceCooldown = null, long? maxIconBytes = null)
-        : this(new ServerCatalog(httpClient, timeProvider, cacheTtl ?? DefaultCacheTtl, dnsResolver), httpClient, dnsResolver, timeProvider, forceCooldown, maxIconBytes)
+    public ServerEnrichmentService(HttpClient httpClient, TimeProvider? timeProvider = null, TimeSpan? cacheTtl = null, IDnsResolver? dnsResolver = null, TimeSpan? forceCooldown = null, long? maxIconBytes = null, int? maxConcurrentIconDownloads = null, int? maxCachedIcons = null)
+        : this(new ServerCatalog(httpClient, timeProvider, cacheTtl ?? DefaultCacheTtl, dnsResolver), httpClient, dnsResolver, timeProvider, forceCooldown, maxIconBytes, maxConcurrentIconDownloads, maxCachedIcons)
     {
     }
 
@@ -83,48 +95,142 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
             .GroupBy(s => s.EndPoint!)
             .ToDictionary(
                 g => g.Key,
-                g => new ServerPresence(Online: true, g.First().Data!.Clients, g.First().Data.SvMaxclients, CfxVars.TryGetGameClient(g.First().Data.Vars)));
+                g =>
+                {
+                    var server = g.First();
+
+                    return new ServerPresence(
+                        Online: true,
+                        server.Data!.Clients,
+                        server.Data.SvMaxclients,
+                        CfxVars.TryGetGameClient(server.Data.Vars),
+                        CfxVars.TryGetString(server.Data.Vars, "iconVersion"));
+                });
     }
 
-    public async Task<byte[]?> GetIconAsync(string cfxId)
-    {
-        var version = await GetIconVersionAsync(cfxId);
-
-        if (version is null)
-        {
-            return null;
-        }
-
-        return await GetIconAsync(cfxId, version);
-    }
-
-    public async Task<byte[]?> GetIconAsync(string cfxId, string iconVersion)
+    public Task<byte[]?> GetIconAsync(string cfxId, string iconVersion)
     {
         var key = (cfxId, iconVersion);
+        TaskCompletionSource<byte[]?>? pending = null;
 
-        if (_iconCache.TryGetValue(key, out var cached))
+        lock (_iconGate)
         {
-            return cached;
+            if (TryGetCachedIcon(key, out var cached))
+            {
+                return Task.FromResult<byte[]?>(cached);
+            }
+
+            // Single-flight per icon: concurrent requests (e.g. several browser rows for
+            // the same server) share one download.
+            if (_inFlightIcons.TryGetValue(key, out var inFlight))
+            {
+                return inFlight;
+            }
+
+            // Register before starting: a download that completes synchronously (the
+            // routed test handler, OS-cached responses) must never leave a completed
+            // task parked as in-flight to serve stale bytes after an eviction.
+            pending = new TaskCompletionSource<byte[]?>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            _inFlightIcons[key] = pending.Task;
         }
 
+        // Started outside the gate: a download that completes without suspending must
+        // not hold the gate (and stall every other icon lookup) through its HTTP read.
+        _ = CompleteIconDownloadAsync(key, pending);
+
+        return pending.Task;
+    }
+
+    private async Task CompleteIconDownloadAsync(
+        (string CfxId, string Version) key,
+        TaskCompletionSource<byte[]?> completion)
+    {
         try
         {
-            var response = await _httpClient.GetAsync(string.Format(IconUrl, cfxId, iconVersion));
-
-            if (!response.IsSuccessStatusCode)
+            completion.SetResult(await DownloadIconAsync(key));
+        }
+        catch (Exception exception)
+        {
+            completion.SetException(exception);
+        }
+        finally
+        {
+            lock (_iconGate)
             {
-                return null;
+                _inFlightIcons.Remove(key);
             }
+        }
+    }
 
-            var icon = await BoundedContent.ReadAsByteArrayAsync(response.Content, _maxIconBytes);
+    private bool TryGetCachedIcon((string CfxId, string Version) key, out byte[] icon)
+    {
+        if (_iconCache.TryGetValue(key, out var entry))
+        {
+            _iconLruOrder.Remove(entry.Node);
+            _iconLruOrder.AddFirst(entry.Node);
+            icon = entry.Icon;
+            return true;
+        }
 
-            if (icon is null)
+        icon = [];
+        return false;
+    }
+
+    private void CacheIcon((string CfxId, string Version) key, byte[] icon)
+    {
+        if (_iconCache.TryGetValue(key, out var entry))
+        {
+            _iconLruOrder.Remove(entry.Node);
+            _iconLruOrder.AddFirst(entry.Node);
+            _iconCache[key] = (icon, entry.Node);
+            return;
+        }
+
+        var node = _iconLruOrder.AddFirst(key);
+        _iconCache[key] = (icon, node);
+
+        if (_iconCache.Count > _maxCachedIcons)
+        {
+            var evicted = _iconLruOrder.Last!;
+            _iconLruOrder.RemoveLast();
+            _iconCache.Remove(evicted.Value);
+        }
+    }
+
+    private async Task<byte[]?> DownloadIconAsync((string CfxId, string Version) key)
+    {
+        try
+        {
+            await _iconDownloadSlots.WaitAsync();
+
+            try
             {
-                return null;
-            }
+                var response = await _httpClient.GetAsync(string.Format(IconUrl, key.CfxId, key.Version));
 
-            _iconCache[key] = icon;
-            return icon;
+                if (!response.IsSuccessStatusCode)
+                {
+                    return null;
+                }
+
+                var icon = await BoundedContent.ReadAsByteArrayAsync(response.Content, _maxIconBytes);
+
+                if (icon is null)
+                {
+                    return null;
+                }
+
+                lock (_iconGate)
+                {
+                    CacheIcon(key, icon);
+                }
+
+                return icon;
+            }
+            finally
+            {
+                _iconDownloadSlots.Release();
+            }
         }
         catch (HttpRequestException)
         {
@@ -188,47 +294,5 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
             : await _catalog.LookupBareIpAsync(address);
 
         return server?.EndPoint;
-    }
-
-    private async Task<string?> GetIconVersionAsync(string cfxId)
-    {
-        try
-        {
-            var response = await _httpClient.GetAsync(string.Format(SingleUrl, cfxId));
-
-            if (response.StatusCode == HttpStatusCode.NotFound)
-            {
-                return null;
-            }
-
-            response.EnsureSuccessStatusCode();
-
-            var json = await response.Content.ReadAsStringAsync();
-            var parsed = JsonSerializer.Deserialize<CfxServerResponse>(json, SerializerOptions);
-
-            return parsed?.Data?.IconVersion?.ToString();
-        }
-        catch (HttpRequestException)
-        {
-            return null;
-        }
-        catch (TaskCanceledException)
-        {
-            return null;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-    }
-
-    private sealed class CfxServerResponse
-    {
-        public CfxServerData? Data { get; set; }
-    }
-
-    private sealed class CfxServerData
-    {
-        public long? IconVersion { get; set; }
     }
 }

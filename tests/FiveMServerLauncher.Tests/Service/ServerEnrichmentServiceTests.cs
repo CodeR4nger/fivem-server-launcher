@@ -171,19 +171,35 @@ public class ServerEnrichmentServiceTests
     }
 
     [Fact]
-    public async Task GetIconAsync_WhenSingleResponsePayloadIsCorrupt_ShouldReturnNull()
+    public async Task RefreshAsync_WhenIconVersionVarPresentOrAbsent_ShouldExposeItOnPresence()
     {
-        // Given
+        // Given — the catalog snapshot already carries each server's iconVersion in the
+        // vars, so the enrichment loop can use the direct icon path without probing
+        // /single/ per row.
         var handler = new RoutedHttpMessageHandler();
-        handler.AddTextRoute("single/y4lg95", HttpStatusCode.OK, "not-json{{{");
+        handler.AddBytesRoute(
+            "streamRedir",
+            HttpStatusCode.OK,
+            TestProtobufFrames.Join(
+                TestProtobufFrames.BuildFrameStream(new Master.Server
+                {
+                    EndPoint = "withicon",
+                    Data = new Master.ServerData { Vars = { ["iconVersion"] = "288154985" } }
+                }),
+                TestProtobufFrames.BuildFrameStream(new Master.Server
+                {
+                    EndPoint = "noicon",
+                    Data = new Master.ServerData { Clients = 1, SvMaxclients = 32 }
+                })));
         using var httpClient = new HttpClient(handler);
         var service = new ServerEnrichmentService(httpClient);
 
         // When
-        var result = await service.GetIconAsync("y4lg95");
+        var result = await service.RefreshAsync();
 
         // Then
-        Assert.Null(result);
+        Assert.Equal("288154985", result!["withicon"].IconVersion);
+        Assert.Null(result["noicon"].IconVersion);
     }
 
     [Fact]
@@ -207,19 +223,17 @@ public class ServerEnrichmentServiceTests
     {
         // Given
         var handler = new RoutedHttpMessageHandler();
-        handler.AddTextRoute("single/y4lg95", HttpStatusCode.OK, """{"data":{"iconVersion":288154985}}""");
         handler.AddBytesRoute("icon/y4lg95/288154985.png", HttpStatusCode.OK, [1, 2, 3, 4]);
         using var httpClient = new HttpClient(handler);
         var service = new ServerEnrichmentService(httpClient);
 
         // When
-        var first = await service.GetIconAsync("y4lg95");
-        var second = await service.GetIconAsync("y4lg95");
+        var first = await service.GetIconAsync("y4lg95", "288154985");
+        var second = await service.GetIconAsync("y4lg95", "288154985");
 
         // Then
         Assert.Equal([1, 2, 3, 4], first);
         Assert.Equal([1, 2, 3, 4], second);
-        Assert.Equal(2, handler.RequestCountByPath("single/y4lg95"));
         Assert.Equal(1, handler.RequestCountByPath("icon/y4lg95/288154985.png"));
     }
 
@@ -228,16 +242,14 @@ public class ServerEnrichmentServiceTests
     {
         // Given
         var handler = new RoutedHttpMessageHandler();
-        handler.AddTextRoute("single/y4lg95", HttpStatusCode.OK, """{"data":{"iconVersion":1}}""");
         handler.AddBytesRoute("icon/y4lg95/1.png", HttpStatusCode.OK, [1]);
         handler.AddBytesRoute("icon/y4lg95/2.png", HttpStatusCode.OK, [2]);
         using var httpClient = new HttpClient(handler);
         var service = new ServerEnrichmentService(httpClient);
 
         // When
-        var first = await service.GetIconAsync("y4lg95");
-        handler.AddTextRoute("single/y4lg95", HttpStatusCode.OK, """{"data":{"iconVersion":2}}""");
-        var second = await service.GetIconAsync("y4lg95");
+        var first = await service.GetIconAsync("y4lg95", "1");
+        var second = await service.GetIconAsync("y4lg95", "2");
 
         // Then
         Assert.Equal([1], first);
@@ -247,36 +259,40 @@ public class ServerEnrichmentServiceTests
     }
 
     [Fact]
-    public async Task GetIconAsync_WhenSingleEndpointUnavailable_ShouldReturnNullWithoutThrowing()
+    public async Task GetIconAsync_WhenIconDownloadFails_ShouldReturnNullWithoutThrowing()
     {
         // Given
         var handler = new RoutedHttpMessageHandler();
-        handler.AddTextRoute("single/y4lg95", HttpStatusCode.NotFound, string.Empty);
+        handler.AddBytesRoute("icon/y4lg95/5.png", HttpStatusCode.NotFound, Array.Empty<byte>());
         using var httpClient = new HttpClient(handler);
         var service = new ServerEnrichmentService(httpClient);
 
         // When
-        var result = await service.GetIconAsync("y4lg95");
+        var result = await service.GetIconAsync("y4lg95", "5");
 
         // Then
         Assert.Null(result);
     }
 
     [Fact]
-    public async Task GetIconAsync_WhenIconDownloadFails_ShouldReturnNullWithoutThrowing()
+    public async Task GetIconAsync_WhenDownloadFaultsWithUnexpectedException_ShouldPropagateToJoinedCallers()
     {
-        // Given
-        var handler = new RoutedHttpMessageHandler();
-        handler.AddTextRoute("single/y4lg95", HttpStatusCode.OK, """{"data":{"iconVersion":5}}""");
-        handler.AddBytesRoute("icon/y4lg95/5.png", HttpStatusCode.NotFound, Array.Empty<byte>());
+        // Given — only outages (HTTP/timeout) degrade to null; an unexpected fault
+        // propagates to every caller sharing the in-flight download.
+        var handler = new FaultingIconHttpMessageHandler();
         using var httpClient = new HttpClient(handler);
         var service = new ServerEnrichmentService(httpClient);
 
-        // When
-        var result = await service.GetIconAsync("y4lg95");
+        // When — caller two joins the in-flight download before it faults.
+        var first = service.GetIconAsync("y4lg95", "7");
+        var second = service.GetIconAsync("y4lg95", "7");
+        Assert.Equal(1, handler.TotalRequests);
+        handler.Release();
 
         // Then
-        Assert.Null(result);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => first);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => second);
+        Assert.Equal(1, handler.TotalRequests);
     }
 
     [Fact]
@@ -597,6 +613,103 @@ public class ServerEnrichmentServiceTests
         Assert.Equal(1, handler.RequestCountByPath("icon/y4lg95/55.png"));
     }
 
+    [Fact]
+    public async Task GetIconAsync_WhenConcurrentRequestsForSameIcon_ShouldShareOneDownload()
+    {
+        // Given — browser scrolling can realize several rows for the same server at
+        // once; concurrent requests for one icon must share a single download.
+        var handler = new GatedIconHttpMessageHandler([1, 2, 3]);
+        using var httpClient = new HttpClient(handler);
+        var service = new ServerEnrichmentService(httpClient);
+
+        // When
+        var requests = Enumerable.Range(0, 6)
+            .Select(_ => service.GetIconAsync("y4lg95", "7"))
+            .ToList();
+        Assert.Equal(1, handler.TotalRequests);
+        handler.Release();
+        var icons = await Task.WhenAll(requests);
+
+        // Then
+        Assert.All(icons, icon => Assert.Equal(new byte[] { 1, 2, 3 }, icon));
+        Assert.Equal(1, handler.TotalRequests);
+    }
+
+    [Fact]
+    public async Task GetIconAsync_WhenManyDistinctIconsRequestedConcurrently_ShouldBoundInFlightDownloads()
+    {
+        // Given — scrolling a huge catalog must not open an unbounded number of
+        // parallel icon downloads; concurrent downloads are capped.
+        var handler = new GatedIconHttpMessageHandler([1, 2, 3]);
+        using var httpClient = new HttpClient(handler);
+        var service = new ServerEnrichmentService(httpClient, maxConcurrentIconDownloads: 2);
+
+        // When
+        var requests = Enumerable.Range(0, 6)
+            .Select(i => service.GetIconAsync($"srv{i}", "7"))
+            .ToList();
+        Assert.Equal(2, handler.TotalRequests);
+        handler.Release();
+        var icons = await Task.WhenAll(requests);
+
+        // Then — exactly two downloads were ever in flight: bounded, but not serialized.
+        Assert.All(icons, icon => Assert.Equal(new byte[] { 1, 2, 3 }, icon));
+        Assert.Equal(6, handler.TotalRequests);
+        Assert.Equal(2, handler.PeakInFlight);
+    }
+
+    [Fact]
+    public async Task GetIconAsync_WhenCacheExceedsCapacity_ShouldEvictLeastRecentlyUsedIcon()
+    {
+        // Given — the icon cache is bounded for the app's lifetime; beyond capacity the
+        // least recently used icon is evicted (a re-touched older icon survives).
+        var handler = new RoutedHttpMessageHandler();
+        handler.AddBytesRoute("icon/srv0/1.png", HttpStatusCode.OK, [10]);
+        handler.AddBytesRoute("icon/srv1/1.png", HttpStatusCode.OK, [11]);
+        handler.AddBytesRoute("icon/srv2/1.png", HttpStatusCode.OK, [12]);
+        handler.AddBytesRoute("icon/srv3/1.png", HttpStatusCode.OK, [13]);
+        using var httpClient = new HttpClient(handler);
+        var service = new ServerEnrichmentService(httpClient, maxCachedIcons: 3);
+
+        // When
+        await service.GetIconAsync("srv0", "1");
+        await service.GetIconAsync("srv1", "1");
+        await service.GetIconAsync("srv2", "1");
+        await service.GetIconAsync("srv0", "1");
+        await service.GetIconAsync("srv3", "1");
+        var evicted = await service.GetIconAsync("srv1", "1");
+        var retained = await service.GetIconAsync("srv0", "1");
+
+        // Then — srv1 was evicted (LRU: srv0 was re-touched and survived); srv0 stays cached.
+        Assert.Equal(new byte[] { 11 }, evicted);
+        Assert.Equal(new byte[] { 10 }, retained);
+        Assert.Equal(2, handler.RequestCountByPath("icon/srv1/1.png"));
+        Assert.Equal(1, handler.RequestCountByPath("icon/srv0/1.png"));
+        Assert.Equal(1, handler.RequestCountByPath("icon/srv3/1.png"));
+    }
+
+    [Fact]
+    public async Task GetIconAsync_WhenDownloadCompletesSynchronously_ShouldNotParkCompletedTaskAsInFlight()
+    {
+        // Given — a download can finish before GetIconAsync even registers it (the
+        // routed handler answers synchronously); a completed task parked as in-flight
+        // would later serve stale bytes with no download after an eviction.
+        var handler = new RoutedHttpMessageHandler();
+        handler.AddBytesRoute("icon/srva/1.png", HttpStatusCode.OK, [10]);
+        handler.AddBytesRoute("icon/srvb/1.png", HttpStatusCode.OK, [11]);
+        using var httpClient = new HttpClient(handler);
+        var service = new ServerEnrichmentService(httpClient, maxCachedIcons: 1);
+
+        // When
+        await service.GetIconAsync("srva", "1");
+        await service.GetIconAsync("srvb", "1");
+        var refetched = await service.GetIconAsync("srva", "1");
+
+        // Then — srva was evicted by srvb, so the re-request downloads again.
+        Assert.Equal(new byte[] { 10 }, refetched);
+        Assert.Equal(2, handler.RequestCountByPath("icon/srva/1.png"));
+    }
+
     private sealed class HttpMessageHandlerStub : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(
@@ -604,6 +717,74 @@ public class ServerEnrichmentServiceTests
             CancellationToken cancellationToken)
         {
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+        }
+    }
+
+    private sealed class FaultingIconHttpMessageHandler : HttpMessageHandler
+    {
+        private readonly TaskCompletionSource _gate =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _requests;
+
+        public int TotalRequests => Volatile.Read(ref _requests);
+
+        public void Release()
+        {
+            _gate.TrySetResult();
+        }
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref _requests);
+            await _gate.Task;
+            throw new InvalidOperationException("Unexpected handler fault");
+        }
+    }
+
+    private sealed class GatedIconHttpMessageHandler(byte[] payload) : HttpMessageHandler
+    {
+        private readonly TaskCompletionSource _gate =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly object _peakGate = new();
+        private int _inFlight;
+
+        public int TotalRequests { get; private set; }
+
+        public int PeakInFlight { get; private set; }
+
+        public void Release()
+        {
+            _gate.TrySetResult();
+        }
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            lock (_peakGate)
+            {
+                TotalRequests++;
+                _inFlight++;
+                PeakInFlight = Math.Max(PeakInFlight, _inFlight);
+            }
+
+            try
+            {
+                await _gate.Task;
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new ByteArrayContent(payload)
+                };
+            }
+            finally
+            {
+                lock (_peakGate)
+                {
+                    _inFlight--;
+                }
+            }
         }
     }
 

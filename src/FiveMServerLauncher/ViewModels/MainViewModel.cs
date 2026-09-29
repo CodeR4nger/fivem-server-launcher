@@ -809,16 +809,20 @@ public class MainViewModel : INotifyPropertyChanged
                 continue;
             }
 
-            if (presence.TryGetValue(item.CfxId!, out var serverPresence))
+            var serverPresence = presence.TryGetValue(item.CfxId!, out var found)
+                ? found
+                : ServerPresence.Offline;
+
+            item.ApplyPresence(serverPresence);
+
+            // The snapshot either publishes the icon version or proves there is none,
+            // so the loop never needs to probe /single/ for it.
+            if (serverPresence.IconVersion is null)
             {
-                item.ApplyPresence(serverPresence);
-            }
-            else
-            {
-                item.ApplyPresence(new ServerPresence(false, 0, 0, null));
+                continue;
             }
 
-            var icon = await _enrichment.GetIconAsync(item.CfxId!);
+            var icon = await _enrichment.GetIconAsync(item.CfxId!, serverPresence.IconVersion);
 
             if (icon is not null && item.Icon != icon)
             {

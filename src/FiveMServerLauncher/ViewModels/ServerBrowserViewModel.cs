@@ -208,9 +208,14 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
 
     private async Task LoadIconAsync(ServerBrowserItem item)
     {
-        var icon = item.IconVersion is not null
-            ? await _enrichment.GetIconAsync(item.CfxId, item.IconVersion)
-            : await _enrichment.GetIconAsync(item.CfxId);
+        // The snapshot is the proof: a server publishing no iconVersion has no icon,
+        // so the row never probes /single/ for one (request hygiene).
+        if (item.IconVersion is null)
+        {
+            return;
+        }
+
+        var icon = await _enrichment.GetIconAsync(item.CfxId, item.IconVersion);
 
         if (icon is not null)
         {
