@@ -72,7 +72,7 @@ public class ProcessReadinessChecker : IRequirementReadiness
 
     private static bool DefaultProcessLookup(string processName)
     {
-        return Process.GetProcessesByName(processName).Length > 0;
+        return ProcessProbe.AnyRunning(processName);
     }
 
     private static int? ReadActiveSteamUser()
