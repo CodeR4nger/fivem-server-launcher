@@ -36,3 +36,7 @@ rendered images, and decode at a bounded size.
   case-sensitive, exactly as before.
 - Waived: non-PNG input below the cap upscales in the fallback path (unreachable — icons are
   PNG); cancelled debounce CTSs are not disposed (harmless; `Task.Delay` owns the timer).
+- Post-landing fix: the converter's capacity ctor initially made it XAML-uninstantiable
+  (all-optional-parameter ctors compile but BAML requires a true parameterless ctor, and the
+  app crashed on start); restored the parameterless ctor and pinned the contract with an
+  `Activator.CreateInstance` test that mirrors XAML's default-ctor reflection lookup.

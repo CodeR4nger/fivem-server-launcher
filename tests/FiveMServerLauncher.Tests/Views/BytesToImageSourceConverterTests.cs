@@ -148,4 +148,14 @@ public class BytesToImageSourceConverterTests
         Assert.Throws<NotSupportedException>(() =>
             converter.ConvertBack(new BitmapImage(), typeof(byte[]), null!, CultureInfo.InvariantCulture));
     }
+
+    [Fact]
+    public void Converter_WhenConstructedViaDefaultCtorReflection_ShouldBeConstructible()
+    {
+        // Given — XAML (BAML) instantiates StaticResource converters through the
+        // reflection default-ctor lookup; an all-optional-parameter ctor passes C#
+        // but throws MissingMethodException at runtime on window load.
+        // When / Then
+        Assert.NotNull(Activator.CreateInstance(typeof(BytesToImageSourceConverter)));
+    }
 }

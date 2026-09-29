@@ -18,7 +18,12 @@ public sealed class BytesToImageSourceConverter : IValueConverter
     // by reference, matching the enrichment service's per-icon byte instances.
     private readonly LruCache<byte[], BitmapImage> _decoded;
 
-    public BytesToImageSourceConverter(int maxCachedDecodes = DefaultMaxCachedDecodes)
+    public BytesToImageSourceConverter()
+        : this(DefaultMaxCachedDecodes)
+    {
+    }
+
+    public BytesToImageSourceConverter(int maxCachedDecodes)
     {
         _decoded = new LruCache<byte[], BitmapImage>(Math.Max(1, maxCachedDecodes));
     }
