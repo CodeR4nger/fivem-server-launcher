@@ -9,6 +9,7 @@ using FiveMServerLauncher.Tests.Configuration;
 using FiveMServerLauncher.Tests.Launch;
 using FiveMServerLauncher.Tests.Service;
 using FiveMServerLauncher.Tests.Domain;
+using FiveMServerLauncher.Tests.Localization;
 using FiveMServerLauncher.ViewModels;
 
 namespace FiveMServerLauncher.Tests.ViewModels;
@@ -2799,11 +2800,14 @@ public class MainViewModelTests
             localizer: CreateLocalizer(("en", LanguageEnglishJson), ("es", LanguageSpanishJson)));
         await vm.InitializeAsync();
 
-        // When / Then
-        Assert.Equal(
-            ["System default", "English", "Español"],
-            vm.LanguageOptions.Select(o => o.Label).ToArray());
+        // When / Then — "System default" leads, then every shipped language under
+        // its native name; the test fixture only loads two dictionaries, but the
+        // picker offers the whole shipped set regardless.
+        Assert.Equal("System default", vm.LanguageOptions[0].Label);
         Assert.Null(vm.LanguageOptions[0].Tag);
+        Assert.Equal(
+            Localizer.ShippedLanguageOptions.Select(l => l.DisplayName).ToArray(),
+            vm.LanguageOptions.Skip(1).Select(o => o.Label).ToArray());
     }
 
     [Fact]
@@ -2870,12 +2874,15 @@ public class MainViewModelTests
     }
 
     [Fact]
-    public async Task Constructor_WithPersistedUnknownLanguageTag_ShouldFallBackToSystemDefault()
+    public void Constructor_WithPersistedLanguage_ShouldLabelThePickerInThatLanguage()
     {
-        // Given — a tag that is no longer shipped selects the follow-system option.
+        // Given — a Spanish pick saved from a previous run, on an English system.
+        // The picker is built from localized strings, so a startup that switches the
+        // language after building them leaves the "System default" row in the old
+        // language, next to the Spanish language names.
         var storage = new InMemorySettingsStorage();
-        storage.Save(new LauncherSettings { Language = "fr" });
-        var localizer = CreateLocalizer(("en", LanguageEnglishJson), ("es", LanguageSpanishJson));
+        storage.Save(new LauncherSettings { Language = "es" });
+        var localizer = CreateLocalizer("en-US", ("en", LanguageEnglishJson), ("es", LanguageSpanishJson));
 
         // When
         var vm = CreateViewModel(
@@ -2885,6 +2892,28 @@ public class MainViewModelTests
             localizer: localizer);
 
         // Then
+        Assert.Equal("Predeterminado del sistema", vm.LanguageOptions[0].Label);
+        Assert.Equal("es", vm.SelectedLanguageOption.Tag);
+        Assert.Equal("Español", vm.SelectedLanguageOption.Label);
+    }
+
+    [Fact]
+    public void Constructor_WithPersistedUnknownLanguageTag_ShouldFallBackToSystemDefault()
+    {
+        // Given — a real culture the product does not ship
+        var storage = new InMemorySettingsStorage();
+        storage.Save(new LauncherSettings { Language = UnshippedLanguageTag.Value });
+        var localizer = CreateLocalizer(("en", LanguageEnglishJson), ("es", LanguageSpanishJson));
+
+        // When
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            settings: new ConfigurationRepository(storage),
+            localizer: localizer);
+
+        // Then — the localizer rejected the tag and followed the en-US system instead
+        Assert.Equal("en", localizer.Language);
         Assert.Null(vm.SelectedLanguageOption.Tag);
     }
 

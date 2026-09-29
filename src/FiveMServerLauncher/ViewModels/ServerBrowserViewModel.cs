@@ -54,7 +54,8 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
     {
         var selectedGame = _selectedGameFilterOption.Game;
         GameFilterOptions = BuildGameFilterOptions();
-        _selectedGameFilterOption = GameFilterOptions.Single(o => o.Game == selectedGame);
+        _selectedGameFilterOption = GameFilterOptions.FirstOrDefault(o => o.Game == selectedGame)
+            ?? GameFilterOptions[0];
 
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(GameFilterOptions)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedGameFilterOption)));

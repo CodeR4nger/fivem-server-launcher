@@ -37,7 +37,9 @@ fallback for any missing key or file.
    tags), CFX status labels, browser chrome (back, browse servers, filters, hide full/empty,
    search placeholders, refresh tooltips), and settings panel copy.
 8. As a user, if a language is missing a key, I want the English string shown, so that I never
-   see a blank or a raw key.
+   see a blank. (A key missing from *English itself* is a developer error, not a translation gap;
+   the raw key is shown deliberately so the offender is identifiable in the UI. See
+   "Missing key" under Implementation Decisions.)
 9. As a user, if a language file is corrupt or missing entirely, I want the app to run in
    English, so that a bad translation never breaks the launcher.
 10. As a user, I want interpolated statuses ("Starting Steam...", "FiveM is not installed",
@@ -73,6 +75,16 @@ fallback for any missing key or file.
   subscribes to the same event and refreshes. Status messages resolve at emission time.
 - Missing key -> English lookup; corrupt/missing language file -> English dictionary for that
   language; none of it throws to the caller.
+- "Missing key" is scoped to the *selected* language. When English itself lacks the key, `Get`
+  returns the raw key. That is deliberate: English is the key-set source of truth, so a key absent
+  from `en.json` is a defect a maintainer must see and fix, and the raw key names it in the UI
+  instead of rendering blank. The completeness audit test is the build-time guard for that case.
+- A shipped language stays *selectable* even when its file failed to parse: it renders through the
+  English fallback rather than disappearing from the picker, because silently dropping the user's
+  explicit choice and reverting them to their system language is worse than an English UI. The
+  declared shipped set (`Localizer.ShippedLanguageOptions`) is therefore the single source of truth
+  for what is offered and what a requested tag may resolve to — not the set of dictionaries that
+  happened to parse.
 - No RTL/flow-direction support and no locale-aware date/number formatting (the UI has none
   worth formatting).
 
@@ -87,8 +99,10 @@ fallback for any missing key or file.
   in-memory storage), and view models (dialog labels/status strings emitted in the selected
   language; properties refresh after a language switch).
 - The system-culture provider is injected in tests (no real OS culture dependency).
-- The XAML markup extension is thin glue over the tested localizer and is not unit-tested
-  (same stance as existing converters).
+- The XAML markup extension is thin glue over the tested localizer (same stance as existing
+  converters), with one exception: its indexer binding is unit-tested, because binding a plain
+  property path instead of the indexer renders every label empty and nothing else in the suite
+  would catch it. That test is the regression pin for the bug that shipped in the first cut.
 - Prior art: in-memory settings storage, time-provider seam, existing view-model suites.
 
 ## Out of Scope

@@ -71,8 +71,11 @@ public class MainViewModel : INotifyPropertyChanged
         LanguageOptions = BuildLanguageOptions();
         _selectedLanguageOption = LanguageOptions.FirstOrDefault(o => o.Tag == _settings.Language)
             ?? LanguageOptions[0];
-        _localizer.SetLanguage(_settings.Language);
+        // Subscribed before SetLanguage: applying the persisted language raises
+        // LanguageChanged, and the option labels are localized strings built from
+        // it — subscribing afterwards would leave them in the previous language.
         _localizer.LanguageChanged += OnLanguageChanged;
+        _localizer.SetLanguage(_settings.Language);
         StatusText = _localizer.Get("StatusReady");
         FiveMStatus = new CfxStatusItem(GameClient.FiveM, _localizer);
         FiveMEnhancedStatus = new CfxStatusItem(GameClient.FiveMEnhanced, _localizer);

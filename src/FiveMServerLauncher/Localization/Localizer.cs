@@ -10,7 +10,7 @@ public sealed class Localizer : ILocalizer
 
     private const string ResourcePrefix = "FiveMServerLauncher.Localization.";
 
-    private static readonly LanguageOption[] ShippedLanguages =
+    public static IReadOnlyList<LanguageOption> ShippedLanguageOptions { get; } =
     [
         new("en", "English"),
         new("es", "Español"),
@@ -25,11 +25,13 @@ public sealed class Localizer : ILocalizer
         new("zh-Hans", "简体中文")
     ];
 
+    private static readonly HashSet<string> ShippedTags =
+        ShippedLanguageOptions.Select(l => l.Tag).ToHashSet();
+
     private readonly IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> _dictionaries;
     private readonly Func<string?> _systemCultureProvider;
     private readonly object _stateGate = new();
 
-    private string? _requestedTag;
     private string _effectiveTag;
 
     public Localizer(
@@ -110,8 +112,10 @@ public sealed class Localizer : ILocalizer
         }
     }
 
-    public IReadOnlyList<LanguageOption> Languages =>
-        ShippedLanguages.Where(l => _dictionaries.ContainsKey(l.Tag)).ToArray();
+    // A shipped language stays selectable even when its file failed to parse: the
+    // English fallback renders it (see Get), which beats silently dropping the
+    // user's explicit choice and reverting them to their system language.
+    public IReadOnlyList<LanguageOption> Languages => ShippedLanguageOptions;
 
     public event EventHandler? LanguageChanged;
 
@@ -126,9 +130,7 @@ public sealed class Localizer : ILocalizer
 
         lock (_stateGate)
         {
-            _requestedTag = requested;
-
-            var effective = requested is not null && _dictionaries.ContainsKey(requested)
+            var effective = requested is not null && ShippedTags.Contains(requested)
                 ? requested
                 : MatchSystemLanguage(cultureName);
 
@@ -187,7 +189,7 @@ public sealed class Localizer : ILocalizer
 
         foreach (var candidate in SystemLanguageCandidates(cultureName))
         {
-            if (_dictionaries.ContainsKey(candidate))
+            if (ShippedTags.Contains(candidate))
             {
                 return candidate;
             }

@@ -162,31 +162,74 @@ public class LocalizerTests
     [Fact]
     public void SetLanguage_WhenTagNotShipped_ShouldFallBackToSystemLanguage()
     {
-        // Given
+        // Given — a real culture the product does not ship
         var localizer = new Localizer(
             Dictionaries(("en", EnglishJson), ("es", SpanishJson)),
             () => "es-ES");
 
         // When
-        localizer.SetLanguage("fr");
+        localizer.SetLanguage(UnshippedLanguageTag.Value);
 
         // Then
         Assert.Equal("es", localizer.Language);
     }
 
     [Fact]
-    public void Languages_ShouldListOnlyLanguagesWithDictionaries()
+    public void Languages_ShouldOfferEachShippedLanguageUnderItsNativeName()
+    {
+        // Given / When — the picker labels every language in its own script
+        var localizer = Localizer.FromEmbeddedResources(() => "en-US");
+
+        // Then
+        Assert.Equal(
+            ["English", "Español", "Français", "Deutsch", "Italiano",
+             "日本語", "한국어", "Polski", "Português", "Русский", "简体中文"],
+            localizer.Languages.Select(l => l.DisplayName).ToArray());
+    }
+
+    [Fact]
+    public void Get_WhenShippedLanguageFileCorrupt_ShouldRenderEnglish()
+    {
+        // Given — the Spanish file ships but its payload is corrupt, so it never
+        // parses. The user must still get the language, rendered in English.
+        var localizer = new Localizer(
+            Dictionaries(("en", EnglishJson), ("es", "{ not valid json")),
+            () => "en-US");
+
+        // When / Then
+        Assert.Equal("⚙ SETTINGS", localizer.Get("SettingsButton"));
+        Assert.Contains(localizer.Languages, l => l.Tag == "es");
+    }
+
+    [Fact]
+    public void SetLanguage_WhenShippedButUnparsable_ShouldSelectItAndRenderEnglish()
     {
         // Given
         var localizer = new Localizer(
-            Dictionaries(("en", EnglishJson), ("es", SpanishJson)));
+            Dictionaries(("en", EnglishJson), ("es", "")),
+            () => "en-US");
 
-        // When / Then
-        Assert.Equal(
-            ["English", "Español"],
-            localizer.Languages.Select(l => l.DisplayName).ToArray());
-        Assert.Equal("en", localizer.Languages[0].Tag);
-        Assert.Equal("es", localizer.Languages[1].Tag);
+        // When
+        localizer.SetLanguage("es");
+
+        // Then — the explicit choice wins over the system language, and English renders
+        Assert.Equal("es", localizer.Language);
+        Assert.Equal("ENTER SERVER", localizer.Get("EnterServerButton"));
+    }
+
+    [Fact]
+    public void UnshippedLanguageTag_ShouldBeARealCultureTheProductDoesNotShip()
+    {
+        // Given / When — the "not shipped" input the rejection tests rely on must
+        // stay a real culture the product does not declare. If the product ever
+        // starts shipping it, the tests using it invert silently; this fails first.
+        var tag = UnshippedLanguageTag.Value;
+
+        // Then
+        Assert.True(
+            CultureInfo.GetCultures(CultureTypes.AllCultures).Any(c => c.Name == tag),
+            $"'{tag}' must be a real culture so the rejection tests stay realistic");
+        Assert.False(UnshippedLanguageTag.IsShipped(tag), $"'{tag}' must not be a shipped language");
     }
 
     [Fact]
@@ -240,22 +283,30 @@ public class LocalizerTests
     [Fact]
     public void LoadDictionaries_WhenLanguagesShipped_ShouldCoverEveryEnglishKey()
     {
-        // Given — the completeness audit: every language file that ships must carry
-        // every English key, or the English fallback would leak visibly.
+        // Given — the completeness audit: every language the product declares must
+        // ship a parseable file carrying every English key, or the English fallback
+        // would leak visibly. Iterating the *parsed* dictionaries would pass
+        // vacuously, so the declared shipped list is the contract.
         var dictionaries = Localizer.LoadDictionaries();
+        var declaredTags = Localizer.ShippedLanguageOptions.Select(l => l.Tag).ToArray();
 
         // When
         var english = dictionaries["en"];
-        var otherTags = dictionaries.Keys.Where(t => t != "en");
+        var unparsable = declaredTags.Where(tag => !dictionaries.ContainsKey(tag)).ToArray();
+        var incomplete = declaredTags
+            .Where(dictionaries.ContainsKey)
+            .Select(tag => (Tag: tag, Missing: english.Keys.Where(key => !dictionaries[tag].ContainsKey(key)).ToArray()))
+            .Where(entry => entry.Missing.Length > 0)
+            .ToArray();
 
         // Then
         Assert.NotEmpty(english);
-        Assert.All(otherTags, tag =>
-        {
-            var missing = english.Keys.Where(key => !dictionaries[tag].ContainsKey(key)).ToList();
-            Assert.True(missing.Count == 0, $"Language '{tag}' is missing keys: {string.Join(", ", missing)}");
-        });
+        Assert.True(unparsable.Length == 0, $"Shipped but unparsable: {string.Join(", ", unparsable)}");
+        Assert.True(
+            incomplete.Length == 0,
+            string.Join("; ", incomplete.Select(e => $"{e.Tag} missing: {string.Join(", ", e.Missing)}")));
     }
+
     [Fact]
     public async Task Get_WhenReadWhileLanguageSwitchedOnOtherThreads_ShouldAlwaysReturnWellFormedValue()
     {
