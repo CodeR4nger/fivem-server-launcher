@@ -42,10 +42,7 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
     private readonly int _maxCachedIcons;
     private readonly SemaphoreSlim _iconDownloadSlots;
     private readonly object _iconGate = new();
-    private readonly LinkedList<(string CfxId, string Version)> _iconLruOrder = new();
-    private readonly Dictionary<
-        (string CfxId, string Version),
-        (byte[] Icon, LinkedListNode<(string CfxId, string Version)> Node)> _iconCache = new();
+    private readonly LruCache<(string CfxId, string Version), byte[]> _iconCache;
     private readonly Dictionary<(string CfxId, string Version), Task<byte[]?>> _inFlightIcons = new();
 
     private DateTimeOffset _lastForcedAt = DateTimeOffset.MinValue;
@@ -68,6 +65,7 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
         _maxIconBytes = maxIconBytes ?? DefaultMaxIconBytes;
         _maxCachedIcons = Math.Max(1, maxCachedIcons ?? DefaultMaxCachedIcons);
         _iconDownloadSlots = new SemaphoreSlim(Math.Max(1, maxConcurrentIconDownloads ?? DefaultMaxConcurrentIconDownloads));
+        _iconCache = new LruCache<(string CfxId, string Version), byte[]>(_maxCachedIcons);
     }
 
     public ServerEnrichmentService(HttpClient httpClient, TimeProvider? timeProvider = null, TimeSpan? cacheTtl = null, IDnsResolver? dnsResolver = null, TimeSpan? forceCooldown = null, long? maxIconBytes = null, int? maxConcurrentIconDownloads = null, int? maxCachedIcons = null)
@@ -115,7 +113,7 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
 
         lock (_iconGate)
         {
-            if (TryGetCachedIcon(key, out var cached))
+            if (_iconCache.TryGet(key, out var cached))
             {
                 return Task.FromResult<byte[]?>(cached);
             }
@@ -163,41 +161,6 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
         }
     }
 
-    private bool TryGetCachedIcon((string CfxId, string Version) key, out byte[] icon)
-    {
-        if (_iconCache.TryGetValue(key, out var entry))
-        {
-            _iconLruOrder.Remove(entry.Node);
-            _iconLruOrder.AddFirst(entry.Node);
-            icon = entry.Icon;
-            return true;
-        }
-
-        icon = [];
-        return false;
-    }
-
-    private void CacheIcon((string CfxId, string Version) key, byte[] icon)
-    {
-        if (_iconCache.TryGetValue(key, out var entry))
-        {
-            _iconLruOrder.Remove(entry.Node);
-            _iconLruOrder.AddFirst(entry.Node);
-            _iconCache[key] = (icon, entry.Node);
-            return;
-        }
-
-        var node = _iconLruOrder.AddFirst(key);
-        _iconCache[key] = (icon, node);
-
-        if (_iconCache.Count > _maxCachedIcons)
-        {
-            var evicted = _iconLruOrder.Last!;
-            _iconLruOrder.RemoveLast();
-            _iconCache.Remove(evicted.Value);
-        }
-    }
-
     private async Task<byte[]?> DownloadIconAsync((string CfxId, string Version) key)
     {
         try
@@ -222,7 +185,7 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
 
                 lock (_iconGate)
                 {
-                    CacheIcon(key, icon);
+                    _iconCache.Set(key, icon);
                 }
 
                 return icon;

@@ -143,18 +143,103 @@ public class ServerBrowserViewModelTests
         Assert.Single(vm.ServersView.Cast<ServerBrowserItem>());
     }
 
+    [Fact]
+    public async Task SearchText_WhenDebouncePending_ShouldNotRefreshUntilElapsed()
+    {
+        // Given — refreshing the 30k-row view per keystroke freezes the UI; the
+        // refresh only runs once the searcher stops typing.
+        var delay = new ManualSearchDelay();
+        var vm = CreateViewModel(
+            CatalogBytes(
+                Entry("aaaaaa", "Midnight RP", game: "gta5", players: 0, max: 32),
+                Entry("bbbbbb", "Daylight", game: "gta5", players: 2, max: 32)),
+            searchDebounce: TimeSpan.FromMilliseconds(250),
+            searchDelay: delay.Invoke);
+        await vm.LoadAsync();
+
+        // When
+        vm.SearchText = "midnight";
+
+        // Then — the debounce is pending, nothing filtered yet.
+        Assert.Equal(2, vm.ServersView.Cast<ServerBrowserItem>().Count());
+        var pending = Assert.Single(delay.Pending);
+        Assert.Equal(TimeSpan.FromMilliseconds(250), pending.Duration);
+
+        // When — the idle window elapses
+        pending.Completion.TrySetResult();
+
+        // Then
+        var visible = vm.ServersView.Cast<ServerBrowserItem>().ToList();
+        Assert.Single(visible);
+        Assert.Equal("Midnight RP", visible[0].Name);
+    }
+
+    [Fact]
+    public async Task SearchText_WhenKeystrokesArriveDuringDebounce_ShouldCoalesceToFinalText()
+    {
+        // Given — rapid keystrokes cancel each other's pending refresh; only the
+        // final text ever filters the view ("drift" narrows to one row where the
+        // intermediate "mid" would have shown two).
+        var delay = new ManualSearchDelay();
+        var vm = CreateViewModel(
+            CatalogBytes(
+                Entry("aaaaaa", "Midnight RP", game: "gta5", players: 0, max: 32),
+                Entry("bbbbbb", "Midnight Drift", game: "gta5", players: 9, max: 32)),
+            searchDebounce: TimeSpan.FromMilliseconds(250),
+            searchDelay: delay.Invoke);
+        await vm.LoadAsync();
+
+        // When — two keystrokes inside one idle window
+        vm.SearchText = "mid";
+        vm.SearchText = "drift";
+
+        // Then — the first debounce was cancelled by the second
+        Assert.True(delay.Pending[0].Completion.Task.IsCanceled);
+
+        // When — only the final debounce elapses
+        Assert.True(delay.Pending[1].Completion.TrySetResult());
+
+        // Then — filtered by the FINAL text only ("drift" narrows to one row).
+        var visible = vm.ServersView.Cast<ServerBrowserItem>().ToList();
+        Assert.Single(visible);
+        Assert.Equal("Midnight Drift", visible[0].Name);
+        Assert.Equal(2, delay.Pending.Count);
+    }
+
+    private sealed class ManualSearchDelay
+    {
+        private readonly List<(TimeSpan Duration, TaskCompletionSource Completion)> _pending = new();
+
+        public IReadOnlyList<(TimeSpan Duration, TaskCompletionSource Completion)> Pending => _pending;
+
+        public Func<TimeSpan, CancellationToken, Task> Invoke => (duration, token) =>
+        {
+            // Completing the delay runs the debounce continuation inline on the
+            // completing thread (production re-posts to the dispatcher via the
+            // captured sync context; the fake keeps the tests deterministic).
+            var completion = new TaskCompletionSource();
+            token.Register(() => completion.TrySetCanceled());
+            _pending.Add((duration, completion));
+            return completion.Task;
+        };
+    }
+
     private static ServerBrowserViewModel CreateViewModel(
         byte[] catalogBytes,
         FakeServerEnrichmentService? enrichment = null,
         TimeSpan? refreshCooldown = null,
-        IServerRepository? repository = null)
+        IServerRepository? repository = null,
+        TimeSpan? searchDebounce = null,
+        Func<TimeSpan, CancellationToken, Task>? searchDelay = null)
     {
         var handler = new FakeHttpMessageHandler(HttpStatusCode.OK, catalogBytes);
         return new ServerBrowserViewModel(
             new ServerCatalog(new HttpClient(handler)),
             enrichment ?? new FakeServerEnrichmentService(),
             repository ?? new InMemoryServerRepository(),
-            refreshCooldown);
+            refreshCooldown,
+            searchDebounce: searchDebounce ?? TimeSpan.Zero,
+            searchDelay: searchDelay);
     }
 
     private static ServerBrowserViewModel CreateViewModel(HttpClient httpClient)

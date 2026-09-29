@@ -13,18 +13,25 @@ namespace FiveMServerLauncher.ViewModels;
 public sealed class ServerBrowserViewModel : INotifyPropertyChanged
 {
     private static readonly TimeSpan DefaultRefreshCooldown = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan DefaultSearchDebounce = TimeSpan.FromMilliseconds(250);
 
     private readonly ServerCatalog _catalog;
     private readonly IServerEnrichmentService _enrichment;
     private readonly IServerRepository _repository;
     private readonly TimeSpan _refreshCooldown;
 
+    private readonly ILocalizer _localizer;
+    private readonly TimeSpan _searchDebounce;
+    private readonly Func<TimeSpan, CancellationToken, Task> _searchDelay;
+
     public ServerBrowserViewModel(
         ServerCatalog catalog,
         IServerEnrichmentService enrichment,
         IServerRepository repository,
         TimeSpan? refreshCooldown = null,
-        ILocalizer? localizer = null)
+        ILocalizer? localizer = null,
+        TimeSpan? searchDebounce = null,
+        Func<TimeSpan, CancellationToken, Task>? searchDelay = null)
     {
         _catalog = catalog;
         _enrichment = enrichment;
@@ -32,13 +39,13 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
         _localizer = localizer ?? DefaultLocalizer.Get();
         _localizer.LanguageChanged += OnLanguageChanged;
         _refreshCooldown = refreshCooldown ?? DefaultRefreshCooldown;
+        _searchDebounce = searchDebounce ?? DefaultSearchDebounce;
+        _searchDelay = searchDelay ?? ((duration, token) => Task.Delay(duration, token));
         Servers = new ObservableCollection<ServerBrowserItem>();
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => !IsRefreshing);
         GameFilterOptions = BuildGameFilterOptions();
         _selectedGameFilterOption = GameFilterOptions[0];
     }
-
-    private readonly ILocalizer _localizer;
 
     private void OnLanguageChanged(object? sender, EventArgs e)
     {
@@ -159,7 +166,53 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
     public string SearchText
     {
         get => _searchText;
-        set => SetFilter(ref _searchText, value);
+        set
+        {
+            if (SetProperty(ref _searchText, value, nameof(SearchText)))
+            {
+                ScheduleSearchRefresh();
+            }
+        }
+    }
+
+    private CancellationTokenSource? _searchRefreshDebounce;
+
+    // Typing must not re-run the filter over the 30k-row view per keystroke: the
+    // refresh waits out an idle window and rapid keystrokes coalesce into the final
+    // text. Discrete filters (game/hide) still refresh immediately.
+    private void ScheduleSearchRefresh()
+    {
+        _searchRefreshDebounce?.Cancel();
+
+        var cancellation = _searchRefreshDebounce = new CancellationTokenSource();
+        _ = DebounceSearchRefreshAsync(cancellation);
+    }
+
+    private async Task DebounceSearchRefreshAsync(CancellationTokenSource cancellation)
+    {
+        try
+        {
+            await _searchDelay(_searchDebounce, cancellation.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        if (cancellation.IsCancellationRequested)
+        {
+            return;
+        }
+
+        try
+        {
+            ServersView.Refresh();
+        }
+        catch (Exception)
+        {
+            // A throwing refresh must never crash the fire-and-forget dispatcher
+            // continuation; the next keystroke starts a fresh debounce.
+        }
     }
 
     private void SetFilter<T>(ref T field, T value, [CallerMemberName] string name = "")
@@ -227,11 +280,18 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
     {
         var saved = _repository.GetAll();
 
+        // Keyed lookup: the per-row scan over every saved server was O(rows x saved)
+        // on a 30k-row load.
+        var savedAddresses = new HashSet<string>(
+            saved.Select(s => s.Address),
+            StringComparer.OrdinalIgnoreCase);
+        var savedIds = new HashSet<string>(
+            saved.Where(s => s.CfxId is not null).Select(s => s.CfxId!));
+
         foreach (var row in Servers)
         {
-            row.SetSaved(saved.Any(s =>
-                s.MatchesAddress(row.Address)
-                || (s.CfxId is not null && s.CfxId == row.CfxId)));
+            row.SetSaved(savedAddresses.Contains(row.Address)
+                || (row.CfxId is not null && savedIds.Contains(row.CfxId)));
         }
     }
 
