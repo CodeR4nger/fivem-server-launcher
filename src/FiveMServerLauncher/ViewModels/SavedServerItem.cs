@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows;
 using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Localization;
 using FiveMServerLauncher.Service;
@@ -41,7 +42,11 @@ public class SavedServerItem : INotifyPropertyChanged
         _requiresDiscord = requiresDiscord == true;
         _changeHandler = changeHandler;
         _localizer = localizer ?? DefaultLocalizer.Get();
-        _localizer.LanguageChanged += OnLanguageChanged;
+        // Rows are short-lived (deleted/edited); a strong subscription to the
+        // app-lifetime localizer would root every row forever. The weak event
+        // manager holds the row only while something else does.
+        WeakEventManager<ILocalizer, EventArgs>.AddHandler(
+            _localizer, nameof(ILocalizer.LanguageChanged), OnLanguageChanged);
     }
 
     private void OnLanguageChanged(object? sender, EventArgs e)

@@ -40,11 +40,16 @@ public class FileSettingsStorage : ISettingsStorage
             return null;
         }
 
-        var json = File.ReadAllText(_filePath);
-
         try
         {
+            var json = File.ReadAllText(_filePath);
+
             return JsonSerializer.Deserialize<LauncherSettings>(json, SerializerOptions);
+        }
+        catch (IOException)
+        {
+            // An AV lock or transient IO fault degrades like a JSON fault: to defaults.
+            return null;
         }
         catch (JsonException)
         {

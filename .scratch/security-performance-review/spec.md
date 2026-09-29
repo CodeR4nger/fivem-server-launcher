@@ -1,6 +1,8 @@
 # Feature: Security and performance review + improvements (v1.2)
 
-Status: ready-for-agent
+Status: done (tickets `.scratch/security-performance-review/issues/` 01-10 resolved - 04/05/10
+with live-catalog verification; suite 694 green; code review clean on both axes per ticket;
+portable publish pipeline verified intact; startup smoke-run verified per landing)
 
 ## Problem Statement
 

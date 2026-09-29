@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using FiveMServerLauncher.Localization;
 
@@ -254,5 +255,39 @@ public class LocalizerTests
             var missing = english.Keys.Where(key => !dictionaries[tag].ContainsKey(key)).ToList();
             Assert.True(missing.Count == 0, $"Language '{tag}' is missing keys: {string.Join(", ", missing)}");
         });
+    }
+    [Fact]
+    public async Task Get_WhenReadWhileLanguageSwitchedOnOtherThreads_ShouldAlwaysReturnWellFormedValue()
+    {
+        // Given - UI-thread writes with background reads must be safe by construction.
+        var localizer = new Localizer(
+            Localizer.ParseDictionaries(
+                ("en", """{ "sharedKey": "en-value" }"""),
+                ("es", """{ "sharedKey": "es-value" }""")),
+            () => "en-US");
+        var observed = new ConcurrentBag<string>();
+
+        // When - parallel readers race a language switcher
+        var readers = Enumerable.Range(0, 4)
+            .Select(_ => Task.Run(() =>
+            {
+                for (var i = 0; i < 2000; i++)
+                {
+                    observed.Add(localizer.Get("sharedKey"));
+                }
+            }))
+            .ToArray();
+        var writer = Task.Run(() =>
+        {
+            for (var i = 0; i < 1000; i++)
+            {
+                localizer.SetLanguage("es");
+                localizer.SetLanguage("en");
+            }
+        });
+        await Task.WhenAll(readers.Append(writer));
+
+        // Then - every read saw a well-formed value from some shipped language
+        Assert.All(observed, value => Assert.True(value is "en-value" or "es-value", $"unexpected value: {value}"));
     }
 }

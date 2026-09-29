@@ -27,6 +27,7 @@ public sealed class Localizer : ILocalizer
 
     private readonly IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> _dictionaries;
     private readonly Func<string?> _systemCultureProvider;
+    private readonly object _stateGate = new();
 
     private string? _requestedTag;
     private string _effectiveTag;
@@ -98,7 +99,16 @@ public sealed class Localizer : ILocalizer
         return CultureInfo.CurrentUICulture.Name;
     }
 
-    public string Language => _effectiveTag;
+    public string Language
+    {
+        get
+        {
+            lock (_stateGate)
+            {
+                return _effectiveTag;
+            }
+        }
+    }
 
     public IReadOnlyList<LanguageOption> Languages =>
         ShippedLanguages.Where(l => _dictionaries.ContainsKey(l.Tag)).ToArray();
@@ -107,24 +117,43 @@ public sealed class Localizer : ILocalizer
 
     public void SetLanguage(string? languageTag)
     {
-        _requestedTag = string.IsNullOrWhiteSpace(languageTag) ? null : languageTag;
+        var requested = string.IsNullOrWhiteSpace(languageTag) ? null : languageTag;
 
-        var effective = _requestedTag is not null && _dictionaries.ContainsKey(_requestedTag)
-            ? _requestedTag
-            : ResolveSystemLanguage();
+        // Resolved outside the gate: the injectable culture provider must never
+        // deadlock against a reader (it runs even when the requested tag resolves
+        // directly — a pure culture-name lookup, not observable behavior).
+        var cultureName = _systemCultureProvider();
 
-        if (effective == _effectiveTag)
+        lock (_stateGate)
         {
-            return;
+            _requestedTag = requested;
+
+            var effective = requested is not null && _dictionaries.ContainsKey(requested)
+                ? requested
+                : MatchSystemLanguage(cultureName);
+
+            if (effective == _effectiveTag)
+            {
+                return;
+            }
+
+            _effectiveTag = effective;
         }
 
-        _effectiveTag = effective;
+        // Raised outside the gate: handlers must never deadlock against a Get call.
         LanguageChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public string Get(string key)
     {
-        if (_dictionaries.TryGetValue(_effectiveTag, out var language)
+        string tag;
+
+        lock (_stateGate)
+        {
+            tag = _effectiveTag;
+        }
+
+        if (_dictionaries.TryGetValue(tag, out var language)
             && language.TryGetValue(key, out var value))
         {
             return value;
@@ -146,13 +175,11 @@ public sealed class Localizer : ILocalizer
 
     private string ResolveSystemLanguage()
     {
-        if (_requestedTag is not null && _dictionaries.ContainsKey(_requestedTag))
-        {
-            return _requestedTag;
-        }
+        return MatchSystemLanguage(_systemCultureProvider());
+    }
 
-        var cultureName = _systemCultureProvider();
-
+    private string MatchSystemLanguage(string? cultureName)
+    {
         if (string.IsNullOrEmpty(cultureName))
         {
             return FallbackTag;

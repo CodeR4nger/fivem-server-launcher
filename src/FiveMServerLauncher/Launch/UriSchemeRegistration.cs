@@ -4,5 +4,10 @@ namespace FiveMServerLauncher.Launch;
 
 public sealed class UriSchemeRegistration : IUriSchemeRegistration
 {
-    public bool IsSchemeRegistered(string scheme) => Registry.ClassesRoot.OpenSubKey(scheme) is not null;
+    public bool IsSchemeRegistered(string scheme)
+    {
+        // The opened key holds a native registry handle until disposed.
+        using var key = Registry.ClassesRoot.OpenSubKey(scheme);
+        return key is not null;
+    }
 }

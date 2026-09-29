@@ -294,4 +294,18 @@ public class FileSettingsStorageTests
         Assert.Equal(settings.PreferredClient, result.PreferredClient);
         Assert.Equal(settings.AutoLaunch, result.AutoLaunch);
     }
+    [Fact]
+    public void Load_WhenFileLocked_ShouldReturnNullNotThrow()
+    {
+        // Given - an AV lock or transient IO fault must degrade like a JSON fault
+        // (defaults), never crash startup.
+        using var tempDir = new TempSettingsDirectory();
+        Directory.CreateDirectory(tempDir.DirectoryPath);
+        File.WriteAllText(tempDir.FilePath, "{}");
+        using var lockHandle = File.Open(tempDir.FilePath, FileMode.Open, FileAccess.Read, FileShare.None);
+        var storage = new FileSettingsStorage(tempDir.FilePath);
+
+        // When / Then
+        Assert.Null(storage.Load());
+    }
 }

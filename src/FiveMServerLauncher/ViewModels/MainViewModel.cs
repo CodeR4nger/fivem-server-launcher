@@ -52,7 +52,8 @@ public class MainViewModel : INotifyPropertyChanged
         ICfxStatusService cfxStatus,
         ServerBrowserViewModel browserViewModel,
         ILocalizer localizer,
-        TimeSpan? refreshCooldown = null)
+        TimeSpan? refreshCooldown = null,
+        CancellationToken? cancellationToken = null)
     {
         _resolver = resolver;
         _launcher = launcher;
@@ -65,6 +66,7 @@ public class MainViewModel : INotifyPropertyChanged
         _localizer = localizer;
         Browser = browserViewModel;
         _refreshCooldown = refreshCooldown ?? DefaultRefreshCooldown;
+        _cancellationToken = cancellationToken ?? CancellationToken.None;
         _settings = settingsRepository.Load();
         LanguageOptions = BuildLanguageOptions();
         _selectedLanguageOption = LanguageOptions.FirstOrDefault(o => o.Tag == _settings.Language)
@@ -167,6 +169,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     private static readonly TimeSpan DefaultRefreshCooldown = TimeSpan.FromSeconds(15);
     private readonly TimeSpan _refreshCooldown;
+    private readonly CancellationToken _cancellationToken;
 
     public bool IsRefreshingServers
     {
@@ -180,7 +183,7 @@ public class MainViewModel : INotifyPropertyChanged
 
         try
         {
-            await RefreshServerInfoAsync(forceRefresh: true);
+            await RefreshServerInfoAsync(forceRefresh: true, _cancellationToken);
         }
         catch (Exception)
         {
@@ -189,9 +192,11 @@ public class MainViewModel : INotifyPropertyChanged
 
         // Keep the command disabled for the shared cooldown so the expensive
         // catalog download can't be spammed (scrolling must not re-enable it).
-        await Task.Delay(_refreshCooldown);
-        IsRefreshingServers = false;
-        CommandManager.InvalidateRequerySuggested();
+        if (await Cooldown.ElapseAsync(_refreshCooldown, _cancellationToken))
+        {
+            IsRefreshingServers = false;
+            CommandManager.InvalidateRequerySuggested();
+        }
     }
 
     private SavedServerItem? _editingServer;
@@ -732,7 +737,7 @@ public class MainViewModel : INotifyPropertyChanged
 
         try
         {
-            await RefreshServerInfoAsync(forceRefresh: true);
+            await RefreshServerInfoAsync(forceRefresh: true, _cancellationToken);
         }
         catch (Exception)
         {
@@ -793,8 +798,10 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    public async Task RefreshServerInfoAsync(bool forceRefresh = false)
+    public async Task RefreshServerInfoAsync(bool forceRefresh = false, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var presence = await _enrichment.RefreshAsync(forceRefresh);
 
         if (presence is null)
@@ -804,6 +811,8 @@ public class MainViewModel : INotifyPropertyChanged
 
         foreach (var item in SavedServers)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (!item.HasCfxId)
             {
                 continue;
@@ -876,7 +885,8 @@ public class MainViewModel : INotifyPropertyChanged
         {
             try
             {
-                await RefreshServerInfoAsync();
+                await RefreshServerInfoAsync(cancellationToken: cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
                 await RefreshCfxStatusAsync();
             }
             catch (OperationCanceledException)

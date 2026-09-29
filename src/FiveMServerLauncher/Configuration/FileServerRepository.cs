@@ -32,12 +32,17 @@ public class FileServerRepository : IServerRepository
             return Array.Empty<SavedServer>();
         }
 
-        var json = File.ReadAllText(_filePath);
-
         List<SavedServer>? servers;
         try
         {
+            var json = File.ReadAllText(_filePath);
+
             servers = JsonSerializer.Deserialize<List<SavedServer>>(json, SerializerOptions);
+        }
+        catch (IOException)
+        {
+            // An AV lock or transient IO fault degrades like a JSON fault: to empty.
+            servers = null;
         }
         catch (JsonException)
         {

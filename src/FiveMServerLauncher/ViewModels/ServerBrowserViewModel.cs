@@ -19,6 +19,7 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
     private readonly IServerEnrichmentService _enrichment;
     private readonly IServerRepository _repository;
     private readonly TimeSpan _refreshCooldown;
+    private readonly CancellationToken _cancellationToken;
 
     private readonly ILocalizer _localizer;
     private readonly TimeSpan _searchDebounce;
@@ -31,7 +32,8 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
         TimeSpan? refreshCooldown = null,
         ILocalizer? localizer = null,
         TimeSpan? searchDebounce = null,
-        Func<TimeSpan, CancellationToken, Task>? searchDelay = null)
+        Func<TimeSpan, CancellationToken, Task>? searchDelay = null,
+        CancellationToken? cancellationToken = null)
     {
         _catalog = catalog;
         _enrichment = enrichment;
@@ -41,6 +43,7 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
         _refreshCooldown = refreshCooldown ?? DefaultRefreshCooldown;
         _searchDebounce = searchDebounce ?? DefaultSearchDebounce;
         _searchDelay = searchDelay ?? ((duration, token) => Task.Delay(duration, token));
+        _cancellationToken = cancellationToken ?? CancellationToken.None;
         Servers = new ObservableCollection<ServerBrowserItem>();
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => !IsRefreshing);
         GameFilterOptions = BuildGameFilterOptions();
@@ -132,9 +135,12 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
         }
 
         await LoadAsync();
-        await Task.Delay(_refreshCooldown);
-        IsRefreshing = false;
-        CommandManager.InvalidateRequerySuggested();
+
+        if (await Cooldown.ElapseAsync(_refreshCooldown, _cancellationToken))
+        {
+            IsRefreshing = false;
+            CommandManager.InvalidateRequerySuggested();
+        }
     }
 
     private GameClient? _gameFilter;

@@ -65,6 +65,8 @@ public partial class App : Application
         var localizer = Localizer.FromEmbeddedResources();
         LocalizationSource.Instance.Attach(localizer);
 
+        var refreshCts = new CancellationTokenSource();
+
         var window = new MainWindow();
         var serverRepository = new FileServerRepository(dataDirectory.ServersPath);
         var viewModel = new MainViewModel(
@@ -79,13 +81,13 @@ public partial class App : Application
                 new FileSettingsStorage(dataDirectory.SettingsPath)),
             enrichment,
             cfxStatus,
-            new ServerBrowserViewModel(catalog, enrichment, serverRepository, localizer: localizer),
-            localizer);
+            new ServerBrowserViewModel(catalog, enrichment, serverRepository, localizer: localizer, cancellationToken: refreshCts.Token),
+            localizer,
+            cancellationToken: refreshCts.Token);
         window.DataContext = viewModel;
         window.Show();
         window.Dispatcher.InvokeAsync(viewModel.InitializeAsync);
 
-        var refreshCts = new CancellationTokenSource();
         window.Closed += (_, _) => refreshCts.Cancel();
         window.Dispatcher.InvokeAsync(() => viewModel.RunEnrichmentLoopAsync(refreshCts.Token));
     }

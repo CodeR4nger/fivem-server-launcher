@@ -595,6 +595,66 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public async Task RunEnrichmentLoopAsync_WhenCancelledMidCycle_ShouldSkipRemainingCycleWork()
+    {
+        // Given — a closed window cancels the token while the cycle's first refresh
+        // is still in flight; the remaining per-cycle work (status refresh) must not
+        // run one final time.
+        var enrichment = new FakeServerEnrichmentService
+        {
+            Presence = new Dictionary<string, ServerPresence>()
+        };
+        var refreshGate = new TaskCompletionSource();
+        enrichment.RefreshDelay = refreshGate.Task;
+        var cfxStatus = new FakeCfxStatusService();
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            enrichment: enrichment,
+            cfxStatus: cfxStatus);
+        var cts = new CancellationTokenSource();
+
+        // When — the cycle starts, cancellation lands mid-refresh, the refresh completes
+        var loop = vm.RunEnrichmentLoopAsync(cts.Token, cadence: TimeSpan.FromMinutes(1));
+        cts.Cancel();
+        refreshGate.TrySetResult();
+        await loop;
+
+        // Then
+        Assert.Equal(1, enrichment.RefreshCalls);
+        Assert.Equal(0, cfxStatus.GetCalls);
+    }
+
+    [Fact]
+    public async Task RefreshServerInfoAsync_WhenTokenCancelled_ShouldNotTouchRows()
+    {
+        // Given — the cancellation token reaches the per-cycle work: a cancelled
+        // cycle applies nothing instead of running one final refresh.
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("A", "cfx.re/join/aaaaaa"));
+        repository.Add(SavedServer.Create("B", "cfx.re/join/bbbbbb"));
+        var enrichment = new FakeServerEnrichmentService
+        {
+            Presence = new Dictionary<string, ServerPresence>
+            {
+                ["aaaaaa"] = new ServerPresence(true, 5, 32, GameClient.FiveM, "7")
+            }
+        };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            enrichment: enrichment);
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        // When / Then
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => vm.RefreshServerInfoAsync(cancellationToken: cts.Token));
+        Assert.All(vm.SavedServers, row => Assert.False(row.Online));
+    }
+
+    [Fact]
     public async Task RefreshServerInfoAsync_WhenOnline_ShouldPopulatePlayersAndIcon()
     {
         // Given

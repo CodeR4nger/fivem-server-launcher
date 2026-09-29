@@ -372,4 +372,18 @@ public class FileServerRepositoryTests
         var server = Assert.Single(result);
         Assert.Null(server.CfxId);
     }
+    [Fact]
+    public void GetAll_WhenFileLocked_ShouldReturnEmptyNotThrow()
+    {
+        // Given - an AV lock or transient IO fault must degrade like a JSON fault
+        // (empty list), never crash startup.
+        using var tempDir = new TempSettingsDirectory();
+        Directory.CreateDirectory(tempDir.DirectoryPath);
+        File.WriteAllText(tempDir.FilePath, "[]");
+        using var lockHandle = File.Open(tempDir.FilePath, FileMode.Open, FileAccess.Read, FileShare.None);
+        var repository = new FileServerRepository(tempDir.FilePath);
+
+        // When / Then
+        Assert.Empty(repository.GetAll());
+    }
 }

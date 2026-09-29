@@ -283,4 +283,26 @@ public class SavedServerItemTests
         // Then
         Assert.True(notified);
     }
+    [Fact]
+    public void Ctor_WhenRowCollected_ShouldNotStayRootedByLocalizerSubscription()
+    {
+        // Given - rows are short-lived (deleted/edited); the app-lifetime localizer
+        // must not keep them alive through a strong event subscription.
+        var localizer = CreateSpanishLocalizer();
+
+        // When - the row loses every strong reference
+        var row = CreateCollectedRow(localizer);
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        // Then
+        Assert.False(row.IsAlive, "the localizer must not root the collected row");
+    }
+
+    private static WeakReference CreateCollectedRow(ILocalizer localizer)
+    {
+        var item = new SavedServerItem("My Server", "abc123", null, null, () => { }, localizer, cfxId: "y4lg95");
+        return new WeakReference(item);
+    }
 }
