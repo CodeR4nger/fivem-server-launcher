@@ -59,7 +59,15 @@ fallback for any missing key or file.
 - One new seam: a localizer service resolving key -> string for the current language, exposing
   the current language, the available language list, and a language-changed event. It is owned
   and wired by the composition root and injected into the view models.
-- Storage: one embedded JSON resource per language file per language. English defines the key
+- Storage: one embedded JSON resource per language. The project file wildcard-embeds the
+  localization directory, so a language ships by adding one file and nothing else. The file name is
+  the tag; the picker label is the file's own `_displayName` (its native name), falling back to the
+  tag. Keys beginning with `_` are file metadata, never UI strings, so they are excluded from the
+  string dictionary and from the key-completeness audit. Shipped languages are derived from the
+  embedded resource names, not from parsed content, so a file that fails to parse stays selectable
+  (rendering through the English fallback) while still failing the completeness audit. The shipped
+  list is ordered deterministically: the fallback language first, then by tag, because resource
+  enumeration order is not stable across builds. English defines the key
   set (source of truth); shipped languages: English, Spanish, French, German, Italian, Japanese,
   Korean, Polish, Portuguese, Russian, Simplified Chinese. Keys are stable identifiers, not
   English text.
@@ -67,7 +75,11 @@ fallback for any missing key or file.
   (file headers say so; the UI shows them normally).
 - Language resolution order: explicit setting wins; when null ("System default"), an injectable
   system-culture provider decides (same seam pattern as the registry/path seams); exact culture
-  match, then neutral parent, else English.
+  match, then neutral parent, else English. One carve-out: any `zh*` culture resolves to the
+  shipped Simplified variant (`zh-Hans`), because that is the only Chinese dictionary the product
+  ships. A Traditional Chinese system therefore reads Simplified rather than falling through to
+  English — showing a user a script most of them can read beats showing them a language they
+  definitely read, and shipping `zh-Hant` is a data-only addition when it is worth doing.
 - Global settings gain a nullable language field, persisted through the existing settings
   repository (immediate-save setter pattern like the other toggles). No per-server data.
 - Live switching: view models expose localized strings as properties and re-emit them on the

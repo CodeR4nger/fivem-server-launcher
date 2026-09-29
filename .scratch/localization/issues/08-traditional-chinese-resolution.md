@@ -13,10 +13,13 @@ read. Option C: ship a `zh-Hant` dictionary and resolve it properly.
 
 **Blocked by:** None.
 
-**Status:** ready-for-agent
+**Status:** done (Option A chosen)
 
 **Severity:** low (affects a minority, and today's behaviour is not broken — only undocumented)
 
-- [ ] Product decides between A, B and C
-- [ ] `LocalizerTests` pins the chosen resolution for `zh-TW` and `zh-Hant-TW`
-- [ ] The spec's resolution-order line is amended to describe the actual rule either way
+- [x] Product decides between A, B and C — **Option A**: keep any `zh*` resolving to the shipped
+      `zh-Hans`, since it is the only Chinese dictionary shipped and reading Simplified beats
+      falling through to English. Shipping `zh-Hant` later is a data-only addition.
+- [x] `LocalizerTests` pins the chosen resolution for `zh-TW` and `zh-Hant-TW`
+      (also `zh-HK`)
+- [x] The spec's resolution-order line is amended to describe the actual rule either way

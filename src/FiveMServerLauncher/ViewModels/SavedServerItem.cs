@@ -26,7 +26,7 @@ public class SavedServerItem : INotifyPropertyChanged
         bool? requiresSteam,
         bool? requiresDiscord,
         Action changeHandler,
-        ILocalizer? localizer = null,
+        ILocalizer localizer,
         string? cfxId = null,
         int? gameBuild = null,
         int? pureMode = null,
@@ -41,7 +41,7 @@ public class SavedServerItem : INotifyPropertyChanged
         _requiresSteam = requiresSteam == true;
         _requiresDiscord = requiresDiscord == true;
         _changeHandler = changeHandler;
-        _localizer = localizer ?? DefaultLocalizer.Get();
+        _localizer = localizer;
         // Rows are short-lived (deleted/edited); a strong subscription to the
         // app-lifetime localizer would root every row forever. The weak event
         // manager holds the row only while something else does.

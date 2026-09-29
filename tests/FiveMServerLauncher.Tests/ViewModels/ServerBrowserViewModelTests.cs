@@ -6,6 +6,7 @@ using FiveMServerLauncher.Localization;
 using FiveMServerLauncher.Service;
 using FiveMServerLauncher.Tests.Configuration;
 using FiveMServerLauncher.Tests.Service;
+using FiveMServerLauncher.Tests.Localization;
 using FiveMServerLauncher.ViewModels;
 
 namespace FiveMServerLauncher.Tests.ViewModels;
@@ -237,6 +238,7 @@ public class ServerBrowserViewModelTests
             new ServerCatalog(new HttpClient(handler)),
             enrichment ?? new FakeServerEnrichmentService(),
             repository ?? new InMemoryServerRepository(),
+            TestLocalizer.English(),
             refreshCooldown,
             searchDebounce: searchDebounce ?? TimeSpan.Zero,
             searchDelay: searchDelay);
@@ -247,7 +249,8 @@ public class ServerBrowserViewModelTests
         return new ServerBrowserViewModel(
             new ServerCatalog(httpClient),
             new FakeServerEnrichmentService(),
-            new InMemoryServerRepository());
+            new InMemoryServerRepository(),
+            TestLocalizer.English());
     }
 
     [Fact]

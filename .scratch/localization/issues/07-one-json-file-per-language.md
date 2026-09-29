@@ -16,12 +16,25 @@ embedded set, which also removes the "declared but unparsable" class of bug enti
 
 **Blocked by:** 06 (recommended — do the seam change first so the shipped list has one owner).
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Severity:** medium (spec gap, not a defect)
 
-- [ ] csproj embeds `Localization/*.json` by wildcard; no per-language entry
-- [ ] Native display name read from the dictionary, not from C#
-- [ ] `_displayName` and `_note` excluded from the completeness audit
-- [ ] The audit still fails the build on a shipped-but-unparsable file (do not regress the fix in `05`)
-- [ ] Documented in `AGENTS.md` that adding a language is one file
+- [x] csproj embeds `Localization/*.json` by wildcard; no per-language entry
+- [x] Native display name read from the dictionary, not from C#
+- [x] `_displayName` and `_note` excluded from the completeness audit
+- [x] The audit still fails the build on a shipped-but-unparsable file (do not regress the fix in `05`)
+- [x] Documented in `AGENTS.md` that adding a language is one file
+
+## Resolution
+
+Tags are derived from the embedded resource NAMES (so a corrupt file still contributes its tag and
+stays selectable, per ticket `05`) and the label comes from that file's `_displayName`
+(`Localizer.ReadLanguageOption`, falling back to the tag). Keys beginning with `_` are metadata and
+are excluded from both the string dictionary and the key-completeness audit. The shipped list is
+ordered deterministically (fallback language first, then by tag) because resource enumeration order
+is not stable across builds.
+
+Verified end to end by dropping a throwaway `zz-Probe.json` into `Localization/`: it appeared in the
+shipped set with its own `_displayName` and no code change, and the completeness audit failed the
+build naming it with every missing English key. The file was then removed.

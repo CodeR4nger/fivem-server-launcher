@@ -17,17 +17,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Localization\en.json" />
-    <EmbeddedResource Include="Localization\es.json" />
-    <EmbeddedResource Include="Localization\fr.json" />
-    <EmbeddedResource Include="Localization\de.json" />
-    <EmbeddedResource Include="Localization\it.json" />
-    <EmbeddedResource Include="Localization\ja.json" />
-    <EmbeddedResource Include="Localization\ko.json" />
-    <EmbeddedResource Include="Localization\pl.json" />
-    <EmbeddedResource Include="Localization\pt.json" />
-    <EmbeddedResource Include="Localization\ru.json" />
-    <EmbeddedResource Include="Localization\zh-Hans.json" />
+    <!-- Wildcard: adding a language is one JSON file, no csproj edit. The tag is
+         the file name, the picker label is its `_displayName`. -->
+    <EmbeddedResource Include="Localization\*.json" />
   </ItemGroup>
 
   <ItemGroup>

@@ -10,10 +10,10 @@ public sealed class CfxStatusItem : INotifyPropertyChanged
     private readonly ILocalizer _localizer;
     private CfxStatus _status;
 
-    public CfxStatusItem(GameClient client, ILocalizer? localizer = null)
+    public CfxStatusItem(GameClient client, ILocalizer localizer)
     {
         Client = client;
-        _localizer = localizer ?? DefaultLocalizer.Get();
+        _localizer = localizer;
         _localizer.LanguageChanged += OnLanguageChanged;
         _status = CfxStatus.Unknown;
     }

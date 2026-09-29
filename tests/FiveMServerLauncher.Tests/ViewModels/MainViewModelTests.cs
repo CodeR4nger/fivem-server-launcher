@@ -2768,12 +2768,12 @@ public class MainViewModelTests
 
     private static ILocalizer CreateLocalizer(params (string Tag, string Json)[] dictionaries)
     {
-        return new Localizer(Localizer.ParseDictionaries(dictionaries), () => "en-US");
+        return TestLocalizer.For("en-US", dictionaries);
     }
 
     private static ILocalizer CreateLocalizer(string systemCulture, params (string Tag, string Json)[] dictionaries)
     {
-        return new Localizer(Localizer.ParseDictionaries(dictionaries), () => systemCulture);
+        return TestLocalizer.For(systemCulture, dictionaries);
     }
 
     private const string LanguageEnglishJson = """
@@ -3026,10 +3026,31 @@ public class MainViewModelTests
 
         // Then
         Assert.Equal("Ninguno", vm.DialogGameClientOptions[0].Label);
-        Assert.Equal("FiveM", vm.DialogGameClientOptions[1].Label);
     }
 
-    private static MainViewModel CreateViewModel(        IGameProcessLauncher processLauncher,
+    [Fact]
+    public void DialogGameClientOptions_ShouldLabelClientsWithTheirBrandNames()
+    {
+        // Given / When — brand names are not translatable, so they must come from
+        // the single owner of those strings rather than being re-spelled per call site
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            localizer: CreateLocalizer(("en", LanguageEnglishJson), ("es", VmSpanishJson)));
+
+        // Then
+        Assert.Equal(
+            new[]
+            {
+                InstalledClientOption.DisplayNameOf(GameClient.FiveM),
+                InstalledClientOption.DisplayNameOf(GameClient.FiveMEnhanced),
+                InstalledClientOption.DisplayNameOf(GameClient.RedM)
+            },
+            vm.DialogGameClientOptions.Where(o => o.Game is not null).Select(o => o.Label).ToArray());
+    }
+
+    private static MainViewModel CreateViewModel(
+        IGameProcessLauncher processLauncher,
         string cfxJson,
         IServerRepository? repository = null,
         IRequirementReadiness? readiness = null,
@@ -3075,8 +3096,9 @@ public class MainViewModelTests
             browser ?? new ServerBrowserViewModel(
                 new ServerCatalog(new HttpClient(new FakeHttpMessageHandler(true))),
                 enrichment ?? new FakeServerEnrichmentService(),
-                repository ?? new InMemoryServerRepository()),
-            localizer ?? DefaultLocalizer.Get(),
+                repository ?? new InMemoryServerRepository(),
+                localizer ?? TestLocalizer.English()),
+            localizer ?? TestLocalizer.English(),
             refreshCooldown: refreshCooldown);
     }
 }

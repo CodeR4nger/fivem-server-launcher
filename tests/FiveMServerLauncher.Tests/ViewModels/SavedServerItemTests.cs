@@ -2,6 +2,7 @@ using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Domain;
 using FiveMServerLauncher.Localization;
 using FiveMServerLauncher.Service;
+using FiveMServerLauncher.Tests.Localization;
 using FiveMServerLauncher.ViewModels;
 
 namespace FiveMServerLauncher.Tests.ViewModels;
@@ -10,11 +11,10 @@ public class SavedServerItemTests
 {
     private static ILocalizer CreateSpanishLocalizer()
     {
-        return new Localizer(
-            Localizer.ParseDictionaries(
-                ("en", """{ "StatusUnresolved": "UNRESOLVED", "StatusOffline": "OFFLINE" }"""),
-                ("es", """{ "StatusUnresolved": "SIN RESOLVER", "StatusOffline": "DESCONECTADO" }""")),
-            () => "en-US");
+        return TestLocalizer.For(
+            "en-US",
+            ("en", """{ "StatusUnresolved": "UNRESOLVED", "StatusOffline": "OFFLINE" }"""),
+            ("es", """{ "StatusUnresolved": "SIN RESOLVER", "StatusOffline": "DESCONECTADO" }"""));
     }
 
     [Fact]
@@ -36,7 +36,7 @@ public class SavedServerItemTests
     public void Ctor_ShouldExposeSavedServerValues()
     {
         // Given / When
-        var item = new SavedServerItem("My Server", "abc123", requiresSteam: true, requiresDiscord: false, () => { });
+        var item = new SavedServerItem("My Server", "abc123", requiresSteam: true, requiresDiscord: false, () => { }, TestLocalizer.English());
 
         // Then
         Assert.Equal("My Server", item.Name);
@@ -51,7 +51,7 @@ public class SavedServerItemTests
     public void Ctor_WithoutCfxId_ShouldShowUnresolvedStatus()
     {
         // Given / When
-        var item = new SavedServerItem("My Server", "not-published.example.com:30120", null, null, () => { });
+        var item = new SavedServerItem("My Server", "not-published.example.com:30120", null, null, () => { }, TestLocalizer.English());
 
         // Then
         Assert.Equal("UNRESOLVED", item.StatusLabel);
@@ -64,7 +64,7 @@ public class SavedServerItemTests
     public void Ctor_WithCfxId_ShouldExposeIt()
     {
         // Given / When
-        var item = new SavedServerItem("My Server", "192.168.1.10:30120", null, null, () => { }, cfxId: "y4lg95");
+        var item = new SavedServerItem("My Server", "192.168.1.10:30120", null, null, () => { }, TestLocalizer.English(), cfxId: "y4lg95");
 
         // Then
         Assert.Equal("y4lg95", item.CfxId);
@@ -77,7 +77,7 @@ public class SavedServerItemTests
     {
         // Given
         var notifications = new List<string?>();
-        var item = new SavedServerItem("My Server", "abc123", null, null, () => { }, cfxId: "y4lg95");
+        var item = new SavedServerItem("My Server", "abc123", null, null, () => { }, TestLocalizer.English(), cfxId: "y4lg95");
         item.PropertyChanged += (_, e) => notifications.Add(e.PropertyName);
 
         // When
@@ -101,7 +101,7 @@ public class SavedServerItemTests
     public void ApplyPresence_WhenRedM_ShouldExposeRedMTag()
     {
         // Given
-        var item = new SavedServerItem("My Server", "abc123", null, null, () => { }, cfxId: "boya5d");
+        var item = new SavedServerItem("My Server", "abc123", null, null, () => { }, TestLocalizer.English(), cfxId: "boya5d");
         item.ApplyPresence(new ServerPresence(true, 2, 48, GameClient.RedM));
 
         // When
@@ -115,7 +115,7 @@ public class SavedServerItemTests
     public void ApplyPresence_WhenOffline_ShouldShowOfflineStatus()
     {
         // Given
-        var item = new SavedServerItem("My Server", "abc123", null, null, () => { }, cfxId: "y4lg95");
+        var item = new SavedServerItem("My Server", "abc123", null, null, () => { }, TestLocalizer.English(), cfxId: "y4lg95");
         item.ApplyPresence(new ServerPresence(true, 12, 64, GameClient.FiveM));
 
         // When
@@ -134,7 +134,7 @@ public class SavedServerItemTests
     {
         // Given
         var handlerRuns = 0;
-        var item = new SavedServerItem("My Server", "abc123", null, null, () => handlerRuns++, cfxId: "y4lg95");
+        var item = new SavedServerItem("My Server", "abc123", null, null, () => handlerRuns++, TestLocalizer.English(), cfxId: "y4lg95");
 
         // When
         item.ApplyPresence(new ServerPresence(true, 1, 32, GameClient.FiveM));
@@ -149,7 +149,7 @@ public class SavedServerItemTests
         // Given
         byte[]? icon = [1, 2, 3];
         var notifications = new List<string?>();
-        var item = new SavedServerItem("My Server", "abc123", null, null, () => { }, cfxId: "y4lg95");
+        var item = new SavedServerItem("My Server", "abc123", null, null, () => { }, TestLocalizer.English(), cfxId: "y4lg95");
         item.PropertyChanged += (_, e) => notifications.Add(e.PropertyName);
 
         // When
@@ -166,7 +166,7 @@ public class SavedServerItemTests
     {
         // Given
         var notifications = new List<string?>();
-        var item = new SavedServerItem("My Server", "not-published.example.com:30120", null, null, () => { });
+        var item = new SavedServerItem("My Server", "not-published.example.com:30120", null, null, () => { }, TestLocalizer.English());
         item.PropertyChanged += (_, e) => notifications.Add(e.PropertyName);
 
         // When
@@ -182,7 +182,7 @@ public class SavedServerItemTests
     {
         // Given
         var handlerRuns = 0;
-        var item = new SavedServerItem("My Server", "abc123", null, null, () => handlerRuns++);
+        var item = new SavedServerItem("My Server", "abc123", null, null, () => handlerRuns++, TestLocalizer.English());
         var notifications = 0;
         item.PropertyChanged += (_, e) =>
         {
@@ -206,7 +206,7 @@ public class SavedServerItemTests
     {
         // Given
         var handlerRuns = 0;
-        var item = new SavedServerItem("My Server", "abc123", true, null, () => handlerRuns++);
+        var item = new SavedServerItem("My Server", "abc123", true, null, () => handlerRuns++, TestLocalizer.English());
 
         // When
         item.RequiresSteam = true;
@@ -220,7 +220,7 @@ public class SavedServerItemTests
     {
         // Given
         var handlerRuns = 0;
-        var item = new SavedServerItem("My Server", "abc123", null, null, () => handlerRuns++);
+        var item = new SavedServerItem("My Server", "abc123", null, null, () => handlerRuns++, TestLocalizer.English());
 
         // When
         item.RequiresDiscord = true;
@@ -234,7 +234,7 @@ public class SavedServerItemTests
     public void TrimmedName_WhenShort_ShouldReturnUnchanged()
     {
         // Given
-        var item = new SavedServerItem("Short Name", "abc123", null, null, () => { });
+        var item = new SavedServerItem("Short Name", "abc123", null, null, () => { }, TestLocalizer.English());
 
         // When / Then
         Assert.Equal("Short Name", item.TrimmedName);
@@ -244,7 +244,7 @@ public class SavedServerItemTests
     public void TrimmedName_WhenLong_ShouldTruncateWithEllipsis()
     {
         // Given
-        var item = new SavedServerItem("NoPixel 4.0 RP Public Green | Visit us @ nopixel.net", "abc123", null, null, () => { });
+        var item = new SavedServerItem("NoPixel 4.0 RP Public Green | Visit us @ nopixel.net", "abc123", null, null, () => { }, TestLocalizer.English());
 
         // When
         var trimmed = item.TrimmedName;
@@ -259,7 +259,7 @@ public class SavedServerItemTests
     public void TrimmedName_WhenSelected_ShouldUseShorterLimit()
     {
         // Given
-        var item = new SavedServerItem("NoPixel 4.0 RP Public Green | Visit us @ nopixel.net", "abc123", null, null, () => { });
+        var item = new SavedServerItem("NoPixel 4.0 RP Public Green | Visit us @ nopixel.net", "abc123", null, null, () => { }, TestLocalizer.English());
 
         // When
         item.IsSelected = true;
@@ -273,7 +273,7 @@ public class SavedServerItemTests
     public void IsSelected_WhenChanged_ShouldNotifyTrimmedName()
     {
         // Given
-        var item = new SavedServerItem("Server", "abc123", null, null, () => { });
+        var item = new SavedServerItem("Server", "abc123", null, null, () => { }, TestLocalizer.English());
         var notified = false;
         item.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(SavedServerItem.TrimmedName)) notified = true; };
 

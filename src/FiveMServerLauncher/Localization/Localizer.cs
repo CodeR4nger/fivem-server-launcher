@@ -10,20 +10,27 @@ public sealed class Localizer : ILocalizer
 
     private const string ResourcePrefix = "FiveMServerLauncher.Localization.";
 
+    private const string DisplayNameKey = "_displayName";
+
+    // Keys beginning with an underscore describe the language file (its native
+    // name, its review status); they are metadata, never UI strings. Folding them
+    // into the string set would make the English key set require a `_note` that
+    // en.json has no reason to carry.
+    private const char MetadataKeyPrefix = '_';
+
+    // Tags come from the embedded resource NAMES, not from the payloads: a file
+    // that fails to parse still contributes its tag, so the language stays
+    // selectable (rendering through the English fallback) and the completeness
+    // audit can still fail the build on it. Deriving tags from parsed content
+    // would silently shrink the shipped set instead.
+    // Ordered explicitly because resource enumeration order is not stable across
+    // builds: the fallback language leads, the rest follow by tag.
     public static IReadOnlyList<LanguageOption> ShippedLanguageOptions { get; } =
-    [
-        new("en", "English"),
-        new("es", "Español"),
-        new("fr", "Français"),
-        new("de", "Deutsch"),
-        new("it", "Italiano"),
-        new("ja", "日本語"),
-        new("ko", "한국어"),
-        new("pl", "Polski"),
-        new("pt", "Português"),
-        new("ru", "Русский"),
-        new("zh-Hans", "简体中文")
-    ];
+        ReadEmbeddedJsonPayloads()
+            .Select(payload => ReadLanguageOption(payload.Tag, payload.Json))
+            .OrderBy(option => option.Tag == FallbackTag ? 0 : 1)
+            .ThenBy(option => option.Tag, StringComparer.Ordinal)
+            .ToArray();
 
     private static readonly HashSet<string> ShippedTags =
         ShippedLanguageOptions.Select(l => l.Tag).ToHashSet();
@@ -60,22 +67,51 @@ public sealed class Localizer : ILocalizer
 
         foreach (var (tag, json) in payloads)
         {
-            try
-            {
-                var entries = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+            var strings = ParseStrings(json);
 
-                if (entries is { Count: > 0 })
-                {
-                    dictionaries[tag] = entries;
-                }
-            }
-            catch (JsonException)
+            if (strings.Count > 0)
             {
-                // A corrupt language file degrades to the fallback language.
+                dictionaries[tag] = strings;
             }
         }
 
         return dictionaries;
+    }
+
+    /// <summary>
+    /// Reads a language file's picker label. The native name is data, so adding a
+    /// language needs no code change; a file that omits it, or fails to parse,
+    /// falls back to the tag rather than throwing.
+    /// </summary>
+    public static LanguageOption ReadLanguageOption(string tag, string json)
+    {
+        if (ParseEntries(json).TryGetValue(DisplayNameKey, out var displayName)
+            && !string.IsNullOrWhiteSpace(displayName))
+        {
+            return new LanguageOption(tag, displayName);
+        }
+
+        return new LanguageOption(tag, tag);
+    }
+
+    private static Dictionary<string, string> ParseStrings(string json)
+    {
+        return ParseEntries(json)
+            .Where(entry => !entry.Key.StartsWith(MetadataKeyPrefix))
+            .ToDictionary(entry => entry.Key, entry => entry.Value, StringComparer.Ordinal);
+    }
+
+    private static Dictionary<string, string> ParseEntries(string json)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? [];
+        }
+        catch (JsonException)
+        {
+            // A corrupt language file degrades to the fallback language.
+            return [];
+        }
     }
 
     private static IEnumerable<(string Tag, string Json)> ReadEmbeddedJsonPayloads()

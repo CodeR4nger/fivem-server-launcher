@@ -57,6 +57,24 @@ public class LocalizerTests
     }
 
     [Theory]
+    [InlineData("zh-TW", "zh-Hans")]
+    [InlineData("zh-HK", "zh-Hans")]
+    [InlineData("zh-Hant-TW", "zh-Hans")]
+    public void Get_WhenTraditionalChineseCulture_ShouldUseTheShippedSimplifiedVariant(
+        string culture,
+        string expectedTag)
+    {
+        // Given — only Simplified Chinese ships, so any Traditional Chinese system
+        // reads the variant we do ship rather than falling back to English.
+        var localizer = new Localizer(
+            Dictionaries(("en", EnglishJson), ("zh-Hans", """{ "SettingsButton": "zh" }""")),
+            () => culture);
+
+        // When / Then
+        Assert.Equal(expectedTag, localizer.Language);
+    }
+
+    [Theory]
     [InlineData("xx-XX")]
     [InlineData("")]
     [InlineData(null)]
@@ -180,9 +198,11 @@ public class LocalizerTests
         // Given / When — the picker labels every language in its own script
         var localizer = Localizer.FromEmbeddedResources(() => "en-US");
 
-        // Then
+        // Then — the fallback language leads, the rest follow by tag, so the
+        // picker order does not depend on resource enumeration order
+        Assert.Equal("en", localizer.Languages[0].Tag);
         Assert.Equal(
-            ["English", "Español", "Français", "Deutsch", "Italiano",
+            ["English", "Deutsch", "Español", "Français", "Italiano",
              "日本語", "한국어", "Polski", "Português", "Русский", "简体中文"],
             localizer.Languages.Select(l => l.DisplayName).ToArray());
     }
@@ -215,6 +235,63 @@ public class LocalizerTests
         // Then — the explicit choice wins over the system language, and English renders
         Assert.Equal("es", localizer.Language);
         Assert.Equal("ENTER SERVER", localizer.Get("EnterServerButton"));
+    }
+
+    [Fact]
+    public void ReadLanguageOption_WhenFileDeclaresDisplayName_ShouldUseIt()
+    {
+        // Given / When — the native name ships as data, so a translator can add a
+        // language without editing C#
+        var option = Localizer.ReadLanguageOption("es", """{ "_displayName": "Español", "A": "a" }""");
+
+        // Then
+        Assert.Equal("es", option.Tag);
+        Assert.Equal("Español", option.DisplayName);
+    }
+
+    [Fact]
+    public void ReadLanguageOption_WhenFileDeclaresNoDisplayName_ShouldFallBackToTag()
+    {
+        // Given / When
+        var option = Localizer.ReadLanguageOption("xx", """{ "A": "a" }""");
+
+        // Then
+        Assert.Equal("xx", option.DisplayName);
+    }
+
+    [Fact]
+    public void ReadLanguageOption_WhenFileIsCorrupt_ShouldFallBackToTagWithoutThrowing()
+    {
+        // Given / When
+        var option = Localizer.ReadLanguageOption("xx", "{ not valid json");
+
+        // Then
+        Assert.Equal("xx", option.DisplayName);
+    }
+
+    [Fact]
+    public void ParseDictionaries_WhenKeyIsMetadata_ShouldNotTreatItAsAString()
+    {
+        // Given / When — `_note` and `_displayName` describe the file, they are not
+        // UI strings. Treating them as strings would make the English key set
+        // require a `_note` that en.json has no reason to carry.
+        var dictionaries = Localizer.ParseDictionaries(
+            ("es", """{ "_displayName": "Español", "_note": "draft", "StatusReady": "Listo" }"""));
+
+        // Then
+        Assert.Equal(["StatusReady"], dictionaries["es"].Keys.ToArray());
+    }
+
+    [Fact]
+    public void ShippedLanguageOptions_ShouldNotFallBackToTheLanguageTag()
+    {
+        // Given / When — every shipped file declares its own native name, so no
+        // option displays the bare tag it is keyed by
+        var options = Localizer.ShippedLanguageOptions;
+
+        // Then
+        Assert.NotEmpty(options);
+        Assert.All(options, option => Assert.NotEqual(option.Tag, option.DisplayName));
     }
 
     [Fact]

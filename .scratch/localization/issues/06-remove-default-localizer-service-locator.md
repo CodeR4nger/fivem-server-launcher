@@ -15,13 +15,13 @@ allows the bug; the static is what makes it silent.
 
 **Blocked by:** None.
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Severity:** medium (latent, not live)
 
-- [ ] `DefaultLocalizer.cs` deleted
-- [ ] `ILocalizer` required (non-optional, non-defaulted) on `CfxStatusItem`, `SavedServerItem`,
+- [x] `DefaultLocalizer.cs` deleted
+- [x] `ILocalizer` required (non-optional, non-defaulted) on `CfxStatusItem`, `SavedServerItem`,
       `ServerBrowserViewModel`
-- [ ] Every test call site that omitted the argument passes one explicitly (~20 sites across
+- [x] Every test call site that omitted the argument passes one explicitly (~20 sites across
       `MainViewModelTests`, `SavedServerItemTests`, `CfxStatusItemTests`, `ServerBrowserViewModelTests`)
-- [ ] `dotnet test` green
+- [x] `dotnet test` green

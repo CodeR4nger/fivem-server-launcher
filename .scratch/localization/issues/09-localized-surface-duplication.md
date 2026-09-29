@@ -20,8 +20,23 @@ judgement calls. None is a defect; group them or split them as suits.
 
 **Blocked by:** None.
 
-**Status:** ready-for-agent
+**Status:** done (item 1 fixed; items 2-3 explicitly accepted as-is)
 
 **Severity:** low
 
-- [ ] Items 1-3 triaged individually: fixed or explicitly accepted as-is
+- [x] Items 1-3 triaged individually: fixed or explicitly accepted as-is
+
+## Resolution
+
+1. **Fixed.** `MainViewModel.DialogGameClientOptions` now reads its three brand labels from
+   `InstalledClientOption.DisplayNameOf`, the single owner. Pinned by
+   `DialogGameClientOptions_ShouldLabelClientsWithTheirBrandNames`; the pre-existing
+   `DialogGameClientOptions_WhenLanguageSwitched_ShouldLocalizeNone` no longer re-spells a brand.
+2. **Accepted as-is.** The three records are two-field projections of different shapes (a
+   `GameClient?`, a language `string?`, a game filter) used in three unrelated binding contexts.
+   A shared record would need a nullable-typed field plus a label and buy no safety, so three small
+   records stay the cheaper and clearer choice.
+3. **Accepted as-is.** A language-tag value type would duplicate what `ServerAddress` already
+   does for addresses, but the tag is data read straight from a file name and already validated at
+   the point it matters (`SetLanguage` against `ShippedLanguageOptions`). `UnshippedLanguageTag`
+   in the test suite shows the "not shipped" case is already handled explicitly where it is tested.

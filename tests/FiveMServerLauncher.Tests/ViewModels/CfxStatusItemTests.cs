@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Localization;
+using FiveMServerLauncher.Tests.Localization;
 using FiveMServerLauncher.ViewModels;
 
 namespace FiveMServerLauncher.Tests.ViewModels;
@@ -9,11 +10,10 @@ public class CfxStatusItemTests
 {
     private static ILocalizer CreateSpanishLocalizer()
     {
-        return new Localizer(
-            Localizer.ParseDictionaries(
-                ("en", """{ "CfxStatusOperational": "OPERATIONAL", "CfxStatusUnknown": "UNKNOWN" }"""),
-                ("es", """{ "CfxStatusOperational": "OPERATIVO", "CfxStatusUnknown": "DESCONOCIDO" }""")),
-            () => "en-US");
+        return TestLocalizer.For(
+            "en-US",
+            ("en", """{ "CfxStatusOperational": "OPERATIONAL", "CfxStatusUnknown": "UNKNOWN" }"""),
+            ("es", """{ "CfxStatusOperational": "OPERATIVO", "CfxStatusUnknown": "DESCONOCIDO" }"""));
     }
 
     [Fact]
@@ -37,7 +37,7 @@ public class CfxStatusItemTests
     public void Ctor_ShouldExposeClientAndDisplayName(GameClient client, string expectedDisplayName)
     {
         // Given / When
-        var item = new CfxStatusItem(client);
+        var item = new CfxStatusItem(client, TestLocalizer.English());
 
         // Then
         Assert.Equal(client, item.Client);
@@ -48,7 +48,7 @@ public class CfxStatusItemTests
     public void Ctor_ShouldStartUnknown()
     {
         // Given / When
-        var item = new CfxStatusItem(GameClient.FiveM);
+        var item = new CfxStatusItem(GameClient.FiveM, TestLocalizer.English());
 
         // Then
         Assert.Equal(CfxStatus.Unknown, item.Status);
@@ -65,7 +65,7 @@ public class CfxStatusItemTests
     public void Apply_ShouldSetStatusAndStatusLabel(CfxStatus status, string expectedLabel)
     {
         // Given
-        var item = new CfxStatusItem(GameClient.FiveM);
+        var item = new CfxStatusItem(GameClient.FiveM, TestLocalizer.English());
 
         // When
         item.Apply(status);
@@ -80,7 +80,7 @@ public class CfxStatusItemTests
     {
         // Given
         var notifications = new List<string?>();
-        var item = new CfxStatusItem(GameClient.FiveM);
+        var item = new CfxStatusItem(GameClient.FiveM, TestLocalizer.English());
         item.PropertyChanged += (_, e) => notifications.Add(e.PropertyName);
 
         // When
@@ -95,7 +95,7 @@ public class CfxStatusItemTests
     public void Apply_WhenStatusUnchanged_ShouldNotNotify()
     {
         // Given
-        var item = new CfxStatusItem(GameClient.FiveM);
+        var item = new CfxStatusItem(GameClient.FiveM, TestLocalizer.English());
         item.Apply(CfxStatus.Operational);
         var notifications = new List<string?>();
         item.PropertyChanged += (_, e) => notifications.Add(e.PropertyName);
@@ -111,7 +111,7 @@ public class CfxStatusItemTests
     public void Ctor_ShouldImplementNotifyPropertyChanged()
     {
         // Given / When
-        var item = new CfxStatusItem(GameClient.FiveM);
+        var item = new CfxStatusItem(GameClient.FiveM, TestLocalizer.English());
 
         // Then
         Assert.IsAssignableFrom<INotifyPropertyChanged>(item);

@@ -292,12 +292,13 @@ public class MainViewModel : INotifyPropertyChanged
     }
 
     public IReadOnlyList<GameClientOption> DialogGameClientOptions =>
-    [
-        new(null, _localizer.Get("GameClientNone")),
-        new(GameClient.FiveM, "FiveM"),
-        new(GameClient.FiveMEnhanced, "FiveM Enhanced"),
-        new(GameClient.RedM, "RedM")
-    ];
+        [
+            new(null, _localizer.Get("GameClientNone")),
+            new(GameClient.FiveM, InstalledClientOption.DisplayNameOf(GameClient.FiveM)),
+            new(GameClient.FiveMEnhanced, InstalledClientOption.DisplayNameOf(GameClient.FiveMEnhanced)),
+            new(GameClient.RedM, InstalledClientOption.DisplayNameOf(GameClient.RedM))
+        ];
+
 
     private void UpdateIsDialogLocalhost()
     {

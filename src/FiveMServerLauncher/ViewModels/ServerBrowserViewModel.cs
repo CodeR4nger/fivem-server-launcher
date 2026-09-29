@@ -29,8 +29,8 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
         ServerCatalog catalog,
         IServerEnrichmentService enrichment,
         IServerRepository repository,
+        ILocalizer localizer,
         TimeSpan? refreshCooldown = null,
-        ILocalizer? localizer = null,
         TimeSpan? searchDebounce = null,
         Func<TimeSpan, CancellationToken, Task>? searchDelay = null,
         CancellationToken? cancellationToken = null)
@@ -38,7 +38,7 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
         _catalog = catalog;
         _enrichment = enrichment;
         _repository = repository;
-        _localizer = localizer ?? DefaultLocalizer.Get();
+        _localizer = localizer;
         _localizer.LanguageChanged += OnLanguageChanged;
         _refreshCooldown = refreshCooldown ?? DefaultRefreshCooldown;
         _searchDebounce = searchDebounce ?? DefaultSearchDebounce;
