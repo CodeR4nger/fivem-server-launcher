@@ -15,7 +15,11 @@ public sealed class CitizenFxConfigWriter : ICitizenFxConfigWriter
         ArgumentException.ThrowIfNullOrWhiteSpace(iniPath);
         ArgumentNullException.ThrowIfNull(values);
 
-        if (values.Count == 0)
+        // A key or value carrying a line break could inject arbitrary keys/sections
+        // into FiveM's config; unsafe entries are skipped, never written.
+        var safeValues = FilterSafeValues(values);
+
+        if (safeValues.Count == 0)
         {
             return;
         }
@@ -36,7 +40,7 @@ public sealed class CitizenFxConfigWriter : ICitizenFxConfigWriter
             : lines.Length;
 
         var hasChange = false;
-        foreach (var (key, value) in values)
+        foreach (var (key, value) in safeValues)
         {
             hasChange |= !HasMatchingValue(lines, gameStart, gameEnd, key, value);
         }
@@ -46,8 +50,28 @@ public sealed class CitizenFxConfigWriter : ICitizenFxConfigWriter
             return;
         }
 
-        var output = BuildOutput(lines, gameStart, gameEnd, values);
+        var output = BuildOutput(lines, gameStart, gameEnd, safeValues);
         AtomicFile.WriteAllText(iniPath, string.Join(Environment.NewLine, output));
+    }
+
+    private static Dictionary<string, string> FilterSafeValues(IReadOnlyDictionary<string, string> values)
+    {
+        var safe = new Dictionary<string, string>();
+
+        foreach (var (key, value) in values)
+        {
+            if (!ContainsLineBreak(key) && !ContainsLineBreak(value))
+            {
+                safe[key] = value;
+            }
+        }
+
+        return safe;
+    }
+
+    private static bool ContainsLineBreak(string text)
+    {
+        return text.Contains('\r') || text.Contains('\n');
     }
 
     private static bool HasMatchingValue(
