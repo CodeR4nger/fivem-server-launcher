@@ -32,8 +32,8 @@ animation when any dropdown opens — the menu grows out of its origin (ComboBox
 OPEN split menu alike) and collapses away again on close — consistent
 with the LOCAL DEV panel's ease-out motion language; a short row slide whenever saved
 servers are reordered, so both reorder paths land visibly where the row came from; and the
-app's surface transitions join the same motion family — settings and Dev Mode slide in on
-open, and the server browser pushes in and out.
+app's surface transitions join the same motion family — settings, Dev Mode and the LOCAL DEV
+panel slide in and out, and the server browser pushes in and out.
 
 ## User Stories
 
@@ -53,9 +53,9 @@ open, and the server browser pushes in and out.
    identically, so the app feels coherent.
 7. As a user, when I move a saved server — with the arrows or by dragging — I want the rows to
    slide into their new positions, so the reorder reads as motion instead of a jump cut.
-8. As a user, when I open the settings panel or Dev Mode I want it to slide in, and when I
-   open or close the server browser I want it to push in/out, so moving between the app's
-   surfaces feels continuous.
+8. As a user, when I open or close the settings panel, Dev Mode or the server browser, I want
+   the surface to slide in and out (and the loopback dialog's local dev panel with it), so
+   moving between the app's surfaces feels continuous.
 
 ## Implementation Decisions
 
@@ -107,12 +107,24 @@ open, and the server browser pushes in and out.
   cancels it; on drag drop the row un-dims and the drop line hides before the slide (the
   existing `EndDragVisuals` order); the move-arrows overlay and drop line always target the
   final layout — they never ride the animation.
-- Surface transitions (settings, Dev Mode): enter-only slide+fade on open — the settings panel
-  slides down from behind the settings/dev button row, the dev controls and dev launch areas
-  slide down into their slots (~40 px + fade, 250 ms ease-out), via the LOCAL DEV panel's
-  existing DataTrigger/BeginStoryboard pattern. Closes stay instant (the `Visibility` collapse
-  is immediate, same as the LOCAL DEV panel), so the settings<->dev mutual-exclusivity swap
-  never runs concurrent exit animations.
+- Surface transitions (settings, Dev Mode, the dialog's LOCAL DEV side panel): both directions.
+  Settings and the Dev Mode areas are pure crossfades (opacity-only, 250 ms — the vertical
+  slide read awkwardly against the layout; user-refined), and the normal-mode surfaces they
+  replace (the status block and the split button) fade inversely, so the normal<->dev swap is
+  a true crossfade: both sides fade over the same slots. The dev content is a single
+  top-anchored overlay spanning the lower rows (never a participant in their sizing), so
+  mounting it cannot resize the rows the fading normal-mode surfaces live in — otherwise the
+  outgoing status/split get repositioned mid-fade. The LOCAL DEV side panel keeps its 60 px
+  slide in from the right, reversed on close. Visibility is never bound to the flag directly
+  — it is driven through a MultiBinding (open flag OR the panel's own opacity > 0,
+  `Views/PanelVisibilityStateConverter` on a Self binding): the panel's fade doubles as its
+  close-hold state, so the closing motion renders inside the still-mounted panel and the
+  collapse happens on its own when the fade completes (Style storyboards cannot target a
+  sibling holder — MC4011 — which is why the hold rides the panel itself). Hidden-by-flag
+  panels rest at opacity 0 with To-only motions so a reopen mid-close resumes smoothly; the
+  visible-by-default surfaces (status, split) rest at opacity 1 and use the converter's
+  "invert" parameter, which also keeps them visible on malformed inputs exactly like their
+  old FallbackValue. Panels are not hit-testable once their flag drops.
 - Server browser transition: push-in from the right on open (~80 px + fade, 250 ms ease-out)
   and the reverse on close — the one surface that animates both ways. The VM flag stays the
   single source of truth for browser state; the close is a small code-behind visual-glue step
@@ -151,9 +163,8 @@ open, and the server browser pushes in and out.
 
 - App-wide theming/resource dictionary refactor; restyling the window chrome; custom
   TextBoxes/Buttons (already styled); the game-build combo's content (phase 16 — it merely
-  adopts these styles); editable combos; window-level transitions (open/close/minimize);
-  close animations for settings and Dev Mode (opens only — dropdowns and the browser are the
-  animated-close surfaces).
+  adopts these styles); editable combos; window-level transitions (open/close/minimize).
+  Every in-app surface now animates both directions — dropdowns, panels and the browser.
 - Drag-reorder niceties beyond the landing slide: no live "gap opens" relayout while hovering a
   slot, no animated scroll-into-view, no row add/remove animations (only reorder moves slide).
 

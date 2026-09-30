@@ -17,6 +17,7 @@
 
         <views:SelectionEqualityToVisibilityConverter x:Key="SelectionEqualityToVisibility"/>
         <views:DropdownOpenStateConverter x:Key="DropdownOpenStateConverter"/>
+        <views:PanelVisibilityStateConverter x:Key="PanelVisibilityStateConverter"/>
 
         <!-- COLORES -->
 
@@ -826,8 +827,46 @@
                         Background="{StaticResource PanelLightBrush}"
                         BorderBrush="{StaticResource BorderBrush}"
                         BorderThickness="1"
-                        Visibility="{Binding IsSettingsOpen,
-                                             Converter={StaticResource BoolToVisibility}}">
+                        Opacity="0">
+
+                    <Border.Visibility>
+                        <MultiBinding Converter="{StaticResource PanelVisibilityStateConverter}"
+                                      Mode="OneWay">
+                            <Binding Path="IsSettingsOpen"/>
+                            <Binding Path="Opacity"
+                                     RelativeSource="{RelativeSource Self}"/>
+                        </MultiBinding>
+                    </Border.Visibility>
+
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsSettingsOpen}" Value="True">
+                                    <DataTrigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                 To="1"
+                                                                 Duration="0:0:0.25"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </DataTrigger.EnterActions>
+                                    <DataTrigger.ExitActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                 To="0"
+                                                                 Duration="0:0:0.25"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </DataTrigger.ExitActions>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsSettingsOpen}" Value="False">
+                                    <Setter Property="IsHitTestVisible" Value="False"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
 
                     <StackPanel VerticalAlignment="Top">
 
@@ -866,10 +905,47 @@
                 <StackPanel Grid.Row="2"
                             VerticalAlignment="Center"
                             HorizontalAlignment="Center"
-                            Margin="30,12"
-                            Visibility="{Binding IsDevMode,
-                                                 Converter={StaticResource InverseBoolToVisibility},
-                                                 FallbackValue=Visible}">
+                            Margin="30,12">
+
+                    <StackPanel.Visibility>
+                        <MultiBinding Converter="{StaticResource PanelVisibilityStateConverter}"
+                                      ConverterParameter="invert"
+                                      Mode="OneWay">
+                            <Binding Path="IsDevMode"/>
+                            <Binding Path="Opacity"
+                                     RelativeSource="{RelativeSource Self}"/>
+                        </MultiBinding>
+                    </StackPanel.Visibility>
+
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsDevMode}" Value="False">
+                                    <DataTrigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                 To="1"
+                                                                 Duration="0:0:0.25"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </DataTrigger.EnterActions>
+                                    <DataTrigger.ExitActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                 To="0"
+                                                                 Duration="0:0:0.25"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </DataTrigger.ExitActions>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsDevMode}" Value="True">
+                                    <Setter Property="IsHitTestVisible" Value="False"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
 
                     <TextBlock Text="{loc:Loc CfxStatusHeader}"
                                Style="{StaticResource SectionHeaderStyle}"
@@ -919,10 +995,47 @@
                 <!-- SPLIT BUTTON -->
 
                 <Grid Grid.Row="3"
-                      Margin="20,0,20,16"
-                      Visibility="{Binding IsDevMode,
-                                           Converter={StaticResource InverseBoolToVisibility},
-                                           FallbackValue=Visible}">
+                      Margin="20,0,20,16">
+
+                    <Grid.Visibility>
+                        <MultiBinding Converter="{StaticResource PanelVisibilityStateConverter}"
+                                      ConverterParameter="invert"
+                                      Mode="OneWay">
+                            <Binding Path="IsDevMode"/>
+                            <Binding Path="Opacity"
+                                     RelativeSource="{RelativeSource Self}"/>
+                        </MultiBinding>
+                    </Grid.Visibility>
+
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsDevMode}" Value="False">
+                                    <DataTrigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                 To="1"
+                                                                 Duration="0:0:0.25"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </DataTrigger.EnterActions>
+                                    <DataTrigger.ExitActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                 To="0"
+                                                                 Duration="0:0:0.25"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </DataTrigger.ExitActions>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsDevMode}" Value="True">
+                                    <Setter Property="IsHitTestVisible" Value="False"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
 
                     <Grid.RowDefinitions>
 
@@ -1024,17 +1137,60 @@
 
                 </Grid>
 
-                <!-- DEV MODE -->
+                <!-- DEV MODE (a top-anchored overlay spanning the lower rows:
+                     it never participates in their sizing, so mounting it
+                     cannot jump the normal-mode surfaces it crossfades
+                     against) -->
 
-                <ScrollViewer Grid.Row="2"
-                              VerticalScrollBarVisibility="Auto"
-                              Visibility="{Binding IsDevMode,
-                                                  Converter={StaticResource BoolToVisibility},
-                                                  FallbackValue=Collapsed}">
-
-                    <StackPanel
+                <StackPanel Grid.Row="1"
+                            Grid.RowSpan="3"
                             VerticalAlignment="Top"
-                            Margin="20,8,20,0">
+                            Opacity="0">
+
+                    <StackPanel.Visibility>
+                        <MultiBinding Converter="{StaticResource PanelVisibilityStateConverter}"
+                                      Mode="OneWay">
+                            <Binding Path="IsDevMode"/>
+                            <Binding Path="Opacity"
+                                     RelativeSource="{RelativeSource Self}"/>
+                        </MultiBinding>
+                    </StackPanel.Visibility>
+
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsDevMode}" Value="True">
+                                    <DataTrigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                 To="1"
+                                                                 Duration="0:0:0.25"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </DataTrigger.EnterActions>
+                                    <DataTrigger.ExitActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                 To="0"
+                                                                 Duration="0:0:0.25"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </DataTrigger.ExitActions>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsDevMode}" Value="False">
+                                    <Setter Property="IsHitTestVisible" Value="False"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+
+                        <StackPanel
+                                VerticalAlignment="Top"
+                                Margin="20,8,20,0">
 
                     <TextBlock Text="{loc:Loc DevModeButton}"
                                Style="{StaticResource SectionHeaderStyle}"
@@ -1087,13 +1243,9 @@
 
                 </ScrollViewer>
 
-                <!-- DEV LAUNCH -->
+                    <!-- DEV LAUNCH -->
 
-                <StackPanel Grid.Row="3"
-                            Margin="20,14,20,20"
-                            Visibility="{Binding IsDevMode,
-                                                 Converter={StaticResource BoolToVisibility},
-                                                 FallbackValue=Collapsed}">
+                    <StackPanel Margin="20,14,20,20">
 
                     <Button Content="{loc:Loc LaunchButton}"
                             MinHeight="50"
@@ -1107,6 +1259,8 @@
                             Style="{StaticResource SecondaryButtonStyle}"
                             Command="{Binding DevLaunchCommand}"
                             CommandParameter="{x:Static viewModels:DevLaunchParams.SecondClient}"/>
+
+                    </StackPanel>
 
                 </StackPanel>
 
@@ -1552,11 +1706,19 @@
                     BorderThickness="1"
                     Padding="20"
                     MinWidth="220"
-                    Visibility="{Binding IsDialogLocalhost,
-                                         Converter={StaticResource BoolToVisibility}}">
+                    Opacity="0">
+
+                <Border.Visibility>
+                    <MultiBinding Converter="{StaticResource PanelVisibilityStateConverter}"
+                                  Mode="OneWay">
+                        <Binding Path="IsDialogLocalhost"/>
+                        <Binding Path="Opacity"
+                                 RelativeSource="{RelativeSource Self}"/>
+                    </MultiBinding>
+                </Border.Visibility>
 
                 <Border.RenderTransform>
-                    <TranslateTransform/>
+                    <TranslateTransform X="60"/>
                 </Border.RenderTransform>
 
                 <Border.Style>
@@ -1567,7 +1729,6 @@
                                     <BeginStoryboard>
                                         <Storyboard>
                                             <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(TranslateTransform.X)"
-                                                             From="60"
                                                              To="0"
                                                              Duration="0:0:0.25">
                                                 <DoubleAnimation.EasingFunction>
@@ -1575,12 +1736,30 @@
                                                 </DoubleAnimation.EasingFunction>
                                             </DoubleAnimation>
                                             <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                             From="0"
                                                              To="1"
                                                              Duration="0:0:0.25"/>
                                         </Storyboard>
                                     </BeginStoryboard>
                                 </DataTrigger.EnterActions>
+                                <DataTrigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(TranslateTransform.X)"
+                                                             To="60"
+                                                             Duration="0:0:0.25">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut"/>
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                             To="0"
+                                                             Duration="0:0:0.25"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </DataTrigger.ExitActions>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsDialogLocalhost}" Value="False">
+                                <Setter Property="IsHitTestVisible" Value="False"/>
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
