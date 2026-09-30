@@ -329,6 +329,70 @@
 
         </Style>
 
+        <!-- BOTÓN DE ÍCONO (refresh, pencil, move arrows) -->
+
+        <Style x:Key="IconButtonStyle"
+               TargetType="{x:Type Button}">
+
+            <Setter Property="Cursor"
+                    Value="Hand"/>
+
+            <Setter Property="Template">
+
+                <Setter.Value>
+
+                    <ControlTemplate TargetType="{x:Type Button}">
+
+                        <Border Background="Transparent"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+
+                        </Border>
+
+                        <ControlTemplate.Triggers>
+
+                            <Trigger Property="IsEnabled" Value="False">
+
+                                <Setter Property="Opacity" Value="0.35"/>
+
+                                <Setter Property="Cursor" Value="Arrow"/>
+
+                            </Trigger>
+
+                        </ControlTemplate.Triggers>
+
+                    </ControlTemplate>
+
+                </Setter.Value>
+
+            </Setter>
+
+            <Style.Resources>
+
+                <Style TargetType="{x:Type TextBlock}" BasedOn="{x:Null}">
+
+                    <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}"/>
+
+                    <Style.Triggers>
+
+                        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Button}}"
+                                     Value="True">
+
+                            <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+
+                        </DataTrigger>
+
+                    </Style.Triggers>
+
+                </Style>
+
+            </Style.Resources>
+
+        </Style>
+
         <!-- COMBOBOX TOGGLE (closed box + chevron) -->
 
         <ControlTemplate x:Key="ComboBoxToggleTemplate" TargetType="{x:Type ToggleButton}">
@@ -1091,51 +1155,12 @@
                         <Button DockPanel.Dock="Right"
                                 Command="{Binding RefreshServersCommand}"
                                 ToolTip="{loc:Loc RefreshTooltip}"
-                                Cursor="Hand"
                                 Padding="4,0"
                                 Margin="6,0,0,0"
-                                VerticalAlignment="Center">
+                                VerticalAlignment="Center"
+                                Style="{StaticResource IconButtonStyle}">
 
-                            <Button.Template>
-
-                                <ControlTemplate TargetType="{x:Type Button}">
-
-                                    <Border Background="Transparent" Padding="{TemplateBinding Padding}">
-
-                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-
-                                    </Border>
-
-                                </ControlTemplate>
-
-                            </Button.Template>
-
-                            <TextBlock Text="↻">
-
-                                <TextBlock.Style>
-
-                                    <Style TargetType="{x:Type TextBlock}" BasedOn="{x:Null}">
-
-                                        <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}"/>
-
-                                        <Setter Property="IsEnabled" Value="True"/>
-
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                         Value="True">
-                                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                         Value="False">
-                                                <Setter Property="Foreground" Value="{StaticResource BorderBrush}"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-
-                                    </Style>
-
-                                </TextBlock.Style>
-
-                            </TextBlock>
+                            <TextBlock Text="↻"/>
 
                         </Button>
 
@@ -1267,9 +1292,9 @@
                                                 Command="{Binding DataContext.OpenEditServerDialogCommand,
                                                                   RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding}"
-                                                Cursor="Hand"
                                                 Padding="6,2"
-                                                VerticalAlignment="Center">
+                                                VerticalAlignment="Center"
+                                                Style="{StaticResource IconButtonStyle}">
 
                                             <Button.Visibility>
 
@@ -1286,37 +1311,6 @@
                                             </Button.Visibility>
 
                                             <TextBlock Text="✏"/>
-
-                                            <Button.Template>
-
-                                                <ControlTemplate TargetType="{x:Type Button}">
-
-                                                    <Border Background="Transparent" Padding="{TemplateBinding Padding}">
-
-                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-
-                                                    </Border>
-
-                                                </ControlTemplate>
-
-                                            </Button.Template>
-
-                                            <Button.Resources>
-
-                                                <Style TargetType="{x:Type TextBlock}" BasedOn="{x:Null}">
-
-                                                    <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}"/>
-
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                                     Value="True">
-                                                            <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-
-                                                </Style>
-
-                                            </Button.Resources>
 
                                         </Button>
 
@@ -1364,52 +1358,11 @@
                                                           RelativeSource={RelativeSource AncestorType=UserControl}}"
                                         CommandParameter="{Binding}"
                                         IsEnabled="{Binding CanMoveUp}"
-                                        Cursor="Hand"
                                         Width="20"
-                                        Padding="0">
-
-                                    <Button.Style>
-                                        <Style TargetType="{x:Type Button}">
-                                            <Style.Triggers>
-                                                <Trigger Property="IsEnabled" Value="False">
-                                                    <Setter Property="Opacity" Value="0.3"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Button.Style>
+                                        Padding="0"
+                                        Style="{StaticResource IconButtonStyle}">
 
                                     <TextBlock Text="▲" FontSize="9"/>
-
-                                    <Button.Template>
-
-                                        <ControlTemplate TargetType="{x:Type Button}">
-
-                                            <Border Background="Transparent" Padding="{TemplateBinding Padding}">
-
-                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-
-                                            </Border>
-
-                                        </ControlTemplate>
-
-                                    </Button.Template>
-
-                                    <Button.Resources>
-
-                                        <Style TargetType="{x:Type TextBlock}" BasedOn="{x:Null}">
-
-                                            <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}"/>
-
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                             Value="True">
-                                                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-
-                                        </Style>
-
-                                    </Button.Resources>
 
                                 </Button>
 
@@ -1417,52 +1370,11 @@
                                                           RelativeSource={RelativeSource AncestorType=UserControl}}"
                                         CommandParameter="{Binding}"
                                         IsEnabled="{Binding CanMoveDown}"
-                                        Cursor="Hand"
                                         Width="20"
-                                        Padding="0">
-
-                                    <Button.Style>
-                                        <Style TargetType="{x:Type Button}">
-                                            <Style.Triggers>
-                                                <Trigger Property="IsEnabled" Value="False">
-                                                    <Setter Property="Opacity" Value="0.3"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Button.Style>
+                                        Padding="0"
+                                        Style="{StaticResource IconButtonStyle}">
 
                                     <TextBlock Text="▼" FontSize="9"/>
-
-                                    <Button.Template>
-
-                                        <ControlTemplate TargetType="{x:Type Button}">
-
-                                            <Border Background="Transparent" Padding="{TemplateBinding Padding}">
-
-                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-
-                                            </Border>
-
-                                        </ControlTemplate>
-
-                                    </Button.Template>
-
-                                    <Button.Resources>
-
-                                        <Style TargetType="{x:Type TextBlock}" BasedOn="{x:Null}">
-
-                                            <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}"/>
-
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                             Value="True">
-                                                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-
-                                        </Style>
-
-                                    </Button.Resources>
 
                                 </Button>
 
@@ -1779,48 +1691,11 @@
                     <Button DockPanel.Dock="Right"
                             Command="{Binding Browser.RefreshCommand}"
                             ToolTip="{loc:Loc RefreshTooltip}"
-                            Cursor="Hand"
                             Padding="6,2"
-                            VerticalAlignment="Center">
+                            VerticalAlignment="Center"
+                            Style="{StaticResource IconButtonStyle}">
 
-                        <Button.Template>
-
-                            <ControlTemplate TargetType="{x:Type Button}">
-
-                                <Border Background="Transparent" Padding="{TemplateBinding Padding}">
-
-                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-
-                                </Border>
-
-                            </ControlTemplate>
-
-                        </Button.Template>
-
-                        <TextBlock Text="↻" FontSize="14">
-
-                            <TextBlock.Style>
-
-                                <Style TargetType="{x:Type TextBlock}" BasedOn="{x:Null}">
-
-                                    <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}"/>
-
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                     Value="True">
-                                            <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                     Value="False">
-                                            <Setter Property="Foreground" Value="{StaticResource BorderBrush}"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-
-                                </Style>
-
-                            </TextBlock.Style>
-
-                        </TextBlock>
+                        <TextBlock Text="↻" FontSize="14"/>
 
                     </Button>
 

@@ -11,7 +11,7 @@ sizes are unchanged — a pure visual consolidation leaving one clear place to r
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** resolved (build + suite 729 green; visually verified by the user — one hover idiom and one normalized ~0.35 disabled dim across all five glyph buttons)
 
 - [ ] One shared style owns template + hover + disabled for all five glyph buttons; no inline
       copies remain
