@@ -169,7 +169,126 @@ namespace FiveMServerLauncher.Views
         // containers re-layout, so the reposition waits for the layout pass.
         private void SavedServers_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
+            // A move slides its rows into their new slots (FLIP): the offsets
+            // are index-derived, so the slide can only start once the layout
+            // pass has placed the containers at their final slots — and it
+            // must land before the next render. Any other structural change
+            // snaps an in-flight slide so no stale transform survives a
+            // container rebuild.
+            if (e.Action == NotifyCollectionChangedAction.Move
+                && e.OldStartingIndex >= 0
+                && e.NewStartingIndex >= 0)
+            {
+                var from = e.OldStartingIndex;
+                var to = e.NewStartingIndex;
+                Dispatcher.BeginInvoke(new Action(() => BeginRowSlide(from, to)), DispatcherPriority.Loaded);
+            }
+            else
+            {
+                Dispatcher.BeginInvoke(new Action(SnapActiveSlides), DispatcherPriority.Loaded);
+            }
+
             Dispatcher.BeginInvoke(new Action(RefreshMoveArrows), DispatcherPriority.Loaded);
+        }
+
+        // ------------------- row slide (FLIP) -------------------
+
+        private readonly HashSet<FrameworkElement> _slidingRows = new();
+
+        private void BeginRowSlide(int fromIndex, int toIndex)
+        {
+            if (fromIndex == toIndex
+                || DataContext is not MainViewModel viewModel
+                || viewModel.SavedServers.Count <= Math.Max(fromIndex, toIndex))
+            {
+                return;
+            }
+
+            // A rapid follow-up move snaps the previous slide to its end first,
+            // so the new offsets stay index-derived and transforms never stack.
+            SnapActiveSlides();
+
+            var movedContainer = ContainerForRow(viewModel.SavedServers[toIndex]);
+
+            if (movedContainer is null || movedContainer.ActualHeight <= 0)
+            {
+                return;
+            }
+
+            var rowHeight = movedContainer.ActualHeight;
+
+            // The moved row travels |to - from| slots against the move direction.
+            SlideRow(movedContainer, (fromIndex - toIndex) * rowHeight);
+
+            // Every row it displaced shifts exactly one slot toward the vacated
+            // position. In the post-move ordering those rows now sit at
+            // to+1..from when the move went up, and at from..to-1 when it went
+            // down — the moved row itself (at `to`) is never in that range.
+            var (first, last) = fromIndex > toIndex
+                ? (toIndex + 1, fromIndex)
+                : (fromIndex, toIndex - 1);
+
+            for (var i = first; i <= last; i++)
+            {
+                if (ContainerForRow(viewModel.SavedServers[i]) is { } displaced)
+                {
+                    SlideRow(displaced, fromIndex < toIndex ? rowHeight : -rowHeight);
+                }
+            }
+        }
+
+        private FrameworkElement? ContainerForRow(SavedServerItem row)
+        {
+            return SavedServersList.ItemContainerGenerator.ContainerFromItem(row) as FrameworkElement;
+        }
+
+        private void SlideRow(FrameworkElement container, double fromOffset)
+        {
+            // Base transform stays at zero: the offset lives only in the
+            // animation's From, so releasing the clock can never revert the
+            // row to a stale position.
+            var transform = new TranslateTransform();
+            container.RenderTransform = transform;
+            _slidingRows.Add(container);
+
+            var slide = new DoubleAnimation(fromOffset, 0, TimeSpan.FromSeconds(0.2))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+
+            slide.Completed += (_, _) =>
+            {
+                _slidingRows.Remove(container);
+                transform.BeginAnimation(TranslateTransform.YProperty, null);
+                container.RenderTransform = null;
+            };
+
+            transform.BeginAnimation(TranslateTransform.YProperty, slide);
+        }
+
+        private void SnapActiveSlides()
+        {
+            foreach (var container in _slidingRows)
+            {
+                if (container.RenderTransform is TranslateTransform transform)
+                {
+                    transform.BeginAnimation(TranslateTransform.YProperty, null);
+                }
+
+                container.RenderTransform = null;
+            }
+
+            _slidingRows.Clear();
+        }
+
+        // The pending slide offset of a row: positioning glue (the arrows
+        // overlay) subtracts it so it targets the row's final slot, never the
+        // mid-slide visual position.
+        private double SlideOffsetOf(FrameworkElement container)
+        {
+            return container.RenderTransform is TranslateTransform transform && _slidingRows.Contains(container)
+                ? transform.Y
+                : 0;
         }
 
         private void SavedServerRow_MouseEnter(object sender, MouseEventArgs e)
@@ -222,6 +341,10 @@ namespace FiveMServerLauncher.Views
 
         private void SavedServersList_ScrollChanged(object sender, ScrollChangedEventArgs e)
         {
+            // A scroll invalidates the slide offsets — cancel the motion, the
+            // rows are laid out at their final slots anyway.
+            SnapActiveSlides();
+
             if (_rowDragging)
             {
                 UpdateDropIndicator(_lastPointer);
@@ -266,6 +389,7 @@ namespace FiveMServerLauncher.Views
             MoveArrowsOverlay.UpdateLayout();
 
             var topLeft = container.TranslatePoint(new Point(0, 0), MoveArrowsCanvas);
+            topLeft.Y -= SlideOffsetOf(container);
             Canvas.SetTop(
                 MoveArrowsOverlay,
                 topLeft.Y + (container.ActualHeight - MoveArrowsOverlay.ActualHeight) / 2);
@@ -333,6 +457,7 @@ namespace FiveMServerLauncher.Views
                 }
 
                 _rowDragging = true;
+                SnapActiveSlides();
                 SavedServersList.CaptureMouse();
                 SavedServersList.Cursor = Cursors.SizeAll;
 

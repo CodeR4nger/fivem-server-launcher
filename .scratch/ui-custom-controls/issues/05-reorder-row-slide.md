@@ -15,7 +15,7 @@ persist-first, bounds and filter semantics untouched.
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** resolved (build + suite 729 green; visually verified by the user after one fix — the displaced-row range was inverted on the first pass, so adjacent arrow moves double-animated the moved row while its neighbor teleported; the corrected range gives the two-server swap the user asked for, with drag motion unchanged. Range math pinned numerically in a harness: adjacent up = moved +1 slot, neighbor −1; multi-slot drop = moved −N, displaced +1 each)
 
 - [ ] Arrow moves slide the moved row + displaced rows into place (~200 ms ease-out), both
       directions, at the list boundaries
