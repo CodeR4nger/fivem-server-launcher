@@ -163,6 +163,95 @@ namespace FiveMServerLauncher.Views
             {
                 RefreshMoveArrows();
             }
+            else if (e.PropertyName == nameof(MainViewModel.IsServerBrowserOpen)
+                     && sender is MainViewModel viewModel)
+            {
+                BrowserOpenStateChanged(viewModel.IsServerBrowserOpen);
+            }
+        }
+
+        // ------------------- browser full-width slide -------------------
+
+        private int _browserSlideGeneration;
+        private bool _browserClosing;
+
+        private TranslateTransform BrowserSlideTransform =>
+            (TranslateTransform)BrowserOverlay.RenderTransform;
+
+        // The browser pushes in and out across the full window width — a real
+        // navigation slide, not a nudge. The travel distance is the live
+        // window width, which a style storyboard cannot animate (style
+        // storyboards freeze their animations, so their To cannot bind), so
+        // the motion lives here as visual glue. The VM flag stays the single
+        // truth; only visibility, the transform and hit-testing are touched.
+        private void BrowserOpenStateChanged(bool open)
+        {
+            if (open)
+            {
+                BrowserSlideIn();
+            }
+            else
+            {
+                BrowserSlideOut();
+            }
+        }
+
+        private void BrowserSlideIn()
+        {
+            var resuming = _browserClosing;
+
+            ++_browserSlideGeneration;
+            _browserClosing = false;
+            BrowserOverlay.IsHitTestVisible = true;
+            BrowserOverlay.Visibility = Visibility.Visible;
+
+            if (!resuming)
+            {
+                BrowserSlideTransform.X = -ActualWidth;
+            }
+
+            // To-only: a reopen mid-close resumes from the live position.
+            var slide = new DoubleAnimation(0, TimeSpan.FromSeconds(0.3))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+
+            BrowserSlideTransform.BeginAnimation(TranslateTransform.XProperty, slide);
+        }
+
+        private void BrowserSlideOut()
+        {
+            if (BrowserOverlay.Visibility != Visibility.Visible || _browserClosing)
+            {
+                return;
+            }
+
+            var generation = ++_browserSlideGeneration;
+
+            _browserClosing = true;
+            BrowserOverlay.IsHitTestVisible = false;
+
+            // To-only: closing from mid-slide-in reverses smoothly instead of
+            // snapping back to the edge first.
+            var slide = new DoubleAnimation(-ActualWidth, TimeSpan.FromSeconds(0.3))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+
+            slide.Completed += (_, _) =>
+            {
+                if (generation != _browserSlideGeneration)
+                {
+                    return;
+                }
+
+                BrowserSlideTransform.BeginAnimation(TranslateTransform.XProperty, null);
+                BrowserSlideTransform.X = 0;
+                BrowserOverlay.Visibility = Visibility.Collapsed;
+                _browserClosing = false;
+            };
+
+            BrowserSlideTransform.BeginAnimation(TranslateTransform.XProperty, slide);
         }
 
         // The overlay tracks rows by reference; after any structural change the

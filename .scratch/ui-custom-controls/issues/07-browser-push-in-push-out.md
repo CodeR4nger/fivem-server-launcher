@@ -1,27 +1,34 @@
-# 07: Server browser push-in/push-out
+# 07: Server browser full-width slide
 
-**What to build:** The server browser overlay stops being a jump cut: it pushes in from the
-right on open (~80 px + fade, 250 ms ease-out) and plays the reverse on close — the one surface
-that animates both ways. The VM flag stays the single source of truth for browser state; the
-close is a small code-behind visual-glue step that plays the out-storyboard, collapses the
-overlay on completion, and cancels (re-shows instantly) when the browser is reopened
-mid-close. Deliberately NOT the always-mounted opacity-0 pattern — an invisible-but-visible
-overlay would leak keyboard focus and hit-testing into hidden content; delaying only the
-collapse keeps `Visibility` semantics intact.
+**What to build:** The server browser overlay stops being a jump cut: it slides in across the
+full window width, right to left, on open, and slides back out, left to right, on close — a
+real navigation push/pop (user-refined from a short nudge+fade: the full travel must be
+visible). The travel distance is the live window width, which a style storyboard cannot
+animate (style storyboards freeze their animations, so their To cannot bind), so the slide
+lives in the view's code-behind as visual glue, driven by the VM flag through
+`IsServerBrowserOpen` — the flag stays the single source of truth; only visibility, the
+transform and hit-testing are touched. Both motions are To-only (~300 ms ease-out), so
+closing from mid-slide-in reverses smoothly and reopening mid-close resumes from the live
+position; clicks pass through the overlay once the flag drops, and the overlay collapses on
+its own exactly when the exit completes — never stuck open.
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** resolved (build + suite 742 green; visually verified by the user after one refinement: the full-width slide reversed to enter from the left edge. The travel distance is the live window width, so the motion is code-behind glue — style storyboards freeze their animations and cannot bind a dynamic To)
 
-- [ ] Browser pushes in from the right on open (~80 px + fade, 250 ms ease-out)
-- [ ] Close plays the reverse motion before the overlay collapses
-- [ ] Reopening mid-close cancels the close and re-shows instantly — no flicker, no stuck state
+- [ ] Browser slides in across the full window width, right to left, on open (~300 ms,
+      ease-out)
+- [ ] Close slides back out, left to right, and the overlay collapses on its own exactly at
+      completion
+- [ ] Closing from mid-slide-in reverses smoothly; reopening mid-close resumes from the live
+      position — no snap, no flicker, no stuck overlay
 - [ ] The VM flag remains the single truth; browser state (filters, rows, IsSaved markers)
       unaffected
-- [ ] Hidden browser is not focusable or hit-testable (no tab-into-invisible)
-- [ ] No always-mounted hidden overlay; `Visibility` semantics preserved
+- [ ] Clicks pass through the outgoing overlay once the flag drops; the idle overlay is
+      truly collapsed (not focusable, not hit-testable, never always-mounted)
+- [ ] The travel distance adapts to window resizes (measured per transition)
 - [ ] Build green, full suite green
-- [ ] Manual visual verification: open, close, rapid close/reopen, tab focus stays out of the
-      hidden browser
+- [ ] Manual visual verification: open, close, rapid close/reopen, mid-motion reversals,
+      tab focus stays out of the hidden browser
 
 **Spec:** `.scratch/ui-custom-controls/spec.md`

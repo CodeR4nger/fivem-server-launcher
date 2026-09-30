@@ -125,13 +125,16 @@ panel slide in and out, and the server browser pushes in and out.
   visible-by-default surfaces (status, split) rest at opacity 1 and use the converter's
   "invert" parameter, which also keeps them visible on malformed inputs exactly like their
   old FallbackValue. Panels are not hit-testable once their flag drops.
-- Server browser transition: push-in from the right on open (~80 px + fade, 250 ms ease-out)
-  and the reverse on close — the one surface that animates both ways. The VM flag stays the
-  single source of truth for browser state; the close is a small code-behind visual-glue step
-  that plays the out-storyboard, collapses the overlay on completion, and cancels (re-shows
-  instantly) if the browser is reopened mid-close. Deliberately NOT the always-mounted
-  opacity-0 pattern: an invisible-but-visible overlay leaks keyboard focus and hit-testing
-  into hidden content; delaying only the collapse keeps `Visibility` semantics intact.
+- Server browser transition: a real navigation slide — in across the full window width, right
+  to left, on open; back out, left to right, on close (user-refined from a short nudge+fade:
+  the full travel must be visible; ~300 ms ease-out). The travel distance is the live window
+  width, which a style storyboard cannot animate (style storyboards freeze their animations,
+  so their To cannot bind), so the slide is code-behind visual glue driven by the VM flag —
+  the flag stays the single source of truth. Both motions are To-only, so closing from
+  mid-slide-in reverses smoothly and reopening mid-close resumes from the live position;
+  the overlay is click-through once the flag drops and collapses on its own exactly when
+  the exit completes — never always-mounted, so no hidden surface leaks focus or
+  hit-testing.
 - Adoption sites — combos: settings preferred client, settings language, dev pure mode,
   loopback dialog pure mode, loopback dialog game, browser game filter (the future game-build
   combo from the game-build-dropdown feature will adopt the same style); checkboxes: auto-launch,
