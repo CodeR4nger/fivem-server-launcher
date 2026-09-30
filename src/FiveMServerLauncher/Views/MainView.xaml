@@ -499,6 +499,89 @@
 
         </Style>
 
+        <!-- CHECKBOX (dark box, amber check) -->
+
+        <Style TargetType="{x:Type CheckBox}">
+
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+
+            <Setter Property="Template">
+
+                <Setter.Value>
+
+                    <ControlTemplate TargetType="{x:Type CheckBox}">
+
+                        <StackPanel Orientation="Horizontal"
+                                    Background="Transparent">
+
+                            <Border x:Name="CheckBoxBox"
+                                    Width="16"
+                                    Height="16"
+                                    Background="{StaticResource PanelLightBrush}"
+                                    BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="2"
+                                    VerticalAlignment="Center"
+                                    SnapsToDevicePixels="True">
+
+                                <Path x:Name="CheckMark"
+                                      Data="M 3,8 L 6.5,11.5 L 11,3.5"
+                                      Stroke="{StaticResource AccentBrush}"
+                                      StrokeThickness="2"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round"
+                                      Visibility="Collapsed"/>
+
+                            </Border>
+
+                            <ContentPresenter Margin="8,0,0,0"
+                                              VerticalAlignment="Center"/>
+
+                        </StackPanel>
+
+                        <ControlTemplate.Triggers>
+
+                            <Trigger Property="IsMouseOver" Value="True">
+
+                                <Setter TargetName="CheckBoxBox"
+                                        Property="BorderBrush"
+                                        Value="#3A3A3A"/>
+
+                            </Trigger>
+
+                            <Trigger Property="IsChecked" Value="True">
+
+                                <Setter TargetName="CheckMark"
+                                        Property="Visibility"
+                                        Value="Visible"/>
+
+                            </Trigger>
+
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+
+                                <Setter TargetName="CheckBoxBox"
+                                        Property="BorderBrush"
+                                        Value="#3A3A3A"/>
+
+                            </Trigger>
+
+                            <Trigger Property="IsEnabled" Value="False">
+
+                                <Setter Property="Opacity" Value="0.45"/>
+
+                            </Trigger>
+
+                        </ControlTemplate.Triggers>
+
+                    </ControlTemplate>
+
+                </Setter.Value>
+
+            </Setter>
+
+        </Style>
+
     </UserControl.Resources>
 
     <!-- ROOT -->

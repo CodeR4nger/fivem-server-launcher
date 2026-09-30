@@ -9,7 +9,7 @@ untouched.
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** resolved (build + suite 723 green; visually verified by the user — checked keeps a deep border, grey on hover/focus)
 
 - [ ] All five checkboxes render dark: panel-light fill + deep border
 - [ ] Checked = dark box with amber check glyph + amber border; unchecked shows no glyph

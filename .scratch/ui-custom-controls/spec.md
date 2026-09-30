@@ -72,8 +72,9 @@ open, and the server browser pushes in and out.
   hover idiom), the selected item gets amber text on a subtle lighter fill (distinct from
   hover; hover wins when both), unselected/unhovered items are white-on-panel.
 - CheckBox template (two-state; all five sites bind plain bools): dark box — `PanelLightBrush`
-  fill + deep border; checked = amber check glyph + amber border (box stays dark); hover
-  brightens the border; disabled dims to ~0.45 opacity.
+  fill + deep border; checked = amber check glyph only (the border stays deep — user-verified
+  refinement); hover and keyboard focus brighten the border to the quiet grey; disabled dims to
+  ~0.45 opacity.
 - Popup animation is a XAML storyboard (translate-Y + opacity, ~200 ms, ease-out — snappier
   than the panel's 250 ms because the element is smaller, same motion language) triggered on
   popup open from template triggers; no code-behind. The popup needs `AllowsTransparency=True`
