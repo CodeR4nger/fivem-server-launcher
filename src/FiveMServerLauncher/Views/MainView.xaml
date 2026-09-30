@@ -1759,15 +1759,14 @@
                                Style="{StaticResource SectionHeaderStyle}"
                                Margin="0,10,0,0"/>
 
-                    <TextBox Text="{Binding DialogGameBuildText, UpdateSourceTrigger=PropertyChanged}"
-                             Background="{StaticResource PanelLightBrush}"
-                             Foreground="{StaticResource TextBrush}"
-                             BorderBrush="{StaticResource BorderBrush}"
-                             BorderThickness="1"
-                             Padding="12,8"
-                             FontSize="12"
-                             MinHeight="38"
-                             Margin="0,5,0,0"/>
+                    <ComboBox ItemsSource="{Binding DialogGameBuildOptions}"
+                              DisplayMemberPath="Label"
+                              SelectedValuePath="Build"
+                              SelectedValue="{Binding DialogGameBuild}"
+                              IsEnabled="{Binding IsDialogGameBuildEnabled}"
+                              MinHeight="30"
+                              VerticalContentAlignment="Center"
+                              Margin="0,5,0,0"/>
 
                     <TextBlock Text="{loc:Loc PureModeHeader}"
                                Style="{StaticResource SectionHeaderStyle}"

@@ -1540,7 +1540,7 @@ public class MainViewModelTests
 
         // Then
         Assert.Equal(string.Empty, vm.DialogCfxId);
-        Assert.Equal(string.Empty, vm.DialogGameBuildText);
+        Assert.Null(vm.DialogGameBuild);
         Assert.Null(vm.DialogPureMode);
         Assert.Null(vm.DialogGameClient);
         Assert.False(vm.IsDialogLocalhost);
@@ -1578,7 +1578,7 @@ public class MainViewModelTests
         vm.DialogServerName = "Local Dev";
         vm.DialogServerAddress = "localhost:30120";
         vm.DialogCfxId = "8y6354";
-        vm.DialogGameBuildText = "3258";
+        vm.DialogGameBuild = 3258;
         vm.DialogPureMode = 2;
         vm.DialogGameClient = GameClient.RedM;
 
@@ -1612,9 +1612,114 @@ public class MainViewModelTests
         // Then
         Assert.True(vm.IsDialogLocalhost);
         Assert.Equal("8y6354", vm.DialogCfxId);
-        Assert.Equal("3258", vm.DialogGameBuildText);
+        Assert.Equal(3258, vm.DialogGameBuild);
         Assert.Equal(1, vm.DialogPureMode);
         Assert.Equal(GameClient.RedM, vm.DialogGameClient);
+    }
+
+    [Fact]
+    public async Task DialogGameBuildOptions_ShouldFollowDialogGameSelection()
+    {
+        // Given
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+        await vm.InitializeAsync();
+        vm.OpenAddServerDialogCommand.Execute(null);
+        vm.DialogServerAddress = "localhost:30120";
+
+        // When / Then — GAME = None disables the combo with no options
+        Assert.Null(vm.DialogGameClient);
+        Assert.Empty(vm.DialogGameBuildOptions);
+        Assert.False(vm.IsDialogGameBuildEnabled);
+
+        // And — FiveM lists the FiveM builds led by None
+        vm.DialogGameClient = GameClient.FiveM;
+        Assert.True(vm.IsDialogGameBuildEnabled);
+        Assert.Equal(19, vm.DialogGameBuildOptions.Count);
+        Assert.Null(vm.DialogGameBuildOptions[0].Build);
+        Assert.Contains(new GameBuildOption(3889, "3889 — The Kortz Center Heist"), vm.DialogGameBuildOptions);
+
+        // And — RedM lists the RedM builds
+        vm.DialogGameClient = GameClient.RedM;
+        Assert.Equal(5, vm.DialogGameBuildOptions.Count);
+        Assert.Contains(new GameBuildOption(1491, "1491"), vm.DialogGameBuildOptions);
+
+        // And — Enhanced disables the combo
+        vm.DialogGameClient = GameClient.FiveMEnhanced;
+        Assert.Empty(vm.DialogGameBuildOptions);
+        Assert.False(vm.IsDialogGameBuildEnabled);
+    }
+
+    [Fact]
+    public async Task DialogGameClient_WhenSwitchedWithBuildSelected_ShouldNotClearTheBuild()
+    {
+        // Given
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+        await vm.InitializeAsync();
+        vm.DialogGameClient = GameClient.FiveM;
+        vm.DialogGameBuild = 3095;
+
+        // When
+        vm.DialogGameClient = GameClient.RedM;
+
+        // Then
+        Assert.Equal(3095, vm.DialogGameBuild);
+        Assert.Contains(new GameBuildOption(3095, "3095 — The Chop Shop"), vm.DialogGameBuildOptions);
+    }
+
+    [Fact]
+    public async Task DialogGameBuildOptions_WhenSessionDataArrives_ShouldRefresh()
+    {
+        // Given
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+        await vm.InitializeAsync();
+        vm.DialogGameClient = GameClient.FiveM;
+        var data = new GameBuildData([4000], [1491], new Dictionary<int, string> { [4000] = "Future DLC" });
+
+        // When
+        vm.SetGameBuildData(data);
+
+        // Then
+        Assert.Contains(new GameBuildOption(4000, "4000 — Future DLC"), vm.DialogGameBuildOptions);
+    }
+
+    [Fact]
+    public async Task OpenEditServerDialogCommand_WhenLoopbackRowHasUnlistedBuild_ShouldShowRawEntryAndSurviveNoChangeSave()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create(
+            "Local Dev", "localhost:30120",
+            gameBuild: 2215, gameClient: GameClient.FiveM));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+        await vm.InitializeAsync();
+
+        // When
+        vm.OpenEditServerDialogCommand.Execute(vm.SavedServers[0]);
+
+        // Then — the unlisted build shows as a raw entry instead of raw text
+        Assert.Equal(2215, vm.DialogGameBuild);
+        Assert.Contains(new GameBuildOption(2215, "2215"), vm.DialogGameBuildOptions);
+
+        // And when — saved without touching the build
+        vm.SaveServerDialogCommand.Execute(null);
+
+        // Then
+        Assert.Equal(2215, Assert.Single(vm.SavedServers).GameBuild);
+    }
+
+    [Fact]
+    public void DialogGameBuildOptions_WhenLanguageSwitched_ShouldLocalizeNone()
+    {
+        // Given
+        var localizer = CreateLocalizer(("en", LanguageEnglishJson), ("es", VmSpanishJson));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), localizer: localizer);
+        vm.DialogGameClient = GameClient.FiveM;
+
+        // When
+        localizer.SetLanguage("es");
+
+        // Then
+        Assert.Equal("Ninguno", vm.DialogGameBuildOptions[0].Label);
     }
 
     [Fact]

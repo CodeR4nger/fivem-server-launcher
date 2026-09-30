@@ -224,7 +224,7 @@ public class MainViewModel : INotifyPropertyChanged
     private bool _dialogRequiresDiscord;
     private string _dialogError = string.Empty;
     private string _dialogCfxId = string.Empty;
-    private string _dialogGameBuildText = string.Empty;
+    private int? _dialogGameBuild;
     private int? _dialogPureMode;
     private GameClient? _dialogGameClient;
     private bool _isDialogLocalhost;
@@ -287,11 +287,24 @@ public class MainViewModel : INotifyPropertyChanged
         set => SetProperty(ref _dialogCfxId, value);
     }
 
-    public string DialogGameBuildText
+    public int? DialogGameBuild
     {
-        get => _dialogGameBuildText;
-        set => SetProperty(ref _dialogGameBuildText, value);
+        get => _dialogGameBuild;
+        set
+        {
+            if (SetProperty(ref _dialogGameBuild, value))
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DialogGameBuildOptions)));
+            }
+        }
     }
+
+    public IReadOnlyList<GameBuildOption> DialogGameBuildOptions =>
+        DialogGameClient is GameClient game
+            ? GameBuilds.Options(game, _dialogGameBuild, _localizer.Get("GameClientNone"), _gameBuildData)
+            : [];
+
+    public bool IsDialogGameBuildEnabled => DialogGameClient is GameClient.FiveM or GameClient.RedM;
 
     public int? DialogPureMode
     {
@@ -302,7 +315,14 @@ public class MainViewModel : INotifyPropertyChanged
     public GameClient? DialogGameClient
     {
         get => _dialogGameClient;
-        set => SetProperty(ref _dialogGameClient, value);
+        set
+        {
+            if (SetProperty(ref _dialogGameClient, value))
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DialogGameBuildOptions)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsDialogGameBuildEnabled)));
+            }
+        }
     }
 
     public IReadOnlyList<GameClientOption> DialogGameClientOptions =>
@@ -394,6 +414,7 @@ public class MainViewModel : INotifyPropertyChanged
     {
         _gameBuildData = data;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevGameBuildOptions)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DialogGameBuildOptions)));
     }
 
     public int? DevPureMode
@@ -529,6 +550,7 @@ public class MainViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevClientButtonText)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DialogGameClientOptions)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevGameBuildOptions)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DialogGameBuildOptions)));
     }
 
     private IReadOnlyList<LanguageSettingOption> BuildLanguageOptions()
@@ -609,7 +631,7 @@ public class MainViewModel : INotifyPropertyChanged
         DialogRequiresSteam = false;
         DialogRequiresDiscord = false;
         DialogCfxId = string.Empty;
-        DialogGameBuildText = string.Empty;
+        DialogGameBuild = null;
         DialogPureMode = null;
         DialogGameClient = null;
         DialogError = string.Empty;
@@ -665,7 +687,7 @@ public class MainViewModel : INotifyPropertyChanged
         DialogRequiresSteam = item.RequiresSteam;
         DialogRequiresDiscord = item.RequiresDiscord;
         DialogCfxId = item.CfxId ?? string.Empty;
-        DialogGameBuildText = item.GameBuild?.ToString() ?? string.Empty;
+        DialogGameBuild = item.GameBuild;
         DialogPureMode = item.PureMode;
         DialogGameClient = item.GameClient;
         DialogError = string.Empty;
@@ -692,7 +714,7 @@ public class MainViewModel : INotifyPropertyChanged
         {
             var trimmedCfxId = DialogCfxId.Trim();
             cfxId = trimmedCfxId.Length > 0 ? trimmedCfxId : null;
-            gameBuild = int.TryParse(DialogGameBuildText.Trim(), out var build) ? build : null;
+            gameBuild = DialogGameBuild;
             pureMode = DialogPureMode;
             gameClient = DialogGameClient;
         }
