@@ -53,7 +53,9 @@ the authoritative sources and today's baseline data.
   entries the bundle lacks (`1604` — Arena War, `1` — base game). Builds no source names
   (all RedM builds) render as their bare number.
 - Persistence is unchanged: `DevGameBuild` in settings and `GameBuild` on saved servers remain
-  `int?` (null = None). Unknown stored values render as their raw number entry.
+  `int?` (null = None). Unknown stored values render as their raw number entry — labeled with
+  the build's name when a source knows it (recorded in ticket 02; RedM builds and builds no
+  source names stay bare).
 - Enhanced ignores build flags entirely (existing launch semantics); with GAME = FiveM Enhanced
   selected the build combo disables.
 - Localization: labels reuse the existing localizer seam; build names are proper nouns and are

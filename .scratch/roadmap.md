@@ -309,10 +309,13 @@ pushes in and out.
 
 ## 16. Game builds by name in a dropdown
 
-**Status:** 🔲 open.
+**Status:** ✅ done (tickets `.scratch/game-build-dropdown/issues/` 01–06 resolved; suite 767
+green; two-axis review clean after fixing the `int.Parse` overflow leak and extracting the
+shared `SupportsBuildSelection` gate; label format refined in-flight to `[n] <name>` per user
+decision; builds on the traced CFX sources: premake numbers + the frontend bundle's
+`getGameBuildDLCName` name map, auto-refreshed once per session; commits b3d069a..a36c162).
 
-**Spec:** `.scratch/game-build-dropdown/spec.md` (starts with a blocking research ticket over the
-CFX docs).
+**Spec:** `.scratch/game-build-dropdown/spec.md`
 
 ## 17. GitHub release auto-update (notify + one-click)
 
