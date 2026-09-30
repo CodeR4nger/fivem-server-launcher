@@ -1,3 +1,4 @@
+using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Domain;
 using FiveMServerLauncher.Domain.Exceptions;
 using FiveMServerLauncher.Service;
@@ -254,7 +255,7 @@ public class ServerResolverTests
         var result = await resolver.ResolveAsync(cfxId);
 
         // Then
-        Assert.Equal(Core.Enums.GameClient.FiveMEnhanced, result.GameClient);
+        Assert.Equal(GameClient.FiveMEnhanced, result.GameClient);
     }
 
     [Fact]
@@ -321,7 +322,7 @@ public class ServerResolverTests
         Assert.True(result.IsCfxValidated);
         Assert.Equal("y4lg95", result.CfxId);
         Assert.Equal("Catalog Server", result.ProjectName);
-        Assert.Equal(Core.Enums.GameClient.FiveM, result.GameClient);
+        Assert.Equal(GameClient.FiveM, result.GameClient);
         Assert.Equal(3095, result.Requirements.GameBuild);
         Assert.Equal(2, result.Requirements.PureMode);
         Assert.True(result.Requirements.RequestSteamTicket);
@@ -935,7 +936,7 @@ public class ServerResolverTests
         const string address = "localhost:30120";
         var savedServer = SavedServer.Create(
             "Local Dev", address,
-            cfxId: "8y6354", gameBuild: 9999, pureMode: 0, gameClient: Core.Enums.GameClient.RedM);
+            cfxId: "8y6354", gameBuild: 9999, pureMode: 0, gameClient: GameClient.RedM);
 
         var handler = new FakeHttpMessageHandler(
             System.Net.HttpStatusCode.OK,
@@ -962,7 +963,7 @@ public class ServerResolverTests
         Assert.True(result.IsCfxValidated);
         Assert.Equal(address, result.Address);
         Assert.Equal(string.Empty, result.CfxId);
-        Assert.Equal(Core.Enums.GameClient.FiveMEnhanced, result.GameClient);
+        Assert.Equal(GameClient.FiveMEnhanced, result.GameClient);
         Assert.Equal(3095, result.Requirements.GameBuild);
         Assert.Equal(2, result.Requirements.PureMode);
     }
@@ -974,7 +975,7 @@ public class ServerResolverTests
         const string address = "localhost:30120";
         var savedServer = SavedServer.Create(
             "Local Dev", address,
-            cfxId: "8y6354", gameBuild: 3258, pureMode: 1, gameClient: Core.Enums.GameClient.RedM);
+            cfxId: "8y6354", gameBuild: 3258, pureMode: 1, gameClient: GameClient.RedM);
 
         var resolver = CreateResolver();
 
@@ -984,7 +985,7 @@ public class ServerResolverTests
         // Then
         Assert.False(result.IsCfxValidated);
         Assert.Equal(address, result.Address);
-        Assert.Equal(Core.Enums.GameClient.RedM, result.GameClient);
+        Assert.Equal(GameClient.RedM, result.GameClient);
         Assert.Equal(3258, result.Requirements.GameBuild);
         Assert.Equal(1, result.Requirements.PureMode);
     }
@@ -995,7 +996,7 @@ public class ServerResolverTests
         // Given — a CFX outage degrades exactly like a delisted id.
         const string address = "127.0.0.1:30120";
         var savedServer = SavedServer.Create(
-            "Local Dev", address, gameBuild: 3095, pureMode: 2, gameClient: Core.Enums.GameClient.RedM);
+            "Local Dev", address, gameBuild: 3095, pureMode: 2, gameClient: GameClient.RedM);
 
         var resolver = CreateResolver(
             cfxService: new CfxService(new HttpClient(new FakeHttpMessageHandler(true))));
@@ -1006,7 +1007,7 @@ public class ServerResolverTests
         // Then
         Assert.False(result.IsCfxValidated);
         Assert.Equal(address, result.Address);
-        Assert.Equal(Core.Enums.GameClient.RedM, result.GameClient);
+        Assert.Equal(GameClient.RedM, result.GameClient);
         Assert.Equal(3095, result.Requirements.GameBuild);
         Assert.Equal(2, result.Requirements.PureMode);
     }
@@ -1038,7 +1039,7 @@ public class ServerResolverTests
         const string address = "localhost:30120";
         var savedServer = SavedServer.Create(
             "Local Dev", address, requiresSteam: true,
-            cfxId: "8y6354", gameBuild: 3258, gameClient: Core.Enums.GameClient.FiveM);
+            cfxId: "8y6354", gameBuild: 3258, gameClient: GameClient.FiveM);
 
         var handler = new FakeHttpMessageHandler(
             System.Net.HttpStatusCode.OK,
@@ -1067,7 +1068,7 @@ public class ServerResolverTests
         // Given — manual overrides are loopback-only; a normal address ignores them.
         const string address = "149.56.120.52:30320";
         var savedServer = SavedServer.Create(
-            "Remote", address, gameBuild: 3258, pureMode: 2, gameClient: Core.Enums.GameClient.RedM);
+            "Remote", address, gameBuild: 3258, pureMode: 2, gameClient: GameClient.RedM);
 
         var resolver = CreateResolver(
             catalogHttpClient: new HttpClient(new FakeHttpMessageHandler(

@@ -1,3 +1,4 @@
+using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Domain;
 using Xunit;
 
@@ -109,13 +110,13 @@ public class SavedServerTests
         // When
         var result = SavedServer.Create(
             "My Server", address,
-            cfxId: "8y6354", gameBuild: 3258, pureMode: 2, gameClient: Core.Enums.GameClient.RedM);
+            cfxId: "8y6354", gameBuild: 3258, pureMode: 2, gameClient: GameClient.RedM);
 
         // Then
         Assert.Equal("8y6354", result.CfxId);
         Assert.Equal(3258, result.GameBuild);
         Assert.Equal(2, result.PureMode);
-        Assert.Equal(Core.Enums.GameClient.RedM, result.GameClient);
+        Assert.Equal(GameClient.RedM, result.GameClient);
     }
 
     [Fact]

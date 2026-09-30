@@ -1,3 +1,4 @@
+using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Domain;
 using FiveMServerLauncher.Service;
 
@@ -14,7 +15,7 @@ public class ServerRequirementsResolverTests
             CfxId = "y4lg95",
             ProjectName = "Test Server",
             EnforceGameBuild = 3258,
-            GameClient = Core.Enums.GameClient.FiveM,
+            GameClient = GameClient.FiveM,
         };
 
         var resolver = new ServerRequirementsResolver();

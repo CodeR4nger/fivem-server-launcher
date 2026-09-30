@@ -13,8 +13,7 @@ replace the file — most will simply stay on old versions forever.
 On startup the launcher checks the latest GitHub release of `CodeR4nger/fivem-server-launcher`;
 when a newer version exists it shows a small non-blocking banner with the new version. One click
 downloads the release asset, stages it, and swaps it in on restart — no elevation, fully
-portable. Publishing releases is automated by a GitHub Actions workflow so there is always a
-consistent artifact to update from.
+portable.
 
 ## User Stories
 
@@ -28,9 +27,10 @@ consistent artifact to update from.
    never forced.
 5. As a user, when the update check fails (offline, rate-limited, GitHub down), I want the
    launcher to start normally with no error, so outages never block usage.
-6. As a maintainer, I want pushing a version tag to publish a release automatically with the
+6. ~~As a maintainer, I want pushing a version tag to publish a release automatically with the
    portable exe built by CI using the documented build+publish commands, so releases exist
-   without manual work.
+   without manual work.~~ (Declined at ticketing time: in-app updater only; releases stay
+   manual.)
 7. As a user, I want the launcher to never downgrade or install anything untagged, so only real
    releases apply.
 
@@ -50,10 +50,8 @@ consistent artifact to update from.
   even while running), move the new exe into its place, relaunch the new exe and exit the old
   one. All shell/file steps behind the existing seam pattern (process starter + file seams) so
   the choreography is testable with fakes.
-- Release publishing (recommended, needs user confirmation at ticket time): GitHub Actions
-  workflow that builds exactly per AGENTS.md's documented build+publish commands on tag push
-  and attaches `CFXLauncher.exe` to a release. Alternative (declined work stays out of scope):
-  keep manual publishing and only build the in-app updater.
+- Release publishing: DECLINED at ticketing time — manual publishing stays; only the in-app
+  updater is built. (The GitHub Actions workflow idea lives in git history if ever revisited.)
 - No auto-update without consent, no channels, no deltas.
 
 ## Testing Decisions
@@ -63,15 +61,17 @@ consistent artifact to update from.
 - Update-application tests: choreography via fakes (feed says newer, download succeeds/fails,
   swap steps in order, relaunch invoked); no real network or files in tests.
 - Banner VM tests: state transitions (available/dismiss/in-progress/failed), command wiring.
-- CI workflow: verified by a real tagged run at implementation time.
+- CI workflow: DECLINED with the workflow itself; releases are published by hand, verified by
+  a real manual release at implementation time.
 
 ## Out of Scope
 
 - Forced or scheduled updates, delta patches, update channels/betas, code signing, update
   telemetry, updating anything other than the portable exe.
+- GitHub Actions release workflow / automated publishing (declined at ticketing time:
+  2026-09-30; releases are published by hand with the documented build+publish commands).
 
 ## Further Notes
 
 - Runs last per the agreed order (A B C D); the banner inherits the custom control styling.
-- Open decision for the implementation session: confirm the GitHub Actions release workflow as
-  part of this feature (recommended) or restrict to the in-app updater only.
+- Decision closed at ticketing time (2026-09-30): in-app updater only; no CI workflow.
