@@ -59,7 +59,11 @@ portable.
 - Release-feed tests: fake GitHub JSON fixtures (latest release, no releases, malformed body)
   for version parsing and comparison.
 - Update-application tests: choreography via fakes (feed says newer, download succeeds/fails,
-  swap steps in order, relaunch invoked); no real network or files in tests.
+  swap steps in order, relaunch invoked); no real network in tests. File steps are verified
+  against a unique temp directory with real I/O (amended at ticket-02 seam agreement 2026-09-30:
+  real NTFS end states and rollback are what the tests must prove; a fake file system would
+  only prove call order — the repo's config-writer tests set the precedent). Process, guard
+  and exit go through recording fakes.
 - Banner VM tests: state transitions (available/dismiss/in-progress/failed), command wiring.
 - CI workflow: DECLINED with the workflow itself; releases are published by hand, verified by
   a real manual release at implementation time.
