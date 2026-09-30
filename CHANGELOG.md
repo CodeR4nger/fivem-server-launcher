@@ -4,6 +4,12 @@
 
 ### Added
 - **Reorder saved servers** — hover or select a row to reveal up/down arrows in the margin next to the list; or drag a row straight onto a new slot, guided by an accent drop line. The order persists across restarts and never applies while the search filter is active.
+- **Dark controls everywhere** — every dropdown and checkbox now renders in the app's dark theme instead of the white Windows default: dark popups with the thin scrollbar, amber hover and a subtle selected state; dark boxes with an amber check; matching keyboard-focus and disabled states.
+- **Motion across the app** — dropdowns expand out of their origin and collapse away again; moving a saved server (arrows or drag) slides the rows into their new slots instead of jump-cutting; settings and Dev Mode crossfade in and out (the status area and split button fade inversely, nothing shifts position mid-fade); the loopback local-dev panel slides in from the right and back out; the server browser slides across the window on open and close. Every motion is short and eased, and a rapid reopen reverses smoothly instead of snapping.
+- **Browser loading feedback** — opening the server browser while the catalog is still downloading shows a localized "Loading servers..." line instead of a silent empty list; it never flashes over existing rows.
+
+### Changed
+- **One glyph-button idiom** — the two refresh buttons, the edit pencil and the move arrows share a single style: identical hover feedback and one normalized disabled state, so a cooling-down refresh stays visible-but-dimmed instead of nearly invisible.
 
 ### Fixed
 - Editing a saved server's address kept it in place on screen but scrambled its position after a restart.
