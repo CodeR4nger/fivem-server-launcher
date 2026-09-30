@@ -125,13 +125,13 @@ panel slide in and out, and the server browser pushes in and out.
   visible-by-default surfaces (status, split) rest at opacity 1 and use the converter's
   "invert" parameter, which also keeps them visible on malformed inputs exactly like their
   old FallbackValue. Panels are not hit-testable once their flag drops.
-- Server browser transition: a real navigation slide — in across the full window width, right
-  to left, on open; back out, left to right, on close (user-refined from a short nudge+fade:
-  the full travel must be visible; ~300 ms ease-out). The travel distance is the live window
-  width, which a style storyboard cannot animate (style storyboards freeze their animations,
-  so their To cannot bind), so the slide is code-behind visual glue driven by the VM flag —
-  the flag stays the single source of truth. Both motions are To-only, so closing from
-  mid-slide-in reverses smoothly and reopening mid-close resumes from the live position;
+- Server browser transition: a real navigation slide — in across the full window width, left
+  to right on open (user-refined: the first built direction was right to left, reversed after
+  visual verification); back out, right to left, on close. The travel distance is the live
+  window width, which a style storyboard cannot animate (style storyboards freeze their
+  animations, so their To cannot bind), so the slide is code-behind visual glue driven by the
+  VM flag — the flag stays the single source of truth. Both motions are To-only, so closing
+  from mid-slide-in reverses smoothly and reopening mid-close resumes from the live position;
   the overlay is click-through once the flag drops and collapses on its own exactly when
   the exit completes — never always-mounted, so no hidden surface leaks focus or
   hit-testing.

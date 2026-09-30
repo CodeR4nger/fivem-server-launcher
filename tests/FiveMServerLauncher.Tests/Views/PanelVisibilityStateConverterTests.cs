@@ -52,21 +52,23 @@ public class PanelVisibilityStateConverterTests
     }
 
     [Fact]
-    public void Convert_WhenInvertedAndFlagClosed_ShouldKeepDefaultVisibleSurfaceVisible()
+    public void Convert_WhenInvertedAndFlagHidesButStillFadedIn_ShouldKeepSurfaceMounted()
     {
-        // Given a surface that is visible by default (normal-mode areas, inverted flag)
-        // When the flag says "dev mode on" but the fade-out is still running
+        // Given a visible-by-default surface (inverted flag) whose hide-fade
+        // is still running
+        // When the state is evaluated
         // Then the surface stays mounted so the crossfade can render
-        Assert.Equal(Visibility.Visible, Convert(false, 1.0));
+        Assert.Equal(Visibility.Visible, ConvertWithInvert(true, 1.0));
+        Assert.Equal(Visibility.Visible, ConvertWithInvert(true, 0.5));
     }
 
     [Fact]
-    public void Convert_WhenInvertedAndFullyFaded_ShouldCollapseDefaultVisibleSurface()
+    public void Convert_WhenInvertedAndFlagClosed_ShouldShowDefaultVisibleSurface()
     {
-        // Given the inverted surface's fade-out finished
+        // Given a visible-by-default surface with its flag at rest
         // When the state is evaluated
-        // Then the surface is collapsed
-        Assert.Equal(Visibility.Collapsed, Convert(false, 0.0));
+        // Then the surface is visible
+        Assert.Equal(Visibility.Visible, ConvertWithInvert(false, 0.0));
     }
 
     [Fact]
