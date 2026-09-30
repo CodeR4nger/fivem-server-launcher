@@ -22,7 +22,7 @@ public class GameBuildsTests
         GameBuildOption[] expected =
         [
             new(null, "None"),
-            new(3095, "3095 — The Chop Shop"),
+            new(3095, "[3095] The Chop Shop"),
             new(2060, "2060")
         ];
         Assert.Equal(expected, options);
@@ -111,7 +111,7 @@ public class GameBuildsTests
         [
             new(null, "None"),
             new(3095, "3095"),
-            new(2215, "2215 — Cayo Perico Heist")
+            new(2215, "[2215] Cayo Perico Heist")
         ];
         Assert.Equal(expected, options);
     }
@@ -123,8 +123,8 @@ public class GameBuildsTests
         var options = GameBuilds.Options(GameClient.FiveM, storedBuild: null, noneLabel: "None");
 
         // Then
-        Assert.Contains(options, o => o.Build == 3889 && o.Label == "3889 — The Kortz Center Heist");
-        Assert.Contains(options, o => o.Build == 1604 && o.Label == "1604 — Arena War");
+        Assert.Contains(options, o => o.Build == 3889 && o.Label == "[3889] The Kortz Center Heist");
+        Assert.Contains(options, o => o.Build == 1604 && o.Label == "[1604] Arena War");
     }
 
     [Fact]

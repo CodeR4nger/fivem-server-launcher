@@ -58,5 +58,5 @@ public static class GameBuilds
     }
 
     private static string LabelFor(GameBuildData dataset, int build) =>
-        dataset.Names.TryGetValue(build, out var name) ? $"{build} — {name}" : build.ToString();
+        dataset.Names.TryGetValue(build, out var name) ? $"[{build}] {name}" : build.ToString();
 }

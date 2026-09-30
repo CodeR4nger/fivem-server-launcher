@@ -1636,7 +1636,7 @@ public class MainViewModelTests
         Assert.True(vm.IsDialogGameBuildEnabled);
         Assert.Equal(19, vm.DialogGameBuildOptions.Count);
         Assert.Null(vm.DialogGameBuildOptions[0].Build);
-        Assert.Contains(new GameBuildOption(3889, "3889 — The Kortz Center Heist"), vm.DialogGameBuildOptions);
+        Assert.Contains(new GameBuildOption(3889, "[3889] The Kortz Center Heist"), vm.DialogGameBuildOptions);
 
         // And — RedM lists the RedM builds
         vm.DialogGameClient = GameClient.RedM;
@@ -1663,7 +1663,7 @@ public class MainViewModelTests
 
         // Then
         Assert.Equal(3095, vm.DialogGameBuild);
-        Assert.Contains(new GameBuildOption(3095, "3095 — The Chop Shop"), vm.DialogGameBuildOptions);
+        Assert.Contains(new GameBuildOption(3095, "[3095] The Chop Shop"), vm.DialogGameBuildOptions);
     }
 
     [Fact]
@@ -1679,7 +1679,7 @@ public class MainViewModelTests
         vm.SetGameBuildData(data);
 
         // Then
-        Assert.Contains(new GameBuildOption(4000, "4000 — Future DLC"), vm.DialogGameBuildOptions);
+        Assert.Contains(new GameBuildOption(4000, "[4000] Future DLC"), vm.DialogGameBuildOptions);
     }
 
     [Fact]
@@ -2188,8 +2188,8 @@ public class MainViewModelTests
         Assert.Null(options[0].Build);
         Assert.Equal("None", options[0].Label);
         Assert.Equal(19, options.Count);
-        Assert.Contains(new GameBuildOption(3889, "3889 — The Kortz Center Heist"), options);
-        Assert.Contains(new GameBuildOption(1, "1 — Base game without any DLCs"), options);
+        Assert.Contains(new GameBuildOption(3889, "[3889] The Kortz Center Heist"), options);
+        Assert.Contains(new GameBuildOption(1, "[1] Base game without any DLCs"), options);
     }
 
     [Fact]
@@ -2207,7 +2207,7 @@ public class MainViewModelTests
         // Then
         Assert.Equal(6, options.Count);
         Assert.Contains(new GameBuildOption(1491, "1491"), options);
-        Assert.Contains(new GameBuildOption(3095, "3095 — The Chop Shop"), options);
+        Assert.Contains(new GameBuildOption(3095, "[3095] The Chop Shop"), options);
         Assert.Equal(3095, vm.DevGameBuild);
     }
 
@@ -2231,7 +2231,7 @@ public class MainViewModelTests
         GameBuildOption[] expected =
         [
             new(null, "None"),
-            new(4000, "4000 — Future DLC"),
+            new(4000, "[4000] Future DLC"),
             new(3095, "3095")
         ];
         Assert.Equal(expected, vm.DevGameBuildOptions);

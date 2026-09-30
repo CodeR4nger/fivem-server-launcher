@@ -63,3 +63,13 @@ mapping (incl. 2612 → The Contract and the 3323/3788 patch names) with the doc
 - [x] Suite green (RED → GREEN → REFACTOR) — 8 new tests, full suite 750 green
 
 **Spec:** `.scratch/game-build-dropdown/spec.md`
+
+## Comments
+
+- Label-format correction (user decision, 2026-09-30, after tickets 04/05 shipped): named
+  builds render as `[<number>] <name>` (e.g. `[3095] The Chop Shop`) instead of the
+  `<number> — <name>` the original spec examples showed; RedM builds and unnamed builds keep
+  the bare number. Landed as a one-line change in `LabelFor` (the shared composer the
+  ticket-02 refactor extracted — both dropdowns and the raw-entry path picked it up for free),
+  with the label expectations updated across the engine and VM suites.
+

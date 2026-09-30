@@ -11,8 +11,8 @@ and can type numbers FiveM will silently ignore.
 ## Solution
 
 Replace the build-number textboxes with a dropdown listing the supported builds with their
-human names (for example `3095 — The Chop Shop`, `2802 — Los Santos Drug Wars`), per game client
-(FiveM vs RedM). The selection persists as the same integer, so the saved-server schema and
+human names (for example `[3095] The Chop Shop`, `[2802] Los Santos Drug Wars`; RedM builds
+and unnamed builds show just the number), per game client (FiveM vs RedM). The selection persists as the same integer, so the saved-server schema and
 launch options are unchanged. The build list is a curated baseline in code that also
 **auto-updates once per launcher session** from CFX's own sources (numbers from the FiveM
 build-system file, names from the CFX frontend bundle the client itself renders its "DLC:"
