@@ -16,6 +16,7 @@
         <views:CfxStatusToBrushConverter x:Key="CfxStatusToBrushConverter"/>
 
         <views:SelectionEqualityToVisibilityConverter x:Key="SelectionEqualityToVisibility"/>
+        <views:DropdownOpenStateConverter x:Key="DropdownOpenStateConverter"/>
 
         <!-- COLORES -->
 
@@ -459,15 +460,40 @@
                                               HorizontalAlignment="Left"
                                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
 
+                            <!-- Collapsed marker holding the popup open for the
+                                 ~200 ms of close animation: its Opacity is snapped
+                                 to 1 on open and released by a discrete keyframe
+                                 when the collapse completes, so the closing motion
+                                 renders inside a still-alive popup. -->
+                            <TextBlock x:Name="CloseHold"
+                                       Opacity="0"
+                                       Visibility="Collapsed"/>
+
                             <Popup x:Name="PART_Popup"
-                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True"
                                    Placement="Bottom">
 
-                                <Border Background="{StaticResource PanelLightBrush}"
+                                <Popup.IsOpen>
+                                    <MultiBinding Converter="{StaticResource DropdownOpenStateConverter}"
+                                                  Mode="OneWay">
+                                        <Binding Path="IsDropDownOpen"
+                                                 RelativeSource="{RelativeSource TemplatedParent}"/>
+                                        <Binding Path="Opacity"
+                                                 ElementName="CloseHold"/>
+                                    </MultiBinding>
+                                </Popup.IsOpen>
+
+                                <Border x:Name="DropDownBorder"
+                                        Background="{StaticResource PanelLightBrush}"
                                         BorderBrush="{StaticResource BorderBrush}"
                                         BorderThickness="1"
                                         MinWidth="{TemplateBinding ActualWidth}"
+                                        Opacity="0"
                                         SnapsToDevicePixels="True">
+
+                                    <Border.RenderTransform>
+                                        <ScaleTransform ScaleY="0"/>
+                                    </Border.RenderTransform>
 
                                     <ScrollViewer MaxHeight="{TemplateBinding MaxDropDownHeight}">
 
@@ -486,6 +512,94 @@
                             <Trigger Property="IsEnabled" Value="False">
 
                                 <Setter Property="Opacity" Value="0.45"/>
+
+                            </Trigger>
+
+                            <Trigger Property="IsDropDownOpen" Value="True">
+
+                                <Trigger.EnterActions>
+
+                                    <BeginStoryboard>
+
+                                        <Storyboard>
+
+                                            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="CloseHold"
+                                                                           Storyboard.TargetProperty="Opacity">
+
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="1"/>
+
+                                            </DoubleAnimationUsingKeyFrames>
+
+                                            <DoubleAnimation Storyboard.TargetName="DropDownBorder"
+                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)"
+                                                             To="1"
+                                                             Duration="0:0:0.2">
+
+                                                <DoubleAnimation.EasingFunction>
+
+                                                    <CubicEase EasingMode="EaseOut"/>
+
+                                                </DoubleAnimation.EasingFunction>
+
+                                            </DoubleAnimation>
+
+                                            <DoubleAnimation Storyboard.TargetName="DropDownBorder"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             To="1"
+                                                             Duration="0:0:0.2"/>
+
+                                        </Storyboard>
+
+                                    </BeginStoryboard>
+
+                                </Trigger.EnterActions>
+
+                                <Trigger.ExitActions>
+
+                                    <BeginStoryboard>
+
+                                        <Storyboard>
+
+                                            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="CloseHold"
+                                                                           Storyboard.TargetProperty="Opacity">
+
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="1"/>
+
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.2" Value="0"/>
+
+                                            </DoubleAnimationUsingKeyFrames>
+
+                                            <DoubleAnimation Storyboard.TargetName="DropDownBorder"
+                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)"
+                                                             To="0"
+                                                             Duration="0:0:0.2">
+
+                                                <DoubleAnimation.EasingFunction>
+
+                                                    <CubicEase EasingMode="EaseOut"/>
+
+                                                </DoubleAnimation.EasingFunction>
+
+                                            </DoubleAnimation>
+
+                                            <DoubleAnimation Storyboard.TargetName="DropDownBorder"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             To="0"
+                                                             Duration="0:0:0.2"/>
+
+                                        </Storyboard>
+
+                                    </BeginStoryboard>
+
+                                </Trigger.ExitActions>
+
+                            </Trigger>
+
+                            <Trigger Property="IsDropDownOpen" Value="False">
+
+                                <Setter TargetName="DropDownBorder"
+                                        Property="IsHitTestVisible"
+                                        Value="False"/>
 
                             </Trigger>
 
@@ -796,7 +910,27 @@
                             Background="{StaticResource PanelLightBrush}"
                             BorderBrush="{StaticResource BorderBrush}"
                             BorderThickness="1,0,1,1"
+                            ClipToBounds="True"
                             Visibility="Collapsed">
+
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <Trigger Property="IsVisible" Value="True">
+                                        <Trigger.EnterActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                     From="0"
+                                                                     To="1"
+                                                                     Duration="0:0:0.2"/>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </Trigger.EnterActions>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
 
                         <StackPanel>
 

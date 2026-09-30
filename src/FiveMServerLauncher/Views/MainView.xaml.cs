@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using FiveMServerLauncher.ViewModels;
 
@@ -17,24 +18,112 @@ namespace FiveMServerLauncher.Views
             DataContextChanged += MainView_DataContextChanged;
         }
 
+        private bool _dropdownClosing;
+        private int _dropdownHeightGeneration;
+
         private void DropdownButton_Click(object sender, RoutedEventArgs e)
         {
-            if (FiveMDropdown.Visibility == Visibility.Collapsed)
+            if (FiveMDropdown.Visibility == Visibility.Collapsed || _dropdownClosing)
             {
-                FiveMDropdown.Visibility = Visibility.Visible;
+                OpenDropdown();
                 ArrowText.Text = "▲";
             }
             else
             {
-                FiveMDropdown.Visibility = Visibility.Collapsed;
+                CloseDropdown();
                 ArrowText.Text = "▼";
             }
         }
 
         private void ClientOption_Click(object sender, RoutedEventArgs e)
         {
-            FiveMDropdown.Visibility = Visibility.Collapsed;
+            CloseDropdown();
             ArrowText.Text = "▼";
+        }
+
+        // The client menu lives in the layout (not a popup), so opening and
+        // closing it grow and shrink its grid slot: both motions animate the
+        // menu's Height with the content clipped to the sweeping border — it
+        // unrolls up out of the button seam on open and collapses back into
+        // it on close, the lower area gliding along instead of jumping. Pure
+        // visual glue: only visibility and height are touched.
+        private void OpenDropdown()
+        {
+            _dropdownClosing = false;
+            var generation = ++_dropdownHeightGeneration;
+
+            if (FiveMDropdown.Visibility == Visibility.Collapsed)
+            {
+                FiveMDropdown.Height = 0;
+            }
+
+            FiveMDropdown.Visibility = Visibility.Visible;
+
+            // Measure the child explicitly with an infinite constraint: the
+            // explicit Height (0) clamps the child's measure constraint
+            // (FrameworkElement.MeasureCore), so a layout-pass DesiredSize
+            // would read 0 and the expand would animate to the border only.
+            FiveMDropdown.Child.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+
+            var target = FiveMDropdown.Child.DesiredSize.Height
+                         + FiveMDropdown.BorderThickness.Top
+                         + FiveMDropdown.BorderThickness.Bottom;
+
+            var expand = new DoubleAnimation(target, TimeSpan.FromSeconds(0.2))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+
+            expand.Completed += (_, _) =>
+            {
+                if (generation != _dropdownHeightGeneration)
+                {
+                    return;
+                }
+
+                FiveMDropdown.BeginAnimation(FrameworkElement.HeightProperty, null);
+                FiveMDropdown.Height = double.NaN;
+            };
+
+            FiveMDropdown.BeginAnimation(FrameworkElement.HeightProperty, expand);
+        }
+
+        private void CloseDropdown()
+        {
+            if (FiveMDropdown.Visibility != Visibility.Visible || _dropdownClosing)
+            {
+                return;
+            }
+
+            _dropdownClosing = true;
+            var generation = ++_dropdownHeightGeneration;
+
+            // Pin the current rendered height as the animation origin: after a
+            // completed expand the local Height is NaN (released to auto), and
+            // a To-only DoubleAnimation throws when its origin value is NaN.
+            // The motion itself is To-only, so a close fired mid-expand still
+            // starts from the live animated height and reverses smoothly.
+            FiveMDropdown.Height = FiveMDropdown.ActualHeight;
+
+            var collapse = new DoubleAnimation(0, TimeSpan.FromSeconds(0.2))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+
+            collapse.Completed += (_, _) =>
+            {
+                if (generation != _dropdownHeightGeneration)
+                {
+                    return;
+                }
+
+                FiveMDropdown.BeginAnimation(FrameworkElement.HeightProperty, null);
+                FiveMDropdown.Height = double.NaN;
+                FiveMDropdown.Visibility = Visibility.Collapsed;
+                _dropdownClosing = false;
+            };
+
+            FiveMDropdown.BeginAnimation(FrameworkElement.HeightProperty, collapse);
         }
 
         // ============================================================

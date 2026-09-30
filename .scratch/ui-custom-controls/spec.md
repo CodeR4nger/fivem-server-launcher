@@ -27,8 +27,9 @@ major surfaces reads as abrupt.
 
 View-scoped custom templates for ComboBox and CheckBox that follow the existing token brushes
 and typography, adopted by every dropdown and checkbox in the app; one shared IconButtonStyle
-that all five glyph buttons adopt (hover/disabled live in one place); a short slide+fade
-animation when any dropdown opens — ComboBox popups and the OPEN split menu alike — consistent
+that all five glyph buttons adopt (hover/disabled live in one place); a short expand+fade
+animation when any dropdown opens — the menu grows out of its origin (ComboBox popups and the
+OPEN split menu alike) and collapses away again on close — consistent
 with the LOCAL DEV panel's ease-out motion language; a short row slide whenever saved
 servers are reordered, so both reorder paths land visibly where the row came from; and the
 app's surface transitions join the same motion family — settings and Dev Mode slide in on
@@ -41,7 +42,8 @@ open, and the server browser pushes in and out.
 2. As a user, I want checkboxes that render as dark boxes with an amber check when checked,
    so they match the theme.
 3. As a user, when I open any dropdown — a combo popup or the OPEN split menu — I want it to
-   slide/fade in briefly, so interactions feel fluid.
+   expand into place out of its origin and collapse away again on close, so interactions feel
+   fluid.
 4. As a user, I want keyboard and disabled states to keep working correctly (arrow keys, type
    ahead, focus visuals, disabled opacity), so restyling does not cost functionality.
 5. As a user, I want all the small glyph buttons (refresh, pencil, move arrows) to share one
@@ -75,12 +77,16 @@ open, and the server browser pushes in and out.
   fill + deep border; checked = amber check glyph only (the border stays deep — user-verified
   refinement); hover and keyboard focus brighten the border to the quiet grey; disabled dims to
   ~0.45 opacity.
-- Popup animation is a XAML storyboard (translate-Y + opacity, ~200 ms, ease-out — snappier
-  than the panel's 250 ms because the element is smaller, same motion language) triggered on
-  popup open from template triggers; no code-behind. The popup needs `AllowsTransparency=True`
-  so the transform/opacity render cleanly. The OPEN split menu gets the same slide+fade via a
-  style trigger on its visibility flip (the same DataTrigger/BeginStoryboard pattern as the
-  LOCAL DEV panel); its structure and show/hide code-behind stay untouched.
+- Popup animation is a XAML storyboard (top-anchored ScaleY 0->1 + opacity, ~200 ms, ease-out —
+  the menu unrolls out of its origin rather than translating in; snappier than the panel's
+  250 ms because the element is smaller, same motion language) triggered on popup open from
+  template triggers; no code-behind. The popup needs `AllowsTransparency=True` so the
+  transform/opacity render cleanly. The OPEN split menu lives in the layout (not a popup), so
+  its expand animates the menu's Height in its show/hide code-behind glue — content clipped to
+  the sweeping border, bottom edge anchored — so the menu unrolls upward out of the button
+  seam and the lower area glides up with it instead of jumping (user refinement: the
+  render-transform version teleported the layout first). The fade rides a pure XAML
+  `IsVisible` style trigger.
 - One shared `IconButtonStyle` (transparent template + centered glyph, glyph in
   `SecondaryTextBrush` flipping to `AccentBrush` on hover, one normalized disabled treatment
   ~0.35 opacity) replaces the five inline copies. The refresh buttons' per-site
@@ -127,10 +133,13 @@ open, and the server browser pushes in and out.
 
 ## Testing Decisions
 
-- Pure view glue: no unit tests (same stance as existing converters/styles; no new converters
-  are being added, so no `Activator.CreateInstance` pins are needed either). The automated
-  gate is the build (XAML/BAML markup compile) plus the full suite staying green; the
-  localizer and VM behaviors are already covered.
+- Pure view glue: the dropdown close state machine ships one shared converter
+  (`Views/DropdownOpenStateConverter` — popup held open while the collapse renders) with
+  direct unit tests (open passes through, holding keeps the window alive, bad inputs close,
+  parameterless-ctor pin); everything else stays the same stance as existing converters and
+  styles: no unit tests for view glue. The automated gate is the build (XAML/BAML markup
+  compile) plus the full suite staying green; the localizer and VM behaviors are already
+  covered.
 - Manual visual verification per the ui-design skill before committing: dark rendering,
   animation, keyboard navigation, type-ahead, focus and disabled states — on all six combo
   sites, all five checkboxes, all five glyph buttons, and both dropdown kinds (combo popup +
@@ -143,8 +152,8 @@ open, and the server browser pushes in and out.
 - App-wide theming/resource dictionary refactor; restyling the window chrome; custom
   TextBoxes/Buttons (already styled); the game-build combo's content (phase 16 — it merely
   adopts these styles); editable combos; window-level transitions (open/close/minimize);
-  close animations for dropdowns, settings and Dev Mode (opens only — the browser is the one
-  full push/pop).
+  close animations for settings and Dev Mode (opens only — dropdowns and the browser are the
+  animated-close surfaces).
 - Drag-reorder niceties beyond the landing slide: no live "gap opens" relayout while hovering a
   slot, no animated scroll-into-view, no row add/remove animations (only reorder moves slide).
 
@@ -155,6 +164,6 @@ open, and the server browser pushes in and out.
   glue (drag measuring, arrows overlay).
 - Motion language precedent: the LOCAL DEV side panel slide (60 px + fade, 250 ms ease-out).
 - Motion family after this feature: dropdowns ~200 ms, reorder row slides ~200 ms, settings/
-  dev/browser surface transitions ~250 ms — all short-distance translate + opacity, ease-out.
+  dev/browser surface transitions ~250 ms — all short translate-or-scale + opacity, ease-out.
 - The normalized glyph-button disabled state is a small deliberate visual change: refresh during
   its cooldown window goes from near-invisible (`#080808` glyph) to dimmed-but-visible.
