@@ -291,9 +291,14 @@ filter is active. Coupled fix: editing a server's address no longer scrambles it
 
 ## 15. Custom dark controls + animated menus
 
-**Status:** 🔲 open.
+**Status:** ✅ done (7/7 tickets resolved; suite 742 green; two-axis code review clean after
+fixes — named tokens, shared fade storyboards, genuine invert tests; visually verified by
+the user through every ticket loop, including four in-flight refinements: expand-from-origin
+dropdowns, the dev overlay restructure, crossfading panels, and the left-entering browser;
+commits 4a57d59..75c41e9).
 
-**Spec:** `.scratch/ui-custom-controls/spec.md`
+**Spec:** `.scratch/ui-custom-controls/spec.md` (status done). Companion micro-feature:
+`.scratch/browser-load-feedback/` (loading state for the first catalog fetch).
 
 **What:** view-scoped dark ComboBox/CheckBox templates adopted everywhere + a short slide/fade on
 every dropdown open (combo popups and the OPEN split menu). Consolidates the glyph-button idiom

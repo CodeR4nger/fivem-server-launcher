@@ -1,6 +1,11 @@
 # Feature: Custom dark controls and animated menus
 
-Status: ready-for-agent
+Status: done (7/7 tickets resolved; suite 742 green; two-axis code review over the full
+feature diff — findings fixed (named HoverBorderBrush/ItemSelectedBrush tokens, shared
+PanelFadeIn/PanelFadeOut storyboards across the four crossfade surfaces, genuine inverted-
+converter coverage) and two refactor candidates declined with reasoning (the code-behind
+animation state machines encode distinct mechanics; the two hold converters encode different
+mechanisms by design); visually verified by the user through every ticket loop)
 
 ## Problem Statement
 
