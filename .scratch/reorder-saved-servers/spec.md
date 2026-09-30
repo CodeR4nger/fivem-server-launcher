@@ -1,6 +1,6 @@
 # Feature: Reorder saved servers (arrows + drag)
 
-Status: ready-for-agent
+Status: done
 
 ## Problem Statement
 

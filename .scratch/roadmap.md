@@ -3,6 +3,8 @@
 Status: active
 
 Current release line: **v1.1 (complete)** — phases 9-13 below were delivered. v1.0 = phases 1-8.
+v1.2 shipped as tight-hardening work tracked only in `.scratch/` tickets (see tickets under
+`localization/`, `localhost-direct-connect/`, `security-performance-review/`).
 
 Plan for the remaining phases of FiveMServerLauncher, in build order. Each phase follows the
 repo workflow: `to-spec` -> `to-tickets` -> `implement` (TDD) -> `code-review` -> commit.
@@ -265,3 +267,47 @@ green; manual double-launch + minimized-restore verified by user).
 window (restoring if minimized) and exits silently. Named-mutex guard at the composition root,
 bring-to-front behind an `IExistingWindowActivator`-style seam so unit tests never touch real
 windows. Independent of other v1.1 phases.
+
+---
+
+# v1.3
+
+Feature slices, in the order they were specced. Each follows the standard workflow
+(`to-spec` → `to-tickets` → `implement` → `code-review` → commit). Specs live under
+`.scratch/<slug>/spec.md`.
+
+## 14. Reorder saved servers (arrows + drag)
+
+**Status:** ✅ done (tickets `.scratch/reorder-saved-servers/issues/` 01–05 resolved; suite 723
+green; two-axis code review clean; visually verified after three passes: in-row → gutter column →
+final: arrows in the list's former left margin, drag shows a dimmed row + accent drop line).
+
+**Spec:** `.scratch/reorder-saved-servers/spec.md`
+
+**What:** rows reveal small up/down buttons on the left (in the space that used to be the list's
+margin — the list box is pixel-identical in size and position) and rows can be dragged to a
+target slot; both persist the order to the store. Reordering is unavailable while the search
+filter is active. Coupled fix: editing a server's address no longer scrambles its stored position.
+
+## 15. Custom dark controls + animated menus
+
+**Status:** 🔲 open.
+
+**Spec:** `.scratch/ui-custom-controls/spec.md`
+
+**What:** view-scoped dark ComboBox/CheckBox templates adopted everywhere + a short slide/fade on
+dropdown popups. Restyles the reorder arrows' button idiom (the pencil/arrows share one clear
+place).
+
+## 16. Game builds by name in a dropdown
+
+**Status:** 🔲 open.
+
+**Spec:** `.scratch/game-build-dropdown/spec.md` (starts with a blocking research ticket over the
+CFX docs).
+
+## 17. GitHub release auto-update (notify + one-click)
+
+**Status:** 🔲 open.
+
+**Spec:** `.scratch/github-auto-update/spec.md`

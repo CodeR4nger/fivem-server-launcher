@@ -82,6 +82,8 @@ public class MainViewModel : INotifyPropertyChanged
         RedMStatus = new CfxStatusItem(GameClient.RedM, _localizer);
         ConnectCommand = new AsyncRelayCommand(ConnectAsync, CanConnect);
         DeleteServerCommand = new RelayCommand(DeleteServer, CanDeleteServer);
+        MoveServerUpCommand = new RelayCommand(p => MoveServerBy(p as SavedServerItem, -1), () => IsReorderAvailable);
+        MoveServerDownCommand = new RelayCommand(p => MoveServerBy(p as SavedServerItem, 1), () => IsReorderAvailable);
         OpenClientCommand = new AsyncRelayCommand(OpenClientAsync, CanOpenClient);
         SelectOpenClientCommand = new RelayCommand(SelectOpenClient);
         SettingsCommand = new RelayCommand(ToggleSettings);
@@ -110,6 +112,7 @@ public class MainViewModel : INotifyPropertyChanged
         SavedServersView = CollectionViewSource.GetDefaultView(SavedServers);
         SavedServersView.Filter = MatchesServerSearch;
         AvailableOpenClients = new ObservableCollection<InstalledClientOption>();
+        UpdateRowMoveStates();
 
         CfxStatuses = [FiveMStatus, FiveMEnhancedStatus, RedMStatus];
     }
@@ -117,6 +120,17 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand ConnectCommand { get; }
 
     public ICommand DeleteServerCommand { get; }
+
+    public ICommand MoveServerUpCommand { get; }
+
+    public ICommand MoveServerDownCommand { get; }
+
+    // Reordering is a whole-list operation, so it is only available when the visible
+    // order is the real order: no search filter (a filtered view is a non-contiguous
+    // subset, where "move down one" would mean two real positions) and more than one
+    // row to swap.
+    public bool IsReorderAvailable => SavedServers.Count > 1
+                                      && string.IsNullOrWhiteSpace(_serverSearchText);
 
     public ICommand OpenClientCommand { get; }
 
@@ -427,6 +441,10 @@ public class MainViewModel : INotifyPropertyChanged
             if (SetProperty(ref _serverSearchText, value))
             {
                 SavedServersView.Refresh();
+                // The reorder gates reopen (or close) once the hidden rows are
+                // visible again.
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsReorderAvailable)));
+                UpdateRowMoveStates();
             }
         }
     }
@@ -620,6 +638,7 @@ public class MainViewModel : INotifyPropertyChanged
         _serverRepository.Add(savedServer);
         var row = ToItem(savedServer);
         SavedServers.Add(row);
+        UpdateRowMoveStates();
         TryCaptureCfxId(row);
     }
 
@@ -716,15 +735,15 @@ public class MainViewModel : INotifyPropertyChanged
             var oldRow = SavedServers.FirstOrDefault(s =>
                 string.Equals(s.Address, EditingServer.Address, StringComparison.OrdinalIgnoreCase));
 
-            if (conflicting is null
-                && string.Equals(EditingServer.Address, savedServer.Address, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(EditingServer.Address, savedServer.Address, StringComparison.OrdinalIgnoreCase))
             {
                 _serverRepository.Update(savedServer);
             }
             else
             {
-                _serverRepository.Remove(EditingServer.Address);
-                _serverRepository.Add(savedServer);
+                // An edit that changes the address is still an edit, not a
+                // remove+add: the server keeps its slot in the list and the store.
+                _serverRepository.Replace(EditingServer.Address, savedServer);
             }
 
             if (oldRow is not null)
@@ -733,6 +752,7 @@ public class MainViewModel : INotifyPropertyChanged
                 SavedServers.RemoveAt(index);
                 var item = ToItem(savedServer);
                 SavedServers.Insert(index, item);
+                UpdateRowMoveStates();
                 TryCaptureCfxId(item);
             }
         }
@@ -972,6 +992,49 @@ public class MainViewModel : INotifyPropertyChanged
         _serverRepository.Remove(SelectedServer.Address);
         SavedServers.Remove(SelectedServer);
         SelectedServer = null;
+        UpdateRowMoveStates();
+    }
+
+    // The drag entry point: drop position addressed by row, never by a view index —
+    // a filtered view and the real list disagree on indices, so the view hands over
+    // *which* row to move and the list resolves its position itself.
+    public void MoveServerToIndex(SavedServerItem? row, int newIndex)
+    {
+        if (row is null || !IsReorderAvailable)
+        {
+            return;
+        }
+
+        var currentIndex = SavedServers.IndexOf(row);
+
+        if (currentIndex < 0 || newIndex < 0 || newIndex >= SavedServers.Count || currentIndex == newIndex)
+        {
+            return;
+        }
+
+        // Persist before the visible move: a rejected write then leaves the list
+        // untouched rather than showing an order the store does not have.
+        _serverRepository.Move(row.Address, newIndex);
+        SavedServers.Move(currentIndex, newIndex);
+        UpdateRowMoveStates();
+        CommandManager.InvalidateRequerySuggested();
+    }
+
+    private void UpdateRowMoveStates()
+    {
+        for (var i = 0; i < SavedServers.Count; i++)
+        {
+            SavedServers[i].CanMoveUp = IsReorderAvailable && i > 0;
+            SavedServers[i].CanMoveDown = IsReorderAvailable && i < SavedServers.Count - 1;
+        }
+    }
+
+    private void MoveServerBy(SavedServerItem? row, int offset)
+    {
+        if (row is not null)
+        {
+            MoveServerToIndex(row, SavedServers.IndexOf(row) + offset);
+        }
     }
 
     public async Task ConnectAsync()

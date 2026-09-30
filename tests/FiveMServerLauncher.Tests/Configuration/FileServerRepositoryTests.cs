@@ -372,6 +372,112 @@ public class FileServerRepositoryTests
         var server = Assert.Single(result);
         Assert.Null(server.CfxId);
     }
+
+    [Fact]
+    public void Move_ShouldPersistTheNewOrderAcrossRestarts()
+    {
+        // Given
+        using var tempDir = new TempSettingsDirectory();
+        var repository = new FileServerRepository(tempDir.FilePath);
+        repository.Add(SavedServer.Create("First", "abc123"));
+        repository.Add(SavedServer.Create("Second", "def456"));
+        repository.Add(SavedServer.Create("Third", "ghi789"));
+
+        // When
+        repository.Move("ghi789", 0);
+
+        // Then (a fresh instance reads the reordered list)
+        var reopened = new FileServerRepository(tempDir.FilePath);
+        Assert.Equal(
+            new[] { "ghi789", "abc123", "def456" },
+            reopened.GetAll().Select(s => s.Address));
+    }
+
+    [Fact]
+    public void Move_WhenAddressNotSaved_ShouldThrowAndKeepOrder()
+    {
+        // Given
+        using var tempDir = new TempSettingsDirectory();
+        var repository = new FileServerRepository(tempDir.FilePath);
+        repository.Add(SavedServer.Create("First", "abc123"));
+        repository.Add(SavedServer.Create("Second", "def456"));
+
+        // When
+        var act = () => repository.Move("unknown", 0);
+
+        // Then
+        Assert.Throws<ArgumentException>(act);
+        Assert.Equal(new[] { "abc123", "def456" }, repository.GetAll().Select(s => s.Address));
+    }
+
+    [Fact]
+    public void Move_WhenIndexOutOfRange_ShouldThrowAndKeepOrder()
+    {
+        // Given
+        using var tempDir = new TempSettingsDirectory();
+        var repository = new FileServerRepository(tempDir.FilePath);
+        repository.Add(SavedServer.Create("First", "abc123"));
+        repository.Add(SavedServer.Create("Second", "def456"));
+
+        // When / Then — a caller bug must never silently drop or reorder a server.
+        Assert.Throws<ArgumentOutOfRangeException>(() => repository.Move("abc123", 5));
+        Assert.Throws<ArgumentOutOfRangeException>(() => repository.Move("abc123", -1));
+        Assert.Equal(new[] { "abc123", "def456" }, repository.GetAll().Select(s => s.Address));
+    }
+
+    [Fact]
+    public void Move_WhenAlreadyAtPosition_ShouldNotRewriteTheFile()
+    {
+        // Given
+        using var tempDir = new TempSettingsDirectory();
+        var repository = new FileServerRepository(tempDir.FilePath);
+        repository.Add(SavedServer.Create("First", "abc123"));
+        repository.Add(SavedServer.Create("Second", "def456"));
+        var writtenAt = File.GetLastWriteTimeUtc(tempDir.FilePath);
+
+        // When — moving a server onto its own slot is a no-op, not a write.
+        repository.Move("def456", 1);
+
+        // Then
+        Assert.Equal(new[] { "abc123", "def456" }, repository.GetAll().Select(s => s.Address));
+        Assert.Equal(writtenAt, File.GetLastWriteTimeUtc(tempDir.FilePath));
+    }
+
+    [Fact]
+    public void Replace_WhenAddressChanges_ShouldKeepThePosition()
+    {
+        // Given — "replace under a new address" is what an edit that changes the
+        // address means; the old remove+add pair would append instead.
+        using var tempDir = new TempSettingsDirectory();
+        var repository = new FileServerRepository(tempDir.FilePath);
+        repository.Add(SavedServer.Create("First", "abc123"));
+        repository.Add(SavedServer.Create("Second", "def456"));
+        repository.Add(SavedServer.Create("Third", "ghi789"));
+
+        // When
+        repository.Replace("def456", SavedServer.Create("Renamed", "xxx999"));
+
+        // Then (a fresh instance reads the list with the slot preserved)
+        var reopened = new FileServerRepository(tempDir.FilePath);
+        var addresses = reopened.GetAll().Select(s => s.Address).ToArray();
+        Assert.Equal(new[] { "abc123", "xxx999", "ghi789" }, addresses);
+        Assert.Equal("Renamed", reopened.GetAll()[1].Name);
+    }
+
+    [Fact]
+    public void Replace_WhenAddressNotSaved_ShouldThrowArgumentException()
+    {
+        // Given
+        using var tempDir = new TempSettingsDirectory();
+        var repository = new FileServerRepository(tempDir.FilePath);
+        repository.Add(SavedServer.Create("Only", "abc123"));
+
+        // When / Then
+        Assert.Throws<ArgumentException>(() =>
+            repository.Replace("unknown", SavedServer.Create("Lurker", "def456")));
+        Assert.Equal("Only", Assert.Single(repository.GetAll()).Name);
+    }
+
     [Fact]
     public void GetAll_WhenFileLocked_ShouldReturnEmptyNotThrow()
     {

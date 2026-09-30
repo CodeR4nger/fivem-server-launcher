@@ -105,6 +105,22 @@ public class FileServerRepository : IServerRepository
         WriteAll(servers);
     }
 
+    public void Replace(string address, SavedServer replacement)
+    {
+        ArgumentNullException.ThrowIfNull(replacement);
+
+        var servers = GetAll().ToList();
+        var index = servers.FindIndex(s => s.MatchesAddress(address));
+
+        if (index < 0)
+        {
+            throw new ArgumentException($"No saved server with address '{address}'.");
+        }
+
+        servers[index] = replacement;
+        WriteAll(servers);
+    }
+
     public void Remove(string address)
     {
         var servers = GetAll().ToList();
@@ -114,6 +130,32 @@ public class FileServerRepository : IServerRepository
         {
             WriteAll(servers);
         }
+    }
+
+    public void Move(string address, int newIndex)
+    {
+        var servers = GetAll().ToList();
+        var index = servers.FindIndex(s => s.MatchesAddress(address));
+
+        if (index < 0)
+        {
+            throw new ArgumentException($"No saved server with address '{address}'.");
+        }
+
+        if (newIndex < 0 || newIndex >= servers.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(newIndex));
+        }
+
+        if (index == newIndex)
+        {
+            return;
+        }
+
+        var moved = servers[index];
+        servers.RemoveAt(index);
+        servers.Insert(newIndex, moved);
+        WriteAll(servers);
     }
 
     private void WriteAll(List<SavedServer> servers)

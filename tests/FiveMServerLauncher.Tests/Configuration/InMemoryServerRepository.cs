@@ -39,8 +39,44 @@ public class InMemoryServerRepository : IServerRepository
         _servers[index] = savedServer;
     }
 
+    public void Replace(string address, SavedServer replacement)
+    {
+        var index = _servers.FindIndex(s => s.MatchesAddress(address));
+
+        if (index < 0)
+        {
+            throw new ArgumentException($"No saved server with address '{address}'.");
+        }
+
+        _servers[index] = replacement;
+    }
+
     public void Remove(string address)
     {
         _servers.RemoveAll(s => s.MatchesAddress(address));
+    }
+
+    public void Move(string address, int newIndex)
+    {
+        var index = _servers.FindIndex(s => s.MatchesAddress(address));
+
+        if (index < 0)
+        {
+            throw new ArgumentException($"No saved server with address '{address}'.");
+        }
+
+        if (newIndex < 0 || newIndex >= _servers.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(newIndex));
+        }
+
+        if (index == newIndex)
+        {
+            return;
+        }
+
+        var moved = _servers[index];
+        _servers.RemoveAt(index);
+        _servers.Insert(newIndex, moved);
     }
 }

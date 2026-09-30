@@ -1823,7 +1823,7 @@ public class MainViewModelTests
     }
 
     [Fact]
-    public async Task SaveServerDialogCommand_OnEditAddressChange_ShouldRemoveOldAndAddNew()
+    public async Task SaveServerDialogCommand_OnEditAddressChange_ShouldSwitchRowToNewAddress()
     {
         // Given
         var repository = new InMemoryServerRepository();
@@ -1841,6 +1841,32 @@ public class MainViewModelTests
         Assert.Equal("cfx.re/join/new", vm.SavedServers[0].Address);
         Assert.Null(repository.FindByAddress("cfx.re/join/old"));
         Assert.NotNull(repository.FindByAddress("cfx.re/join/new"));
+    }
+
+    [Fact]
+    public async Task SaveServerDialogCommand_OnEditAddressChange_ShouldKeepTheRowInPlace()
+    {
+        // Given — the stored list used to get the edited server appended at the
+        // end, scrambling a hand-arranged order on the next launch.
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("First", "cfx.re/join/aaaaaa"));
+        repository.Add(SavedServer.Create("Second", "cfx.re/join/bbbbbb"));
+        repository.Add(SavedServer.Create("Third", "cfx.re/join/cccccc"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+        await vm.InitializeAsync();
+        vm.OpenEditServerDialogCommand.Execute(vm.SavedServers[1]);
+
+        // When — "Second" is repointed to a different server
+        vm.DialogServerAddress = "cfx.re/join/zzzzzz";
+        vm.SaveServerDialogCommand.Execute(null);
+
+        // Then — the row stays second, in the list and in the store
+        Assert.Equal(
+            new[] { "cfx.re/join/aaaaaa", "cfx.re/join/zzzzzz", "cfx.re/join/cccccc" },
+            vm.SavedServers.Select(s => s.Address));
+        Assert.Equal(
+            new[] { "cfx.re/join/aaaaaa", "cfx.re/join/zzzzzz", "cfx.re/join/cccccc" },
+            repository.GetAll().Select(s => s.Address));
     }
 
     [Fact]
@@ -3047,6 +3073,182 @@ public class MainViewModelTests
                 InstalledClientOption.DisplayNameOf(GameClient.RedM)
             },
             vm.DialogGameClientOptions.Where(o => o.Game is not null).Select(o => o.Label).ToArray());
+    }
+
+    [Fact]
+    public void MoveServerDownCommand_ShouldSwapRowWithItsNeighbourAndPersistTheOrder()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("First", "abc123"));
+        repository.Add(SavedServer.Create("Second", "def456"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+
+        // When
+        vm.MoveServerDownCommand.Execute(vm.SavedServers[0]);
+
+        // Then
+        Assert.Equal(new[] { "def456", "abc123" }, vm.SavedServers.Select(s => s.Address));
+        Assert.Equal(new[] { "def456", "abc123" }, repository.GetAll().Select(s => s.Address));
+    }
+
+    [Fact]
+    public void MoveServerUpCommand_ShouldSwapRowWithItsNeighbour()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("First", "abc123"));
+        repository.Add(SavedServer.Create("Second", "def456"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+
+        // When
+        vm.MoveServerUpCommand.Execute(vm.SavedServers[1]);
+
+        // Then
+        Assert.Equal(new[] { "def456", "abc123" }, vm.SavedServers.Select(s => s.Address));
+        Assert.Equal(new[] { "def456", "abc123" }, repository.GetAll().Select(s => s.Address));
+    }
+
+    [Fact]
+    public void MoveServerDownCommand_WhenRowIsAlreadyLast_ShouldChangeNothing()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("First", "abc123"));
+        repository.Add(SavedServer.Create("Second", "def456"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+
+        // When
+        vm.MoveServerDownCommand.Execute(vm.SavedServers[1]);
+
+        // Then
+        Assert.Equal(new[] { "abc123", "def456" }, vm.SavedServers.Select(s => s.Address));
+        Assert.Equal(new[] { "abc123", "def456" }, repository.GetAll().Select(s => s.Address));
+    }
+
+    [Fact]
+    public void MoveServerDownCommand_WhenSearchFilterActive_ShouldLeaveListAndStoreUntouched()
+    {
+        // Given — a filtered list shows a non-contiguous subset, so "down one" would
+        // mean two positions in the real list.
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("Alpha Zone", "cfx.re/join/aaaaaa"));
+        repository.Add(SavedServer.Create("Hidden One", "cfx.re/join/bbbbbb"));
+        repository.Add(SavedServer.Create("Alpha Two", "cfx.re/join/cccccc"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+        vm.ServerSearchText = "alpha";
+
+        // When
+        vm.MoveServerDownCommand.Execute(vm.SavedServers[0]);
+
+        // Then
+        Assert.Equal(
+            new[] { "cfx.re/join/aaaaaa", "cfx.re/join/bbbbbb", "cfx.re/join/cccccc" },
+            vm.SavedServers.Select(s => s.Address));
+        Assert.Equal(
+            new[] { "cfx.re/join/aaaaaa", "cfx.re/join/bbbbbb", "cfx.re/join/cccccc" },
+            repository.GetAll().Select(s => s.Address));
+    }
+
+    [Fact]
+    public void MoveServerToIndex_WhenRowDroppedAtPosition_ShouldReorderAndPersist()
+    {
+        // Given — a drag drops the last row on top of the first.
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("First", "abc123"));
+        repository.Add(SavedServer.Create("Second", "def456"));
+        repository.Add(SavedServer.Create("Third", "ghi789"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+
+        // When
+        vm.MoveServerToIndex(vm.SavedServers[2], 0);
+
+        // Then
+        Assert.Equal(new[] { "ghi789", "abc123", "def456" }, vm.SavedServers.Select(s => s.Address));
+        Assert.Equal(new[] { "ghi789", "abc123", "def456" }, repository.GetAll().Select(s => s.Address));
+    }
+
+    [Fact]
+    public void Ctor_WithSeveralRows_ShouldExposeBoundaryMoveStates()
+    {
+        // Given / When
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("First", "abc123"));
+        repository.Add(SavedServer.Create("Second", "def456"));
+        repository.Add(SavedServer.Create("Third", "ghi789"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+
+        // Then — the top row can only move down, the bottom one only up, the middle
+        // row both ways; the XAML arrows bind to these.
+        Assert.False(vm.SavedServers[0].CanMoveUp);
+        Assert.True(vm.SavedServers[0].CanMoveDown);
+        Assert.True(vm.SavedServers[1].CanMoveUp);
+        Assert.True(vm.SavedServers[1].CanMoveDown);
+        Assert.True(vm.SavedServers[2].CanMoveUp);
+        Assert.False(vm.SavedServers[2].CanMoveDown);
+    }
+
+    [Fact]
+    public void MoveServerCommands_WhenSearchFilterActive_ShouldReportUnavailable()
+    {
+        // Given — the command gate is what the arrows' IsEnabled binds to.
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("Alpha Zone", "cfx.re/join/aaaaaa"));
+        repository.Add(SavedServer.Create("Alpha Two", "cfx.re/join/cccccc"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+        vm.ServerSearchText = "alpha";
+
+        // Then
+        Assert.False(vm.IsReorderAvailable);
+        Assert.False(vm.MoveServerUpCommand.CanExecute(vm.SavedServers[1]));
+        Assert.False(vm.MoveServerDownCommand.CanExecute(vm.SavedServers[0]));
+
+        // When the filter clears, reordering is available again
+        vm.ServerSearchText = "";
+
+        // Then
+        Assert.True(vm.IsReorderAvailable);
+        Assert.True(vm.MoveServerUpCommand.CanExecute(vm.SavedServers[1]));
+        Assert.True(vm.MoveServerDownCommand.CanExecute(vm.SavedServers[0]));
+    }
+
+    [Fact]
+    public void MoveServerToIndex_AfterReorder_ShouldFlipTheBoundaryStates()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("First", "abc123"));
+        repository.Add(SavedServer.Create("Second", "def456"));
+        repository.Add(SavedServer.Create("Third", "ghi789"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+
+        // When — "Third" moves to the top
+        vm.MoveServerToIndex(vm.SavedServers[2], 0);
+
+        // Then — the boundary flags follow the rows, not the positions
+        Assert.True(vm.SavedServers[0].CanMoveDown);
+        Assert.False(vm.SavedServers[0].CanMoveUp);
+        Assert.True(vm.SavedServers[2].CanMoveUp);
+        Assert.False(vm.SavedServers[2].CanMoveDown);
+        Assert.Equal("ghi789", vm.SavedServers[0].Address);
+    }
+
+    [Fact]
+    public void MoveServerToIndex_WhenSearchFilterActive_ShouldLeaveListAndStoreUntouched()
+    {
+        // Given — the drag entry point obeys the same gate as the arrows.
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("Alpha Zone", "cfx.re/join/aaaaaa"));
+        repository.Add(SavedServer.Create("Alpha Two", "cfx.re/join/cccccc"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+        vm.ServerSearchText = "alpha";
+
+        // When
+        vm.MoveServerToIndex(vm.SavedServers[0], 1);
+
+        // Then
+        Assert.Equal(new[] { "cfx.re/join/aaaaaa", "cfx.re/join/cccccc" }, vm.SavedServers.Select(s => s.Address));
+        Assert.Equal(new[] { "cfx.re/join/aaaaaa", "cfx.re/join/cccccc" }, repository.GetAll().Select(s => s.Address));
     }
 
     private static MainViewModel CreateViewModel(

@@ -687,9 +687,13 @@
                               VerticalScrollBarVisibility="Disabled"
                               HorizontalScrollBarVisibility="Disabled">
 
-                    <StackPanel Margin="20">
+                    <!-- Left margin lives on the siblings, not this StackPanel: the one
+                         full-width child below is the list's grid, whose first 20 px column
+                         is the arrows gutter (a negative-margin overlay child got clipped
+                         by the ScrollViewer — that area is not renderable overflow here). -->
+                    <StackPanel Margin="0,20,20,20">
 
-                    <DockPanel Margin="0,0,0,7">
+                    <DockPanel Margin="20,0,0,7">
 
                         <TextBlock Text="{loc:Loc SavedServersHeader}"
                                    Style="{StaticResource SectionHeaderStyle}"
@@ -774,9 +778,21 @@
 
                     </DockPanel>
 
-                    <Border BorderBrush="{StaticResource BorderBrush}"
-                            BorderThickness="1"
-                            Background="{StaticResource PanelLightBrush}">
+                    <!-- One cell holding the full-size list and two overlays. The list box
+                         keeps its original width: the move arrows live in the grid's first
+                         20 px column — the space that was the list's left margin; the drop
+                         indicator overlays the list itself. -->
+                    <Grid>
+
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="1"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1"
+                                Background="{StaticResource PanelLightBrush}">
 
                         <ListBox x:Name="SavedServersList"
                                  ItemsSource="{Binding SavedServersView}"
@@ -785,7 +801,12 @@
                                  BorderThickness="0"
                                  HorizontalContentAlignment="Stretch"
                                  Padding="0,4,0,4"
-                                 Height="163">
+                                 Height="163"
+                                 PreviewMouseLeftButtonDown="SavedServersList_PreviewMouseLeftButtonDown"
+                                 MouseMove="SavedServersList_MouseMove"
+                                 PreviewMouseLeftButtonUp="SavedServersList_PreviewMouseLeftButtonUp"
+                                 ScrollViewer.ScrollChanged="SavedServersList_ScrollChanged"
+                                 SelectionChanged="SavedServersList_SelectionChanged">
 
                             <ListBox.ItemContainerStyle>
 
@@ -793,6 +814,12 @@
 
                                     <Setter Property="HorizontalContentAlignment"
                                             Value="Stretch"/>
+
+                                    <EventSetter Event="ListBoxItem.MouseEnter"
+                                                 Handler="SavedServerRow_MouseEnter"/>
+
+                                    <EventSetter Event="ListBoxItem.MouseLeave"
+                                                 Handler="SavedServerRow_MouseLeave"/>
 
                                 </Style>
 
@@ -913,9 +940,151 @@
 
                         </ListBox>
 
-                    </Border>
+                        </Border>
 
-                    <DockPanel Margin="0,8,0,0">
+                        <!-- Drop indicator: an accent line snapped to the insertion slot,
+                             following the pointer while a row is being dragged. Never hit
+                             (the list keeps every click). -->
+                        <Canvas Grid.Column="1"
+                                x:Name="DropIndicatorCanvas"
+                                IsHitTestVisible="False">
+
+                            <Border x:Name="DropIndicator"
+                                    Height="2"
+                                    Width="{Binding ActualWidth, ElementName=DropIndicatorCanvas}"
+                                    Background="{StaticResource AccentBrush}"
+                                    CornerRadius="1"
+                                    Visibility="Collapsed"/>
+
+                        </Canvas>
+
+                        <!-- Move arrows overlay: a trackable pair in the gutter column (the
+                             20 px that used to be the list's left margin), positioned from
+                             code-behind on hover, selection and scroll. Transparent background
+                             so the strip itself is hit-testable — the arrows stay alive while
+                             the pointer crosses from the row onto them. -->
+                        <Canvas x:Name="MoveArrowsCanvas"
+                                Margin="0,1,0,1"
+                                Background="Transparent"
+                                MouseEnter="MoveArrowsCanvas_MouseEnter"
+                                MouseLeave="MoveArrowsCanvas_MouseLeave">
+
+                            <StackPanel x:Name="MoveArrowsOverlay"
+                                        Visibility="Collapsed">
+
+                                <Button Command="{Binding DataContext.MoveServerUpCommand,
+                                                          RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}"
+                                        IsEnabled="{Binding CanMoveUp}"
+                                        Cursor="Hand"
+                                        Width="20"
+                                        Padding="0">
+
+                                    <Button.Style>
+                                        <Style TargetType="{x:Type Button}">
+                                            <Style.Triggers>
+                                                <Trigger Property="IsEnabled" Value="False">
+                                                    <Setter Property="Opacity" Value="0.3"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+
+                                    <TextBlock Text="▲" FontSize="9"/>
+
+                                    <Button.Template>
+
+                                        <ControlTemplate TargetType="{x:Type Button}">
+
+                                            <Border Background="Transparent" Padding="{TemplateBinding Padding}">
+
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                                            </Border>
+
+                                        </ControlTemplate>
+
+                                    </Button.Template>
+
+                                    <Button.Resources>
+
+                                        <Style TargetType="{x:Type TextBlock}" BasedOn="{x:Null}">
+
+                                            <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}"/>
+
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                             Value="True">
+                                                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+
+                                        </Style>
+
+                                    </Button.Resources>
+
+                                </Button>
+
+                                <Button Command="{Binding DataContext.MoveServerDownCommand,
+                                                          RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}"
+                                        IsEnabled="{Binding CanMoveDown}"
+                                        Cursor="Hand"
+                                        Width="20"
+                                        Padding="0">
+
+                                    <Button.Style>
+                                        <Style TargetType="{x:Type Button}">
+                                            <Style.Triggers>
+                                                <Trigger Property="IsEnabled" Value="False">
+                                                    <Setter Property="Opacity" Value="0.3"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+
+                                    <TextBlock Text="▼" FontSize="9"/>
+
+                                    <Button.Template>
+
+                                        <ControlTemplate TargetType="{x:Type Button}">
+
+                                            <Border Background="Transparent" Padding="{TemplateBinding Padding}">
+
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                                            </Border>
+
+                                        </ControlTemplate>
+
+                                    </Button.Template>
+
+                                    <Button.Resources>
+
+                                        <Style TargetType="{x:Type TextBlock}" BasedOn="{x:Null}">
+
+                                            <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}"/>
+
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                             Value="True">
+                                                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+
+                                        </Style>
+
+                                    </Button.Resources>
+
+                                </Button>
+
+                            </StackPanel>
+
+                        </Canvas>
+
+                    </Grid>
+
+                    <DockPanel Margin="20,8,0,0">
 
                         <Button Content="{loc:Loc DeleteButton}"
                                 MinHeight="26"
@@ -942,7 +1111,7 @@
 
                     <TextBlock Text="{loc:Loc ConnectAddressHeader}"
                                Style="{StaticResource SectionHeaderStyle}"
-                               Margin="0,14,0,0"/>
+                               Margin="20,14,0,0"/>
 
                     <TextBox x:Name="ServerAddressBox"
                              Text="{Binding ServerAddress,
@@ -955,13 +1124,13 @@
                              FontSize="12"
                              VerticalContentAlignment="Center"
                              MinHeight="10"
-                             Margin="0,5,0,0"/>
+                             Margin="20,5,0,0"/>
 
                     <TextBlock Text="{Binding StatusText}"
                                Foreground="{StaticResource SecondaryTextBrush}"
                                FontSize="11"
                                HorizontalAlignment="Center"
-                               Margin="0,2,0,0"/>
+                               Margin="20,2,0,0"/>
 
                     </StackPanel>
 

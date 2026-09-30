@@ -61,6 +61,23 @@ public class SavedServerItem : INotifyPropertyChanged
 
     public string TrimmedName => Trim(Name, _isSelected ? SelectedNameLimit : UnselectedNameLimit);
 
+    private bool _canMoveUp;
+    private bool _canMoveDown;
+
+    // Driven by the view model on every structural change: the row itself never
+    // knows its position. Both are false while a search filter is active.
+    public bool CanMoveUp
+    {
+        get => _canMoveUp;
+        set => SetProperty(ref _canMoveUp, value);
+    }
+
+    public bool CanMoveDown
+    {
+        get => _canMoveDown;
+        set => SetProperty(ref _canMoveDown, value);
+    }
+
     private bool _isSelected;
 
     public bool IsSelected
