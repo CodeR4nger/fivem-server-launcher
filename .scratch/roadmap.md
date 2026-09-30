@@ -296,8 +296,10 @@ filter is active. Coupled fix: editing a server's address no longer scrambles it
 **Spec:** `.scratch/ui-custom-controls/spec.md`
 
 **What:** view-scoped dark ComboBox/CheckBox templates adopted everywhere + a short slide/fade on
-dropdown popups. Restyles the reorder arrows' button idiom (the pencil/arrows share one clear
-place).
+every dropdown open (combo popups and the OPEN split menu). Consolidates the glyph-button idiom
+(both refreshes, pencil, move arrows) into one shared style. Saved-server reorders (arrows +
+drag) slide rows into their new slots instead of jumping. Settings/Dev Mode slide in on open;
+the server browser pushes in and out.
 
 ## 16. Game builds by name in a dropdown
 
