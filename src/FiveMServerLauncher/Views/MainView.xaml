@@ -38,7 +38,7 @@
         <SolidColorBrush x:Key="HoverBorderBrush" Color="#3A3A3A"/>
         <SolidColorBrush x:Key="ItemSelectedBrush" Color="#2A2A2A"/>
 
-        <!-- TEMPLATE DE BOTÃ“N COMPARTIDO -->
+        <!-- TEMPLATE DE BOTÓN COMPARTIDO -->
         <ControlTemplate x:Key="ButtonTemplate" TargetType="{x:Type Button}">
 
             <Border x:Name="ButtonBorder"
@@ -114,7 +114,7 @@
 
         </ControlTemplate>
 
-        <!-- BASE DE BOTÃ“N -->
+        <!-- BASE DE BOTÓN -->
 
         <Style x:Key="BaseButtonStyle" TargetType="{x:Type Button}">
 
@@ -141,7 +141,7 @@
 
         </Style>
 
-        <!-- BOTÃ“N PRINCIPAL -->
+        <!-- BOTÓN PRINCIPAL -->
         <Style x:Key="MainButtonStyle"
                TargetType="{x:Type Button}"
                BasedOn="{StaticResource BaseButtonStyle}">
@@ -172,7 +172,7 @@
 
         </Style>
 
-        <!-- BOTÃ“N SECUNDARIO (outline, quiet) -->
+        <!-- BOTÓN SECUNDARIO (outline, quiet) -->
 
         <Style x:Key="SecondaryButtonStyle"
                TargetType="{x:Type Button}"
@@ -300,7 +300,7 @@
 
         </Style>
 
-        <!-- BOTÃ“N DROPDOWN -->
+        <!-- BOTÓN DROPDOWN -->
 
         <Style x:Key="DropdownButtonStyle"
                TargetType="{x:Type Button}"
@@ -323,7 +323,7 @@
 
         </Style>
 
-        <!-- BOTÃ“N DE FLECHA -->
+        <!-- BOTÓN DE FLECHA -->
 
         <Style x:Key="ArrowButtonStyle"
                TargetType="{x:Type Button}"
@@ -334,7 +334,7 @@
 
         </Style>
 
-        <!-- BOTÃ“N DE ÃCONO (refresh, pencil, move arrows) -->
+        <!-- BOTÓN DE ÍCONO (refresh, pencil, move arrows) -->
 
         <Style x:Key="IconButtonStyle"
                TargetType="{x:Type Button}">
@@ -408,7 +408,7 @@
                     BorderThickness="1"
                     SnapsToDevicePixels="True">
 
-                <TextBlock Text="â–¼"
+                <TextBlock Text="▼"
                            FontSize="9"
                            Foreground="{StaticResource SecondaryTextBrush}"
                            HorizontalAlignment="Right"
@@ -1053,7 +1053,7 @@
                                 Click="DropdownButton_Click">
 
                             <TextBlock x:Name="ArrowText"
-                                       Text="â–¼"
+                                       Text="▼"
                                        FontSize="10"
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"/>
@@ -1267,7 +1267,7 @@
                     <!-- Left margin lives on the siblings, not this StackPanel: the one
                          full-width child below is the list's grid, whose first 20 px column
                          is the arrows gutter (a negative-margin overlay child got clipped
-                         by the ScrollViewer â€” that area is not renderable overflow here). -->
+                         by the ScrollViewer — that area is not renderable overflow here). -->
                     <StackPanel Margin="0,20,20,20">
 
                     <DockPanel Margin="20,0,0,7">
@@ -1285,7 +1285,7 @@
                                 VerticalAlignment="Center"
                                 Style="{StaticResource IconButtonStyle}">
 
-                            <TextBlock Text="â†»"/>
+                            <TextBlock Text="↻"/>
 
                         </Button>
 
@@ -1318,7 +1318,7 @@
 
                     <!-- One cell holding the full-size list and two overlays. The list box
                          keeps its original width: the move arrows live in the grid's first
-                         20 px column â€” the space that was the list's left margin; the drop
+                         20 px column — the space that was the list's left margin; the drop
                          indicator overlays the list itself. -->
                     <Grid>
 
@@ -1435,7 +1435,7 @@
 
                                             </Button.Visibility>
 
-                                            <TextBlock Text="âœ"/>
+                                            <TextBlock Text="✏"/>
 
                                         </Button>
 
@@ -1468,7 +1468,7 @@
                         <!-- Move arrows overlay: a trackable pair in the gutter column (the
                              20 px that used to be the list's left margin), positioned from
                              code-behind on hover, selection and scroll. Transparent background
-                             so the strip itself is hit-testable â€” the arrows stay alive while
+                             so the strip itself is hit-testable — the arrows stay alive while
                              the pointer crosses from the row onto them. -->
                         <Canvas x:Name="MoveArrowsCanvas"
                                 Margin="0,1,0,1"
@@ -1487,7 +1487,7 @@
                                         Padding="0"
                                         Style="{StaticResource IconButtonStyle}">
 
-                                    <TextBlock Text="â–²" FontSize="9"/>
+                                    <TextBlock Text="▲" FontSize="9"/>
 
                                 </Button>
 
@@ -1499,7 +1499,7 @@
                                         Padding="0"
                                         Style="{StaticResource IconButtonStyle}">
 
-                                    <TextBlock Text="â–¼" FontSize="9"/>
+                                    <TextBlock Text="▼" FontSize="9"/>
 
                                 </Button>
 
@@ -1850,7 +1850,7 @@
                             VerticalAlignment="Center"
                             Style="{StaticResource IconButtonStyle}">
 
-                        <TextBlock Text="â†»" FontSize="14"/>
+                        <TextBlock Text="↻" FontSize="14"/>
 
                     </Button>
 
