@@ -304,7 +304,7 @@ public class MainViewModel : INotifyPropertyChanged
             ? GameBuilds.Options(game, _dialogGameBuild, _localizer.Get("GameClientNone"), _gameBuildData)
             : [];
 
-    public bool IsDialogGameBuildEnabled => DialogGameClient is GameClient.FiveM or GameClient.RedM;
+    public bool IsDialogGameBuildEnabled => DialogGameClient is GameClient game && GameBuilds.SupportsBuildSelection(game);
 
     public int? DialogPureMode
     {

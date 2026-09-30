@@ -136,7 +136,10 @@ public sealed class GameBuildDataService : IGameBuildDataService
         {
             if (match.Groups[1].Success)
             {
-                pendingCases.Add(int.Parse(match.Groups[1].Value));
+                if (int.TryParse(match.Groups[1].Value, out var build))
+                {
+                    pendingCases.Add(build);
+                }
             }
             else if (match.Groups[2].Success)
             {

@@ -32,9 +32,12 @@ public static class GameBuilds
         [3889] = "The Kortz Center Heist"
     });
 
+    public static bool SupportsBuildSelection(GameClient game) =>
+        game is GameClient.FiveM or GameClient.RedM;
+
     public static IReadOnlyList<GameBuildOption> Options(GameClient game, int? storedBuild, string noneLabel, GameBuildData? data = null)
     {
-        if (game is not (GameClient.FiveM or GameClient.RedM))
+        if (!SupportsBuildSelection(game))
         {
             return [];
         }

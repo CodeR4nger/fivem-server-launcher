@@ -171,4 +171,28 @@ public class GameBuildDataServiceTests
         Assert.NotNull(result);
         Assert.Equal(GameBuilds.Baseline.Names, result.Names);
     }
+
+    [Fact]
+    public async Task FetchAsync_WhenBundleCaseNumberOverflows_ShouldSkipItWithoutThrowing()
+    {
+        // Given: a drifted bundle carrying an absurd case number next to a real one
+        var handler = new RoutedHttpMessageHandler();
+        handler.AddTextRoute("premake5_builds.lua", System.Net.HttpStatusCode.OK, PremakeLua);
+        handler.AddTextRoute("servers.fivem.net/servers", System.Net.HttpStatusCode.OK, ServersPageHtml);
+        handler.AddTextRoute(
+            "serversList-",
+            System.Net.HttpStatusCode.OK,
+            """
+            function getGameBuildDLCName(n){switch(n){case`99999999999999999999`:return`Absurd`;case`2060`:return`Los Santos Summer Special`}return``}
+            """);
+        var service = CreateService(handler);
+
+        // When
+        var result = await service.FetchAsync();
+
+        // Then — the absurd entry is skipped, the real one survives, nothing throws
+        Assert.NotNull(result);
+        Assert.Equal(GameBuilds.Baseline.Names.Count, result.Names.Count);
+        Assert.Equal("Los Santos Summer Special", result.Names[2060]);
+    }
 }
