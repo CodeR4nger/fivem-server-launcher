@@ -1179,13 +1179,12 @@
                                FontSize="10"
                                Margin="0,6,0,3"/>
 
-                    <TextBox Text="{Binding DevGameBuild, UpdateSourceTrigger=PropertyChanged}"
-                             Background="{StaticResource PanelLightBrush}"
-                             Foreground="{StaticResource TextBrush}"
-                             BorderBrush="{StaticResource BorderBrush}"
-                             BorderThickness="1"
-                             Padding="10,8"
-                             FontSize="12"/>
+                    <ComboBox ItemsSource="{Binding DevGameBuildOptions}"
+                              DisplayMemberPath="Label"
+                              SelectedValuePath="Build"
+                              SelectedValue="{Binding DevGameBuild}"
+                              MinHeight="28"
+                              VerticalContentAlignment="Center"/>
 
                     <TextBlock Text="{loc:Loc PureModeHeader}"
                                Foreground="{StaticResource SecondaryTextBrush}"

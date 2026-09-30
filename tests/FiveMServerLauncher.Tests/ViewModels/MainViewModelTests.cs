@@ -2041,13 +2041,95 @@ public class MainViewModelTests
         await vm.InitializeAsync();
 
         // When
-        vm.DevGameBuild = "3095";
+        vm.DevGameBuild = 3095;
         vm.DevPureMode = 2;
 
         // Then
         var reloaded = new ConfigurationRepository(storage).Load();
         Assert.Equal(3095, reloaded.DevGameBuild);
         Assert.Equal(2, reloaded.DevPureMode);
+    }
+
+    [Fact]
+    public async Task DevGameBuild_WhenClearedToNone_ShouldPersistNull()
+    {
+        // Given
+        var storage = new InMemorySettingsStorage();
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            settings: new ConfigurationRepository(storage));
+        await vm.InitializeAsync();
+        vm.DevGameBuild = 3095;
+
+        // When
+        vm.DevGameBuild = null;
+
+        // Then
+        Assert.Null(new ConfigurationRepository(storage).Load().DevGameBuild);
+    }
+
+    [Fact]
+    public async Task DevGameBuildOptions_ShouldListBaselineFiveMOptionsLedByNone()
+    {
+        // Given
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+        await vm.InitializeAsync();
+
+        // When
+        var options = vm.DevGameBuildOptions;
+
+        // Then
+        Assert.Null(options[0].Build);
+        Assert.Equal("None", options[0].Label);
+        Assert.Equal(19, options.Count);
+        Assert.Contains(new GameBuildOption(3889, "3889 — The Kortz Center Heist"), options);
+        Assert.Contains(new GameBuildOption(1, "1 — Base game without any DLCs"), options);
+    }
+
+    [Fact]
+    public async Task DevGameBuildOptions_WhenClientToggledToRedM_ShouldListRedMOptionsAndKeepStoredBuildVisible()
+    {
+        // Given
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+        await vm.InitializeAsync();
+        vm.DevGameBuild = 3095;
+
+        // When
+        vm.ToggleDevClientCommand.Execute(null);
+        var options = vm.DevGameBuildOptions;
+
+        // Then
+        Assert.Equal(6, options.Count);
+        Assert.Contains(new GameBuildOption(1491, "1491"), options);
+        Assert.Contains(new GameBuildOption(3095, "3095 — The Chop Shop"), options);
+        Assert.Equal(3095, vm.DevGameBuild);
+    }
+
+    [Fact]
+    public async Task SetGameBuildData_WhenSessionDataArrives_ShouldSwapOptionsAndKeepSelection()
+    {
+        // Given
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+        await vm.InitializeAsync();
+        vm.DevGameBuild = 3095;
+        var raised = new List<string?>();
+        vm.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+        var data = new GameBuildData([4000, 3095], [1491], new Dictionary<int, string> { [4000] = "Future DLC" });
+
+        // When
+        vm.SetGameBuildData(data);
+
+        // Then
+        Assert.Equal(3095, vm.DevGameBuild);
+        Assert.Contains(nameof(MainViewModel.DevGameBuildOptions), raised);
+        GameBuildOption[] expected =
+        [
+            new(null, "None"),
+            new(4000, "4000 — Future DLC"),
+            new(3095, "3095")
+        ];
+        Assert.Equal(expected, vm.DevGameBuildOptions);
     }
 
     [Fact]
@@ -3052,6 +3134,20 @@ public class MainViewModelTests
 
         // Then
         Assert.Equal("Ninguno", vm.DialogGameClientOptions[0].Label);
+    }
+
+    [Fact]
+    public void DevGameBuildOptions_WhenLanguageSwitched_ShouldLocalizeNone()
+    {
+        // Given
+        var localizer = CreateLocalizer(("en", LanguageEnglishJson), ("es", VmSpanishJson));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), localizer: localizer);
+
+        // When
+        localizer.SetLanguage("es");
+
+        // Then
+        Assert.Equal("Ninguno", vm.DevGameBuildOptions[0].Label);
     }
 
     [Fact]

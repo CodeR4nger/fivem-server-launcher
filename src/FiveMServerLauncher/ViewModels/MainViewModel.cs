@@ -340,6 +340,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     private bool _isDevMode;
     private GameClient _devClient = GameClient.FiveM;
+    private GameBuildData? _gameBuildData;
 
     public bool IsDevMode
     {
@@ -358,6 +359,7 @@ public class MainViewModel : INotifyPropertyChanged
             {
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevClientLabel)));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevClientButtonText)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevGameBuildOptions)));
             }
         }
     }
@@ -368,23 +370,30 @@ public class MainViewModel : INotifyPropertyChanged
 
     public ICommand ToggleDevClientCommand { get; }
 
-    public string DevGameBuild
+    public int? DevGameBuild
     {
-        get => _settings.DevGameBuild?.ToString() ?? string.Empty;
+        get => _settings.DevGameBuild;
         set
         {
-            var trimmed = value.Trim();
-            var build = int.TryParse(trimmed, out var parsed) ? parsed : (int?)null;
-
-            if (_settings.DevGameBuild == build)
+            if (_settings.DevGameBuild == value)
             {
                 return;
             }
 
-            _settings.DevGameBuild = build;
+            _settings.DevGameBuild = value;
             SaveSettings();
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevGameBuild)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevGameBuildOptions)));
         }
+    }
+
+    public IReadOnlyList<GameBuildOption> DevGameBuildOptions =>
+        GameBuilds.Options(DevClient, _settings.DevGameBuild, _localizer.Get("GameClientNone"), _gameBuildData);
+
+    public void SetGameBuildData(GameBuildData data)
+    {
+        _gameBuildData = data;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevGameBuildOptions)));
     }
 
     public int? DevPureMode
@@ -519,6 +528,7 @@ public class MainViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ServerDialogTitle)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevClientButtonText)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DialogGameClientOptions)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevGameBuildOptions)));
     }
 
     private IReadOnlyList<LanguageSettingOption> BuildLanguageOptions()

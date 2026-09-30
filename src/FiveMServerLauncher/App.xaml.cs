@@ -62,6 +62,8 @@ public partial class App : Application
 
         var cfxStatus = new CfxStatusService(httpClient);
 
+        var gameBuildData = new GameBuildDataService(httpClient);
+
         var localizer = Localizer.FromEmbeddedResources();
         LocalizationSource.Instance.Attach(localizer);
 
@@ -90,5 +92,23 @@ public partial class App : Application
 
         window.Closed += (_, _) => refreshCts.Cancel();
         window.Dispatcher.InvokeAsync(() => viewModel.RunEnrichmentLoopAsync(refreshCts.Token));
+        _ = RefreshSessionGameBuildDataAsync(window, viewModel, gameBuildData);
+    }
+
+    private static async Task RefreshSessionGameBuildDataAsync(
+        Window window,
+        MainViewModel viewModel,
+        IGameBuildDataService gameBuildData)
+    {
+        try
+        {
+            if (await gameBuildData.FetchAsync() is { } data)
+            {
+                await window.Dispatcher.InvokeAsync(() => viewModel.SetGameBuildData(data));
+            }
+        }
+        catch (Exception)
+        {
+        }
     }
 }
