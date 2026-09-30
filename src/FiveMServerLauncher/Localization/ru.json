@@ -32,6 +32,7 @@
   "SearchByNamePlaceholder": "Поиск по названию",
   "ConnectBrowserButton": "ПОДКЛЮЧИТЬСЯ",
   "SavedBrowserButton": "СОХРАНЁН",
+  "BrowserLoading": "Загрузка серверов...",
   "BrowserLoadFailed": "Не удалось загрузить серверы. Проверьте соединение и обновите.",
   "StatusReady": "Готово",
   "StatusResolving": "Определение адреса...",

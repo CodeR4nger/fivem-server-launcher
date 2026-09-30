@@ -32,6 +32,7 @@
   "SearchByNamePlaceholder": "名前で検索",
   "ConnectBrowserButton": "接続",
   "SavedBrowserButton": "保存済み",
+  "BrowserLoading": "サーバーを読み込んでいます...",
   "BrowserLoadFailed": "サーバーを読み込めませんでした。接続を確認して更新してください。",
   "StatusReady": "準備完了",
   "StatusResolving": "解決中...",

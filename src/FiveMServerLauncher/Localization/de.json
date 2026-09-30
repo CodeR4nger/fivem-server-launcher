@@ -32,6 +32,7 @@
   "SearchByNamePlaceholder": "Nach Name suchen",
   "ConnectBrowserButton": "BEITRETEN",
   "SavedBrowserButton": "GESPEICHERT",
+  "BrowserLoading": "Server werden geladen...",
   "BrowserLoadFailed": "Server konnten nicht geladen werden. Prüfe deine Verbindung und lade neu.",
   "StatusReady": "Bereit",
   "StatusResolving": "Auflösen...",

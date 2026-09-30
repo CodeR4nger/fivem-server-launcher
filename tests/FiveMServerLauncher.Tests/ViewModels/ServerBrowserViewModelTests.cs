@@ -469,6 +469,98 @@ public class ServerBrowserViewModelTests
         Assert.Equal(new byte[] { 9, 8, 7 }, row.Icon);
     }
 
+    [Fact]
+    public async Task LoadAsync_WhileFirstFetchInFlight_ShouldShowLoadingOverlay()
+    {
+        // Given a catalog download that blocks until released
+        var handler = new GatedHttpMessageHandler(CatalogBytes(
+            Entry("aaaaaa", "Alpha", game: "gta5", players: 3, max: 32)));
+        var vm = CreateViewModel(new HttpClient(handler));
+
+        // When the browser opens and the fetch is still running
+        var load = vm.LoadAsync();
+
+        // Then the empty browser shows the loading state until the snapshot lands
+        Assert.True(vm.IsRefreshing);
+        Assert.True(vm.IsLoadingOverlay);
+
+        handler.Release();
+        await load;
+
+        Assert.False(vm.IsRefreshing);
+        Assert.False(vm.IsLoadingOverlay);
+        Assert.Single(vm.Servers);
+    }
+
+    [Fact]
+    public async Task LoadAsync_WhenRefreshingWithRowsPresent_ShouldKeepLoadingOverlayHidden()
+    {
+        // Given rows from a previous load and a manual refresh held mid-flight
+        var gate = new TaskCompletionSource();
+        var enrichment = new FakeServerEnrichmentService { RefreshDelay = gate.Task };
+        var vm = CreateViewModel(
+            CatalogBytes(Entry("aaaaaa", "Alpha", game: "gta5", players: 3, max: 32)),
+            enrichment,
+            refreshCooldown: TimeSpan.Zero);
+        await vm.LoadAsync();
+        Assert.Single(vm.Servers);
+
+        // When the manual refresh runs behind the gate
+        var refresh = vm.RefreshAsync();
+
+        // Then the refreshing flag is up but the overlay stays hidden behind the rows
+        Assert.True(vm.IsRefreshing);
+        Assert.False(vm.IsLoadingOverlay);
+
+        gate.SetResult();
+        await refresh;
+
+        Assert.False(vm.IsRefreshing);
+        Assert.False(vm.IsLoadingOverlay);
+    }
+
+    [Fact]
+    public async Task LoadAsync_WhenOutage_ShouldClearLoadingStateAndShowFailure()
+    {
+        // Given a failing catalog
+        var vm = CreateViewModel(new HttpClient(new FakeHttpMessageHandler(true)));
+
+        // When the browser opens
+        await vm.LoadAsync();
+
+        // Then the failure state stands alone — no loading overlay, no stuck flag
+        Assert.True(vm.LoadFailed);
+        Assert.False(vm.IsLoadingOverlay);
+        Assert.False(vm.IsRefreshing);
+        Assert.Empty(vm.Servers);
+    }
+
+    private sealed class GatedHttpMessageHandler : HttpMessageHandler
+    {
+        private readonly TaskCompletionSource _gate = new();
+        private readonly byte[] _response;
+
+        public GatedHttpMessageHandler(byte[] response)
+        {
+            _response = response;
+        }
+
+        public void Release()
+        {
+            _gate.TrySetResult();
+        }
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            await _gate.Task;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(_response)
+            };
+        }
+    }
+
     private static byte[] CatalogBytes(params Master.Server[] servers)
     {
         return TestProtobufFrames.Join(servers.Select(TestProtobufFrames.BuildFrameStream).ToArray());

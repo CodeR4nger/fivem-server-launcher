@@ -32,6 +32,7 @@
   "SearchByNamePlaceholder": "Cerca per nome",
   "ConnectBrowserButton": "CONNETTI",
   "SavedBrowserButton": "SALVATO",
+  "BrowserLoading": "Caricamento dei server...",
   "BrowserLoadFailed": "Impossibile caricare i server. Controlla la connessione e aggiorna.",
   "StatusReady": "Pronto",
   "StatusResolving": "Risoluzione...",

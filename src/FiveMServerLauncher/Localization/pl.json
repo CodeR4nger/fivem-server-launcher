@@ -32,6 +32,7 @@
   "SearchByNamePlaceholder": "Szukaj po nazwie",
   "ConnectBrowserButton": "POŁĄCZ",
   "SavedBrowserButton": "ZAPISANY",
+  "BrowserLoading": "Ładowanie serwerów...",
   "BrowserLoadFailed": "Nie udało się wczytać serwerów. Sprawdź połączenie i odśwież.",
   "StatusReady": "Gotowe",
   "StatusResolving": "Rozwiązywanie...",

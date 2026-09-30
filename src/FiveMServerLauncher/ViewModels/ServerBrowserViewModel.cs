@@ -93,6 +93,7 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
             ServersView = CollectionViewSource.GetDefaultView(value);
             ServersView.Filter = MatchesFilters;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ServersView)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsLoadingOverlay)));
         }
     }
 
@@ -119,10 +120,22 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
     public bool IsRefreshing
     {
         get => _isRefreshing;
-        private set => SetProperty(ref _isRefreshing, value);
+        private set
+        {
+            if (SetProperty(ref _isRefreshing, value))
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsLoadingOverlay)));
+            }
+        }
     }
 
-    private async Task RefreshAsync()
+    // The browser's explanatory progress state (DOC.md UX: only when something
+    // needs waiting): visible while a fetch is in flight and there is nothing
+    // to show yet — a re-fetch over existing rows never flashes it, and the
+    // failure text stands alone.
+    public bool IsLoadingOverlay => IsRefreshing && Servers.Count == 0 && !LoadFailed;
+
+    public async Task RefreshAsync()
     {
         IsRefreshing = true;
 
@@ -235,35 +248,61 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
     public bool LoadFailed
     {
         get => _loadFailed;
-        private set => SetProperty(ref _loadFailed, value);
+        private set
+        {
+            if (SetProperty(ref _loadFailed, value))
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsLoadingOverlay)));
+            }
+        }
     }
 
     public async Task LoadAsync()
     {
-        var snapshot = await _catalog.GetSnapshotAsync();
+        // The open path owns the refreshing flag only when nothing else raised
+        // it: the manual refresh keeps the flag up for its cooldown window and
+        // must not see it cleared early by the load it triggers.
+        var ownsRefreshing = !IsRefreshing;
 
-        if (snapshot is null)
+        if (ownsRefreshing)
         {
-            LoadFailed = true;
-            return;
+            IsRefreshing = true;
         }
 
-        LoadFailed = false;
-
-        // Build the 33k rows off the UI thread and swap the collection wholesale —
-        // 33k individual ObservableCollection.Adds would freeze the UI on open.
-        var items = await Task.Run(() => snapshot
-            .Where(s => s.Data is not null)
-            .Select(ServerBrowserItem.FromServer)
-            .ToList());
-
-        foreach (var item in items)
+        try
         {
-            item.SetIconLoader(() => LoadIconAsync(item));
-        }
+            var snapshot = await _catalog.GetSnapshotAsync();
 
-        Servers = new ObservableCollection<ServerBrowserItem>(items);
-        MarkSavedRows();
+            if (snapshot is null)
+            {
+                LoadFailed = true;
+                return;
+            }
+
+            LoadFailed = false;
+
+            // Build the 33k rows off the UI thread and swap the collection wholesale —
+            // 33k individual ObservableCollection.Adds would freeze the UI on open.
+            var items = await Task.Run(() => snapshot
+                .Where(s => s.Data is not null)
+                .Select(ServerBrowserItem.FromServer)
+                .ToList());
+
+            foreach (var item in items)
+            {
+                item.SetIconLoader(() => LoadIconAsync(item));
+            }
+
+            Servers = new ObservableCollection<ServerBrowserItem>(items);
+            MarkSavedRows();
+        }
+        finally
+        {
+            if (ownsRefreshing)
+            {
+                IsRefreshing = false;
+            }
+        }
     }
 
     private async Task LoadIconAsync(ServerBrowserItem item)

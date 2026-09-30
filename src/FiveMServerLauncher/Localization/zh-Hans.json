@@ -32,6 +32,7 @@
   "SearchByNamePlaceholder": "按名称搜索",
   "ConnectBrowserButton": "连接",
   "SavedBrowserButton": "已保存",
+  "BrowserLoading": "正在加载服务器...",
   "BrowserLoadFailed": "无法加载服务器。请检查网络连接后刷新。",
   "StatusReady": "就绪",
   "StatusResolving": "解析中...",
