@@ -1681,9 +1681,34 @@
                 Grid.RowSpan="2"
                 Background="#66000000"
                 Padding="40,60"
-                Visibility="{Binding IsServerDialogOpen,
-                                     Converter={StaticResource BoolToVisibility},
-                                     FallbackValue=Collapsed}">
+                Opacity="0">
+
+            <Border.Visibility>
+                <MultiBinding Converter="{StaticResource PanelVisibilityStateConverter}"
+                              Mode="OneWay">
+                    <Binding Path="IsServerDialogOpen"/>
+                    <Binding Path="Opacity"
+                             RelativeSource="{RelativeSource Self}"/>
+                </MultiBinding>
+            </Border.Visibility>
+
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsServerDialogOpen}" Value="True">
+                            <DataTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource PanelFadeIn}"/>
+                            </DataTrigger.EnterActions>
+                            <DataTrigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource PanelFadeOut}"/>
+                            </DataTrigger.ExitActions>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsServerDialogOpen}" Value="False">
+                            <Setter Property="IsHitTestVisible" Value="False"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
 
             <StackPanel Orientation="Horizontal"
                         VerticalAlignment="Center"
