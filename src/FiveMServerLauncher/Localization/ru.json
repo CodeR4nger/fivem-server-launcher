@@ -67,5 +67,6 @@
   "DialogLocalDevHeader": "ЛОКАЛЬНАЯ РАЗРАБОТКА",
   "LanguageHeader": "ЯЗЫК",
   "LanguageSystemDefault": "Как в системе",
-  "StatusStartupFailed": "Ошибка запуска"
+  "StatusStartupFailed": "Ошибка запуска",
+  "UpdateBannerText": "Новая версия: {0}"
 }

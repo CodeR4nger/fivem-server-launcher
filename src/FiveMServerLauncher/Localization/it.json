@@ -67,5 +67,6 @@
   "DialogLocalDevHeader": "DEV LOCALE",
   "LanguageHeader": "LINGUA",
   "LanguageSystemDefault": "Predefinito del sistema",
-  "StatusStartupFailed": "Errore all'avvio"
+  "StatusStartupFailed": "Errore all'avvio",
+  "UpdateBannerText": "Nuova versione: {0}"
 }

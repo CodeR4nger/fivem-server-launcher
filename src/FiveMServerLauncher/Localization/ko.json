@@ -67,5 +67,6 @@
   "DialogLocalDevHeader": "로컬 개발",
   "LanguageHeader": "언어",
   "LanguageSystemDefault": "시스템 기본값",
-  "StatusStartupFailed": "시작 오류"
+  "StatusStartupFailed": "시작 오류",
+  "UpdateBannerText": "새 버전: {0}"
 }

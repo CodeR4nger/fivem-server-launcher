@@ -67,5 +67,6 @@
   "DialogLocalDevHeader": "ローカル開発",
   "LanguageHeader": "言語",
   "LanguageSystemDefault": "システム既定",
-  "StatusStartupFailed": "起動エラー"
+  "StatusStartupFailed": "起動エラー",
+  "UpdateBannerText": "新しいバージョン: {0}"
 }

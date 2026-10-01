@@ -67,5 +67,6 @@
   "DialogLocalDevHeader": "DEV LOKALNY",
   "LanguageHeader": "JĘZYK",
   "LanguageSystemDefault": "Domyślny systemowy",
-  "StatusStartupFailed": "Błąd uruchamiania"
+  "StatusStartupFailed": "Błąd uruchamiania",
+  "UpdateBannerText": "Nowa wersja: {0}"
 }

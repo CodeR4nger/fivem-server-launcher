@@ -32,6 +32,12 @@ public class MainViewModel : INotifyPropertyChanged
     private LanguageSettingOption _selectedLanguageOption;
 
     private LauncherSettings _settings;
+    private readonly IReleaseFeed? _releaseFeed;
+    private readonly IUpdateApplier? _updateApplier;
+    private LauncherUpdate? _latestUpdate;
+    private bool _isUpdateAvailable;
+    private bool _isUpdateInProgress;
+    private bool _isUpdateFailed;
 
     private string _serverAddress = string.Empty;
     private string _statusText = string.Empty;
@@ -53,7 +59,9 @@ public class MainViewModel : INotifyPropertyChanged
         ServerBrowserViewModel browserViewModel,
         ILocalizer localizer,
         TimeSpan? refreshCooldown = null,
-        CancellationToken? cancellationToken = null)
+        CancellationToken? cancellationToken = null,
+        IReleaseFeed? releaseFeed = null,
+        IUpdateApplier? updateApplier = null)
     {
         _resolver = resolver;
         _launcher = launcher;
@@ -67,6 +75,8 @@ public class MainViewModel : INotifyPropertyChanged
         Browser = browserViewModel;
         _refreshCooldown = refreshCooldown ?? DefaultRefreshCooldown;
         _cancellationToken = cancellationToken ?? CancellationToken.None;
+        _releaseFeed = releaseFeed;
+        _updateApplier = updateApplier;
         _settings = settingsRepository.Load();
         LanguageOptions = BuildLanguageOptions();
         _selectedLanguageOption = LanguageOptions.FirstOrDefault(o => o.Tag == _settings.Language)
@@ -106,6 +116,8 @@ public class MainViewModel : INotifyPropertyChanged
         ToggleDevClientCommand = new RelayCommand(() =>
             DevClient = DevClient == GameClient.FiveM ? GameClient.RedM : GameClient.FiveM);
         DevLaunchCommand = new AsyncRelayCommand((object? secondClient) => DevLaunchAsync(secondClient is true), () => !IsBusy);
+        UpdateCommand = new AsyncRelayCommand(ApplyUpdateAsync, CanApplyUpdate);
+        DismissUpdateCommand = new RelayCommand(DismissUpdate, CanDismissUpdate);
 
         SavedServers = new ObservableCollection<SavedServerItem>(
             serverRepository.GetAll().Select(ToItem));
@@ -157,6 +169,10 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand ConnectBrowserServerCommand { get; }
 
     public ICommand SaveBrowserServerCommand { get; }
+
+    public ICommand UpdateCommand { get; }
+
+    public ICommand DismissUpdateCommand { get; }
 
     private bool _isServerBrowserOpen;
 
@@ -434,7 +450,6 @@ public class MainViewModel : INotifyPropertyChanged
     }
 
     public ICommand DevLaunchCommand { get; }
-
     public async Task DevLaunchAsync(bool secondClient)
     {
         IsBusy = true;
@@ -551,6 +566,7 @@ public class MainViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DialogGameClientOptions)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevGameBuildOptions)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DialogGameBuildOptions)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(UpdateBannerText)));
     }
 
     private IReadOnlyList<LanguageSettingOption> BuildLanguageOptions()
@@ -910,6 +926,106 @@ public class MainViewModel : INotifyPropertyChanged
         RedMStatus.Apply(statuses.GetValueOrDefault(GameClient.RedM, CfxStatus.Unknown));
     }
 
+    public bool IsUpdateAvailable
+    {
+        get => _isUpdateAvailable;
+        private set => SetProperty(ref _isUpdateAvailable, value);
+    }
+
+    public bool IsUpdateInProgress
+    {
+        get => _isUpdateInProgress;
+        private set => SetProperty(ref _isUpdateInProgress, value);
+    }
+
+    public bool IsUpdateFailed
+    {
+        get => _isUpdateFailed;
+        private set => SetProperty(ref _isUpdateFailed, value);
+    }
+
+    public string UpdateBannerText => _latestUpdate is null
+        ? string.Empty
+        : _localizer.Format("UpdateBannerText", _latestUpdate.Tag);
+
+    private async Task CheckForUpdateAsync()
+    {
+        // Both seams or none: the check only runs when the whole update feature is wired
+        // (nulls mean a test or embedding declined the feature).
+        if (_releaseFeed is null || _updateApplier is null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (await _releaseFeed.CheckForUpdateAsync() is { } update)
+            {
+                _latestUpdate = update;
+                IsUpdateAvailable = true;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(UpdateBannerText)));
+            }
+        }
+        catch (Exception)
+        {
+            // A failing update check never breaks startup and never shows a banner.
+        }
+    }
+
+    public async Task ApplyUpdateAsync()
+    {
+        if (_latestUpdate is not { } update
+            || _updateApplier is not { } applier
+            || !CanApplyUpdate())
+        {
+            return;
+        }
+
+        IsUpdateAvailable = false;
+        IsUpdateInProgress = true;
+
+        try
+        {
+            // true means the applier relaunched and already exited the app — no state
+            // change follows. false (or a throw) leaves a dismissable failed banner.
+            if (!await applier.ApplyAsync(update))
+            {
+                IsUpdateInProgress = false;
+                IsUpdateFailed = true;
+            }
+        }
+        catch (Exception)
+        {
+            IsUpdateInProgress = false;
+            IsUpdateFailed = true;
+        }
+    }
+
+    private bool CanApplyUpdate()
+    {
+        return IsUpdateAvailable && !IsUpdateInProgress;
+    }
+
+    private bool CanDismissUpdate()
+    {
+        // Dismiss is a promise that nothing re-shows the banner this session; it is only
+        // honest from the available/failed states. Mid-flight the handoff is underway and a
+        // later failure would break that promise, so dismissal is refused.
+        return !IsUpdateInProgress;
+    }
+
+    private void DismissUpdate()
+    {
+        if (!CanDismissUpdate())
+        {
+            return;
+        }
+
+        IsUpdateAvailable = false;
+        IsUpdateInProgress = false;
+        IsUpdateFailed = false;
+    }
+
     public async Task WaitForPendingCapturesAsync()
     {
         while (true)
@@ -1181,6 +1297,12 @@ public class MainViewModel : INotifyPropertyChanged
         {
             StatusText = _localizer.Get("StatusStartupFailed");
         }
+
+        // The update check runs last and outside the startup guard: an offline or slow
+        // GitHub answer must never delay the auto-launch connect, and the check is fully
+        // self-swallowing — it also runs when startup itself failed, so the banner can
+        // still offer the update that fixes the broken version.
+        await CheckForUpdateAsync();
     }
 
     public async Task OpenClientAsync()

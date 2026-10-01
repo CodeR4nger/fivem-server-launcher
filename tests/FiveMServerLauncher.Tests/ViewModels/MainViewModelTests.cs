@@ -3452,6 +3452,287 @@ public class MainViewModelTests
         Assert.Equal(new[] { "cfx.re/join/aaaaaa", "cfx.re/join/cccccc" }, repository.GetAll().Select(s => s.Address));
     }
 
+    [Fact]
+    public async Task InitializeAsync_WhenNewerReleasePublished_ShouldShowUpdateBanner()
+    {
+        // Given
+        var update = new LauncherUpdate(
+            "v1.4.0", "CFXLauncher.exe", 62_000_000, "https://example.invalid/CFXLauncher.exe");
+        var feed = new FakeReleaseFeed { Update = update };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            releaseFeed: feed,
+            updateApplier: new FakeUpdateApplier());
+
+        // When
+        await vm.InitializeAsync();
+
+        // Then: the banner announces the new version and nothing else changed
+        Assert.True(vm.IsUpdateAvailable);
+        Assert.False(vm.IsUpdateInProgress);
+        Assert.False(vm.IsUpdateFailed);
+        Assert.Contains("v1.4.0", vm.UpdateBannerText);
+        Assert.Equal(1, feed.CheckCalls);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_WhenFeedHasNoUpdate_ShouldNotShowBanner()
+    {
+        // Given
+        var feed = new FakeReleaseFeed { Update = null };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            releaseFeed: feed,
+            updateApplier: new FakeUpdateApplier());
+
+        // When
+        await vm.InitializeAsync();
+
+        // Then: no banner, no error — the check ran once and answered nothing
+        Assert.False(vm.IsUpdateAvailable);
+        Assert.Equal(string.Empty, vm.UpdateBannerText);
+        Assert.Equal(1, feed.CheckCalls);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_WhenFeedThrows_ShouldNotBreakStartupNorShowBanner()
+    {
+        // Given: a crashing feed (offline, GitHub down, corruption)
+        var feed = new FakeReleaseFeed { ThrowOnCheckCount = 1 };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            releaseFeed: feed,
+            updateApplier: new FakeUpdateApplier());
+
+        // When
+        await vm.InitializeAsync();
+
+        // Then: startup survived with no banner and no error surface
+        Assert.False(vm.IsUpdateAvailable);
+        Assert.False(vm.IsUpdateFailed);
+        Assert.Equal("Ready", vm.StatusText);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_WhenUpdateFeatureNotWired_ShouldBehaveAsBefore()
+    {
+        // Given: no feed/applier injected (the pre-feature construction)
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+
+        // When
+        await vm.InitializeAsync();
+
+        // Then: the launcher behaves exactly as it did before the feature
+        Assert.False(vm.IsUpdateAvailable);
+        Assert.False(vm.IsUpdateInProgress);
+        Assert.False(vm.IsUpdateFailed);
+    }
+
+    [Fact]
+    public async Task DismissUpdateCommand_WhileInProgress_ShouldBeRefused()
+    {
+        // Given: an update is mid-flight (the applier is waiting on a gate)
+        var feed = new FakeReleaseFeed { Update = NewerUpdate() };
+        var applier = new FakeUpdateApplier { PendingApply = new TaskCompletionSource<bool>() };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            releaseFeed: feed,
+            updateApplier: applier);
+        await vm.InitializeAsync();
+
+        var applyTask = vm.ApplyUpdateAsync();
+        Assert.True(vm.IsUpdateInProgress);
+
+        // When: the user tries to dismiss mid-flight
+        vm.DismissUpdateCommand.Execute(null);
+
+        // Then: refused — the handoff is underway and a later failure must not re-show a
+        // banner the user believes dismissed
+        Assert.True(vm.IsUpdateInProgress);
+        Assert.True(vm.IsUpdateFailed is false);
+
+        applier.PendingApply.SetResult(true);
+        await applyTask;
+    }
+
+    private static LauncherUpdate NewerUpdate() =>
+        new("v1.4.0", "CFXLauncher.exe", 62_000_000, "https://example.invalid/CFXLauncher.exe");
+
+    [Fact]
+    public async Task ApplyUpdateAsync_WhenUpdateAvailable_ShouldHandOffToApplier()
+    {
+        // Given
+        var update = NewerUpdate();
+        var feed = new FakeReleaseFeed { Update = update };
+        var applier = new FakeUpdateApplier { ApplyResult = true };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            releaseFeed: feed,
+            updateApplier: applier);
+        await vm.InitializeAsync();
+
+        // When
+        await vm.ApplyUpdateAsync();
+
+        // Then: the applier received exactly the announced update and the banner is
+        // in-progress — the app is exiting into the new exe, no further user step
+        Assert.Same(update, applier.Received);
+        Assert.Equal(1, applier.ApplyCalls);
+        Assert.True(vm.IsUpdateInProgress);
+        Assert.False(vm.IsUpdateAvailable);
+        Assert.False(vm.IsUpdateFailed);
+    }
+
+    [Fact]
+    public async Task ApplyUpdateAsync_WhenApplierReportsFailure_ShouldShowFailedBanner()
+    {
+        // Given
+        var feed = new FakeReleaseFeed { Update = NewerUpdate() };
+        var applier = new FakeUpdateApplier { ApplyResult = false };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            releaseFeed: feed,
+            updateApplier: applier);
+        await vm.InitializeAsync();
+
+        // When
+        await vm.ApplyUpdateAsync();
+
+        // Then: the banner shows failed and stays dismissable (no in-progress state)
+        Assert.True(vm.IsUpdateFailed);
+        Assert.False(vm.IsUpdateInProgress);
+        Assert.False(vm.IsUpdateAvailable);
+    }
+
+    [Fact]
+    public async Task ApplyUpdateAsync_WhenApplierThrows_ShouldShowFailedBanner()
+    {
+        // Given
+        var feed = new FakeReleaseFeed { Update = NewerUpdate() };
+        var applier = new FakeUpdateApplier { ThrowOnApplyCount = 1 };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            releaseFeed: feed,
+            updateApplier: applier);
+        await vm.InitializeAsync();
+
+        // When
+        await vm.ApplyUpdateAsync();
+
+        // Then: the throw is contained into the failed state — the launcher keeps running
+        Assert.True(vm.IsUpdateFailed);
+        Assert.False(vm.IsUpdateInProgress);
+        Assert.False(vm.IsUpdateAvailable);
+    }
+
+    [Fact]
+    public async Task ApplyUpdateAsync_WhileInProgress_ShouldNotReapply()
+    {
+        // Given: an update is mid-flight (the applier is waiting on a gate)
+        var feed = new FakeReleaseFeed { Update = NewerUpdate() };
+        var applier = new FakeUpdateApplier { PendingApply = new TaskCompletionSource<bool>() };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            releaseFeed: feed,
+            updateApplier: applier);
+        await vm.InitializeAsync();
+
+        var applyTask = vm.ApplyUpdateAsync();
+
+        // When: re-triggering mid-flight is impossible — the command is gated and a direct
+        // call is a no-op while the banner is in progress
+        Assert.False(vm.UpdateCommand.CanExecute(null));
+        await vm.ApplyUpdateAsync();
+
+        // Then: only one apply ever ran
+        Assert.Equal(1, applier.ApplyCalls);
+        Assert.True(vm.IsUpdateInProgress);
+
+        applier.PendingApply.SetResult(true);
+        await applyTask;
+    }
+
+    [Fact]
+    public async Task DismissUpdateCommand_WhenAvailable_ShouldHideBannerForTheSession()
+    {
+        // Given: the startup check showed the banner
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            releaseFeed: new FakeReleaseFeed { Update = NewerUpdate() },
+            updateApplier: new FakeUpdateApplier());
+        await vm.InitializeAsync();
+        Assert.True(vm.IsUpdateAvailable);
+
+        // When: the user dismisses it
+        vm.DismissUpdateCommand.Execute(null);
+
+        // Then: dismissed for the session — nothing re-shows it (the check runs once)
+        Assert.False(vm.IsUpdateAvailable);
+        Assert.False(vm.IsUpdateInProgress);
+        Assert.False(vm.IsUpdateFailed);
+        Assert.False(vm.UpdateCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task DismissUpdateCommand_WhenFailed_ShouldHideBanner()
+    {
+        // Given: a failed update leaves the banner in the failed state
+        var feed = new FakeReleaseFeed { Update = NewerUpdate() };
+        var applier = new FakeUpdateApplier { ApplyResult = false };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            releaseFeed: feed,
+            updateApplier: applier);
+        await vm.InitializeAsync();
+        await vm.ApplyUpdateAsync();
+        Assert.True(vm.IsUpdateFailed);
+
+        // When
+        vm.DismissUpdateCommand.Execute(null);
+
+        // Then
+        Assert.False(vm.IsUpdateFailed);
+        Assert.False(vm.IsUpdateAvailable);
+        Assert.False(vm.IsUpdateInProgress);
+    }
+
+    [Fact]
+    public async Task UpdateBannerText_WhenLanguageChanges_ShouldReEmitInNewLanguage()
+    {
+        // Given
+        var localizer = TestLocalizer.For(
+            systemCulture: "en-US",
+            ("en", """{"UpdateBannerText": "New version: {0}"}"""),
+            ("es", """{"UpdateBannerText": "Nueva versión: {0}"}"""));
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            releaseFeed: new FakeReleaseFeed { Update = NewerUpdate() },
+            updateApplier: new FakeUpdateApplier(),
+            localizer: localizer);
+        await vm.InitializeAsync();
+        Assert.Equal("New version: v1.4.0", vm.UpdateBannerText);
+        var raised = new List<string?>();
+        vm.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+        // When
+        localizer.SetLanguage("es");
+
+        // Then: the banner re-emits in the new language
+        Assert.Contains(nameof(MainViewModel.UpdateBannerText), raised);
+        Assert.Equal("Nueva versión: v1.4.0", vm.UpdateBannerText);
+    }
+
     private static MainViewModel CreateViewModel(
         IGameProcessLauncher processLauncher,
         string cfxJson,
@@ -3466,7 +3747,9 @@ public class MainViewModelTests
         TimeSpan? refreshCooldown = null,
         ServerBrowserViewModel? browser = null,
         HttpClient? cfxHttpClient = null,
-        ILocalizer? localizer = null)
+        ILocalizer? localizer = null,
+        IReleaseFeed? releaseFeed = null,
+        IUpdateApplier? updateApplier = null)
     {
         var resolver = new ServerResolver(
             new CfxService(
@@ -3502,6 +3785,8 @@ public class MainViewModelTests
                 repository ?? new InMemoryServerRepository(),
                 localizer ?? TestLocalizer.English()),
             localizer ?? TestLocalizer.English(),
-            refreshCooldown: refreshCooldown);
+            refreshCooldown: refreshCooldown,
+            releaseFeed: releaseFeed,
+            updateApplier: updateApplier);
     }
 }

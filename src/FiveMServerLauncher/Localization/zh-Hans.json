@@ -67,5 +67,6 @@
   "DialogLocalDevHeader": "本地开发",
   "LanguageHeader": "语言",
   "LanguageSystemDefault": "跟随系统",
-  "StatusStartupFailed": "启动错误"
+  "StatusStartupFailed": "启动错误",
+  "UpdateBannerText": "新版本：{0}"
 }
