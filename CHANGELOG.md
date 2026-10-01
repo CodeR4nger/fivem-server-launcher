@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.2.0] (unreleased)
+## [1.2.0] (2026-09-30)
 
 ### Added
 - **Launcher self-update** — on startup the launcher checks GitHub for a newer release and shows a small dismissible banner at the bottom of the window. One click downloads the new version and restarts the launcher into it — fully portable, no elevation, no manual file juggling; the replaced exe is kept as a backup and cleaned up by the next update. Updates are never forced and never downgrade: only properly tagged published releases apply, and a failed or interrupted update leaves the running launcher exactly as it was.

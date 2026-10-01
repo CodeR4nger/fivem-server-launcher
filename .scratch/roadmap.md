@@ -326,8 +326,8 @@ mid-flight dismiss must be refused, the download must stream and carry a dedicat
 E2E verified against the real hand-published v1.3.0 release: silent pre-publish startup,
 banner on an old build, one-click swap with automatic relaunch, portable data intact,
 single-instance handoff survived (that v1.3.0 tag was the E2E test release; versioning was
-renumbered to 1.2.0 for the real release — the test release and its tag must be deleted
-before 1.2.0 ships). CI release workflow declined at ticketing time — releases
+renumbered to 1.2.0 for the real release, and the test release and its tag were deleted
+before 1.2.0 shipped — verified live: releases/latest answers v1.2.0). CI release workflow declined at ticketing time — releases
 publish by hand with the documented build+publish commands; commits 59a6fa3..7a3770d plus the
 close-out).
 
