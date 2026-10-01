@@ -319,6 +319,14 @@ decision; builds on the traced CFX sources: premake numbers + the frontend bundl
 
 ## 17. GitHub release auto-update (notify + one-click)
 
-**Status:** 🔲 open.
+**Status:** ✅ done (tickets `.scratch/github-auto-update/issues/` 01–05 resolved; suite 819
+green; two-axis code reviews clean across all five tickets — the caught items: GitHub's
+snake_case needs explicit JsonPropertyName, the banner must be declared before the overlays,
+mid-flight dismiss must be refused, the download must stream and carry a dedicated timeout).
+E2E verified against the real hand-published v1.3.0 release: silent pre-publish startup,
+banner on an old build, one-click swap with automatic relaunch, portable data intact,
+single-instance handoff survived. CI release workflow declined at ticketing time — releases
+publish by hand with the documented build+publish commands; commits 59a6fa3..7a3770d plus the
+close-out).
 
 **Spec:** `.scratch/github-auto-update/spec.md`

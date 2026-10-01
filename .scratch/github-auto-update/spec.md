@@ -1,6 +1,6 @@
 # Feature: GitHub release auto-update (notify + one-click)
 
-Status: ready-for-agent
+Status: done
 
 ## Problem Statement
 
