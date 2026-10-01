@@ -68,5 +68,8 @@
   "LanguageHeader": "SPRACHE",
   "LanguageSystemDefault": "Systemstandard",
   "StatusStartupFailed": "Startfehler",
-  "UpdateBannerText": "Neue Version: {0}"
+  "UpdateBannerText": "Neue Version: {0}",
+  "UpdateButton": "AKTUALISIEREN",
+  "UpdateInProgressText": "Update wird installiert...",
+  "UpdateFailedText": "Update fehlgeschlagen"
 }

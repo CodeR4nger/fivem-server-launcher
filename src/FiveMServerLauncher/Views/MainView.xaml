@@ -18,6 +18,7 @@
         <views:SelectionEqualityToVisibilityConverter x:Key="SelectionEqualityToVisibility"/>
         <views:DropdownOpenStateConverter x:Key="DropdownOpenStateConverter"/>
         <views:PanelVisibilityStateConverter x:Key="PanelVisibilityStateConverter"/>
+        <views:AnyTrueToVisibilityConverter x:Key="AnyTrueToVisibility"/>
 
         <!-- COLORES -->
 
@@ -785,6 +786,14 @@
     <!-- ROOT -->
 
     <Grid Background="{StaticResource BackgroundBrush}">
+
+        <Grid.RowDefinitions>
+
+            <RowDefinition Height="*"/>
+
+            <RowDefinition Height="Auto"/>
+
+        </Grid.RowDefinitions>
 
         <Grid.ColumnDefinitions>
 
@@ -1573,10 +1582,103 @@
 
         </Border>
 
+        <!-- UPDATE BANNER (a bottom strip; mounts only while one of the mutually
+             exclusive banner states is set and takes no space otherwise; declared
+             BEFORE the dialog and browser overlays so those later siblings paint
+             above it — and span both rows — keeping it covered while they are
+             open) -->
+
+        <Border Grid.Row="1"
+                Grid.Column="0"
+                Grid.ColumnSpan="3"
+                Background="{StaticResource PanelLightBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1,1,1,0"
+                Padding="16,8">
+
+            <Border.Visibility>
+                <MultiBinding Converter="{StaticResource AnyTrueToVisibility}"
+                              Mode="OneWay">
+                    <Binding Path="IsUpdateAvailable"/>
+                    <Binding Path="IsUpdateInProgress"/>
+                    <Binding Path="IsUpdateFailed"/>
+                </MultiBinding>
+            </Border.Visibility>
+
+            <DockPanel LastChildFill="True">
+
+                <!-- Dismiss: available or failed only — the VM refuses it mid-flight -->
+
+                <Button DockPanel.Dock="Right"
+                        Content="✕"
+                        FontSize="14"
+                        MinHeight="34"
+                        MinWidth="40"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Command="{Binding DismissUpdateCommand}">
+                    <Button.Visibility>
+                        <MultiBinding Converter="{StaticResource AnyTrueToVisibility}"
+                                      Mode="OneWay">
+                            <Binding Path="IsUpdateAvailable"/>
+                            <Binding Path="IsUpdateFailed"/>
+                        </MultiBinding>
+                    </Button.Visibility>
+                </Button>
+
+                <!-- UPDATE: the primary call to action, accent by convention -->
+
+                <Button DockPanel.Dock="Right"
+                        Content="{loc:Loc UpdateButton}"
+                        MinHeight="34"
+                        Padding="14,0"
+                        Margin="0,0,8,0"
+                        Style="{StaticResource MainButtonStyle}"
+                        Command="{Binding UpdateCommand}"
+                        Visibility="{Binding IsUpdateAvailable,
+                                             Converter={StaticResource BoolToVisibility},
+                                             FallbackValue=Collapsed}"/>
+
+                <!-- Message: one of three mutually exclusive texts -->
+
+                <Grid VerticalAlignment="Center">
+
+                    <TextBlock Text="{Binding UpdateBannerText}"
+                               Foreground="{StaticResource TextBrush}"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"
+                               Visibility="{Binding IsUpdateAvailable,
+                                                    Converter={StaticResource BoolToVisibility},
+                                                    FallbackValue=Collapsed}"/>
+
+                    <TextBlock Text="{loc:Loc UpdateInProgressText}"
+                               Foreground="{StaticResource SecondaryTextBrush}"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               Visibility="{Binding IsUpdateInProgress,
+                                                    Converter={StaticResource BoolToVisibility},
+                                                    FallbackValue=Collapsed}"/>
+
+                    <TextBlock Text="{loc:Loc UpdateFailedText}"
+                               Foreground="{StaticResource RedBrush}"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"
+                               Visibility="{Binding IsUpdateFailed,
+                                                    Converter={StaticResource BoolToVisibility},
+                                                    FallbackValue=Collapsed}"/>
+
+                </Grid>
+
+            </DockPanel>
+
+        </Border>
+
         <!-- ADD/EDIT SERVER DIALOG (overlay) -->
 
         <Border Grid.Column="0"
                 Grid.ColumnSpan="3"
+                Grid.RowSpan="2"
                 Background="#66000000"
                 Padding="40,60"
                 Visibility="{Binding IsServerDialogOpen,
@@ -1818,6 +1920,7 @@
         <Border x:Name="BrowserOverlay"
                 Grid.Column="0"
                 Grid.ColumnSpan="3"
+                Grid.RowSpan="2"
                 Background="{StaticResource BackgroundBrush}"
                 Visibility="Collapsed">
 

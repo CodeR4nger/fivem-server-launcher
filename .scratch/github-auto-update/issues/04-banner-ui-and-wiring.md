@@ -11,7 +11,7 @@ completeness.
 
 **Blocked by:** 03 (the VM state the banner binds to).
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] The banner renders only in available / in-progress / failed states and is hidden
       otherwise; it is never modal and never blocks the saved-servers list or the connect flow

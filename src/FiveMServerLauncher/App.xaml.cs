@@ -64,6 +64,22 @@ public partial class App : Application
 
         var gameBuildData = new GameBuildDataService(httpClient);
 
+        var releaseFeed = new GitHubReleaseFeed(httpClient);
+
+        // The asset download streams tens of megabytes: the shared 15 s client would abort
+        // it mid-flight, so the applier gets its own generously timed client. It reuses
+        // the single-instance guard (released before the relaunch) and exits through
+        // Shutdown once the handoff completes.
+        var updateApplier = new UpdateApplier(
+            new HttpClient
+            {
+                Timeout = TimeSpan.FromMinutes(10)
+            },
+            () => Environment.ProcessPath,
+            new ProcessStarter(),
+            singleInstance,
+            Shutdown);
+
         var localizer = Localizer.FromEmbeddedResources();
         LocalizationSource.Instance.Attach(localizer);
 
@@ -85,7 +101,9 @@ public partial class App : Application
             cfxStatus,
             new ServerBrowserViewModel(catalog, enrichment, serverRepository, localizer: localizer, cancellationToken: refreshCts.Token),
             localizer,
-            cancellationToken: refreshCts.Token);
+            cancellationToken: refreshCts.Token,
+            releaseFeed: releaseFeed,
+            updateApplier: updateApplier);
         window.DataContext = viewModel;
         window.Show();
         window.Dispatcher.InvokeAsync(viewModel.InitializeAsync);

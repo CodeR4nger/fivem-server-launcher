@@ -68,5 +68,8 @@
   "LanguageHeader": "语言",
   "LanguageSystemDefault": "跟随系统",
   "StatusStartupFailed": "启动错误",
-  "UpdateBannerText": "新版本：{0}"
+  "UpdateBannerText": "新版本：{0}",
+  "UpdateButton": "更新",
+  "UpdateInProgressText": "正在更新...",
+  "UpdateFailedText": "更新失败"
 }

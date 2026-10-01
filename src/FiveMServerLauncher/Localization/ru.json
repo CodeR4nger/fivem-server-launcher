@@ -68,5 +68,8 @@
   "LanguageHeader": "ЯЗЫК",
   "LanguageSystemDefault": "Как в системе",
   "StatusStartupFailed": "Ошибка запуска",
-  "UpdateBannerText": "Новая версия: {0}"
+  "UpdateBannerText": "Новая версия: {0}",
+  "UpdateButton": "ОБНОВИТЬ",
+  "UpdateInProgressText": "Обновление...",
+  "UpdateFailedText": "Не удалось обновить"
 }

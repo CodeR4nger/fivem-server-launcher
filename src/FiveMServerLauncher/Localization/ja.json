@@ -68,5 +68,8 @@
   "LanguageHeader": "言語",
   "LanguageSystemDefault": "システム既定",
   "StatusStartupFailed": "起動エラー",
-  "UpdateBannerText": "新しいバージョン: {0}"
+  "UpdateBannerText": "新しいバージョン: {0}",
+  "UpdateButton": "アップデート",
+  "UpdateInProgressText": "アップデート中...",
+  "UpdateFailedText": "アップデートに失敗しました"
 }

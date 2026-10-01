@@ -68,5 +68,8 @@
   "LanguageHeader": "IDIOMA",
   "LanguageSystemDefault": "Padrão do sistema",
   "StatusStartupFailed": "Erro ao iniciar",
-  "UpdateBannerText": "Nova versão: {0}"
+  "UpdateBannerText": "Nova versão: {0}",
+  "UpdateButton": "ATUALIZAR",
+  "UpdateInProgressText": "Atualizando...",
+  "UpdateFailedText": "Falha na atualização"
 }
