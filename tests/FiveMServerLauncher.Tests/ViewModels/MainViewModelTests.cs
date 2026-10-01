@@ -2871,9 +2871,10 @@ public class MainViewModelTests
     }
 
     [Fact]
-    public async Task SaveBrowserServerCommand_WhenNotSaved_ShouldSaveDirectlyAndMarkRow()
+    public async Task SaveBrowserServerCommand_WhenNotSaved_ShouldSaveCfxIdAsConnectAddress()
     {
-        // Given
+        // Given — a browser row whose connect endpoint is an ip:port but whose canonical
+        // identity is the cfx id
         var repository = new InMemoryServerRepository();
         var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
         await vm.InitializeAsync();
@@ -2891,12 +2892,12 @@ public class MainViewModelTests
         vm.SaveBrowserServerCommand.Execute(item);
         await vm.WaitForPendingCapturesAsync();
 
-        // Then — saved straight to the list, no dialog involved
+        // Then — the cfx id is the connect address (join form), not the raw endpoint
         Assert.False(vm.IsServerDialogOpen);
         Assert.Single(vm.SavedServers);
         Assert.Equal("Discovered", vm.SavedServers[0].Name);
-        Assert.Equal("149.56.120.52:30120", vm.SavedServers[0].Address);
-        Assert.Equal("y4lg95", repository.FindByAddress("149.56.120.52:30120")?.CfxId);
+        Assert.Equal("cfx.re/join/y4lg95", vm.SavedServers[0].Address);
+        Assert.Equal("y4lg95", repository.FindByAddress("cfx.re/join/y4lg95")?.CfxId);
         Assert.True(item.IsSaved);
     }
 
@@ -2925,6 +2926,34 @@ public class MainViewModelTests
         // Then
         Assert.Single(vm.SavedServers);
         Assert.False(vm.IsServerDialogOpen);
+    }
+
+    [Fact]
+    public async Task SaveBrowserServerCommand_WhenServerAlreadyInStoreByCfxId_ShouldMarkRowWithoutDuplicating()
+    {
+        // Given — the same server was already saved by its ip:port endpoint, with the cfx id
+        // captured in the background; the browser row's saved marker is stale (a snapshot
+        // taken before the save)
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("Mine", "149.56.120.52:30120", cfxId: "y4lg95"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
+        await vm.InitializeAsync();
+        var item = ServerBrowserItem.FromServer(new Master.Server
+        {
+            EndPoint = "y4lg95",
+            Data = new Master.ServerData
+            {
+                Vars = { ["sv_projectName"] = "Discovered" },
+                ConnectEndPoints = { "149.56.120.52:30120" }
+            }
+        });
+
+        // When
+        vm.SaveBrowserServerCommand.Execute(item);
+
+        // Then — recognized as the same server through its cfx id: no duplicate row
+        Assert.Single(vm.SavedServers);
+        Assert.True(item.IsSaved);
     }
 
     [Fact]

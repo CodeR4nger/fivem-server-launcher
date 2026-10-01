@@ -664,14 +664,18 @@ public class MainViewModel : INotifyPropertyChanged
         SavedServer savedServer;
         try
         {
-            savedServer = SavedServer.Create(item.Name, item.Address, cfxId: item.CfxId);
+            // The cfx id is the durable connect address: a saved browser server keeps working
+            // when the server moves host, unlike its raw connect endpoint.
+            savedServer = SavedServer.Create(
+                item.Name, Domain.ServerAddress.FromCfxId(item.CfxId), cfxId: item.CfxId);
         }
         catch (ArgumentException)
         {
             return;
         }
 
-        if (_serverRepository.FindByAddress(savedServer.Address) is not null)
+        if (_serverRepository.FindByAddress(savedServer.Address) is not null
+            || _serverRepository.FindByCfxId(item.CfxId) is not null)
         {
             item.SetSaved(true);
             return;
