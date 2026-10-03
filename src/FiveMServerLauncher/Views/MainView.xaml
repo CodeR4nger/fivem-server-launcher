@@ -1349,6 +1349,7 @@
                                  Padding="0,4,0,4"
                                  Height="163"
                                  PreviewMouseLeftButtonDown="SavedServersList_PreviewMouseLeftButtonDown"
+                                 PreviewMouseRightButtonDown="SavedServersList_PreviewMouseRightButtonDown"
                                  MouseMove="SavedServersList_MouseMove"
                                  PreviewMouseLeftButtonUp="SavedServersList_PreviewMouseLeftButtonUp"
                                  ScrollViewer.ScrollChanged="SavedServersList_ScrollChanged"
@@ -1375,7 +1376,81 @@
 
                                 <DataTemplate>
 
-                                    <Grid Margin="6">
+                                    <Grid Margin="6"
+                                          Background="Transparent"
+                                          Tag="{Binding DataContext,
+                                                        RelativeSource={RelativeSource AncestorType=UserControl}}">
+
+                                        <Grid.ContextMenu>
+
+                                            <ContextMenu Loaded="RowMenu_Loaded">
+
+                                                <ContextMenu.Resources>
+
+                                                    <Style TargetType="ContextMenu">
+                                                        <Setter Property="OverridesDefaultStyle" Value="True"/>
+                                                        <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+                                                        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+                                                        <Setter Property="SnapsToDevicePixels" Value="True"/>
+                                                        <Setter Property="Template">
+                                                            <Setter.Value>
+                                                                <ControlTemplate TargetType="ContextMenu">
+                                                                    <Border Background="{TemplateBinding Background}"
+                                                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                                                            BorderThickness="1"
+                                                                            Padding="4">
+                                                                        <ItemsPresenter/>
+                                                                    </Border>
+                                                                </ControlTemplate>
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                    </Style>
+
+                                                    <Style TargetType="MenuItem">
+                                                        <Setter Property="OverridesDefaultStyle" Value="True"/>
+                                                        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                                                        <Setter Property="FontSize" Value="12"/>
+                                                        <Setter Property="Template">
+                                                            <Setter.Value>
+                                                                <ControlTemplate TargetType="MenuItem">
+                                                                    <Border x:Name="ItemBorder"
+                                                                            Background="Transparent"
+                                                                            Padding="24,7">
+                                                                        <ContentPresenter ContentSource="Header"
+                                                                                          RecognizesAccessKey="True"
+                                                                                          VerticalAlignment="Center"/>
+                                                                    </Border>
+                                                                    <ControlTemplate.Triggers>
+                                                                        <Trigger Property="IsHighlighted" Value="True">
+                                                                            <Setter TargetName="ItemBorder" Property="Background"
+                                                                                    Value="{StaticResource PanelLightBrush}"/>
+                                                                        </Trigger>
+                                                                        <Trigger Property="IsEnabled" Value="False">
+                                                                            <Setter TargetName="ItemBorder" Property="Opacity" Value="0.35"/>
+                                                                        </Trigger>
+                                                                    </ControlTemplate.Triggers>
+                                                                </ControlTemplate>
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                    </Style>
+
+                                                </ContextMenu.Resources>
+
+                                                <MenuItem Header="{loc:Loc MenuEditServer}"
+                                                          Command="{Binding PlacementTarget.Tag.OpenEditServerDialogCommand,
+                                                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          CommandParameter="{Binding PlacementTarget.DataContext,
+                                                                                     RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+
+                                                <MenuItem Header="{loc:Loc MenuDeleteServer}"
+                                                          Command="{Binding PlacementTarget.Tag.DeleteServerCommand,
+                                                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          CommandParameter="{Binding PlacementTarget.DataContext,
+                                                                                     RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+
+                                            </ContextMenu>
+
+                                        </Grid.ContextMenu>
 
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="30"/>
@@ -1422,9 +1497,9 @@
                                                    Margin="8,0"/>
 
                                         <Button Grid.Column="4"
-                                                Command="{Binding DataContext.OpenEditServerDialogCommand,
-                                                                  RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}"
+                                                Click="RowMenuButton_Click"
+                                                Tag="{Binding DataContext,
+                                                              RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 Padding="6,2"
                                                 VerticalAlignment="Center"
                                                 Style="{StaticResource IconButtonStyle}">
@@ -1443,7 +1518,7 @@
 
                                             </Button.Visibility>
 
-                                            <TextBlock Text="✏"/>
+                                            <TextBlock Text="⋮"/>
 
                                         </Button>
 
@@ -1519,26 +1594,19 @@
 
                     <DockPanel Margin="20,8,0,0">
 
-                        <Button Content="{loc:Loc DeleteButton}"
+                        <Button Content="{loc:Loc NewServerButton}"
                                 MinHeight="26"
                                 Padding="12,4"
-                                Style="{StaticResource SecondaryButtonStyle}"
-                                Command="{Binding DeleteServerCommand}"/>
+                                DockPanel.Dock="Right"
+                                Style="{StaticResource MainButtonStyle}"
+                                Command="{Binding OpenAddServerDialogCommand}"/>
 
                         <Button Content="{loc:Loc BrowseButton}"
                                 MinHeight="26"
                                 Padding="12,4"
-                                HorizontalAlignment="Right"
+                                Margin="0,0,8,0"
                                 Style="{StaticResource SecondaryButtonStyle}"
-                                Margin="8,0,0,0"
                                 Command="{Binding OpenServerBrowserCommand}"/>
-
-                        <Button Content="{loc:Loc NewServerButton}"
-                                MinHeight="26"
-                                Padding="12,4"
-                                HorizontalAlignment="Right"
-                                Style="{StaticResource MainButtonStyle}"
-                                Command="{Binding OpenAddServerDialogCommand}"/>
 
                     </DockPanel>
 
@@ -2189,6 +2257,80 @@
                 </Border>
 
             </Grid>
+
+        </Border>
+
+        <!-- CONFIRM DIALOG (overlay) -->
+
+        <Border Grid.Column="0"
+                Grid.ColumnSpan="3"
+                Grid.RowSpan="2"
+                Background="#66000000"
+                Padding="40,60"
+                Opacity="0">
+
+            <Border.Visibility>
+                <MultiBinding Converter="{StaticResource PanelVisibilityStateConverter}"
+                              Mode="OneWay">
+                    <Binding Path="IsConfirmOpen"/>
+                    <Binding Path="Opacity"
+                             RelativeSource="{RelativeSource Self}"/>
+                </MultiBinding>
+            </Border.Visibility>
+
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsConfirmOpen}" Value="True">
+                            <DataTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource PanelFadeIn}"/>
+                            </DataTrigger.EnterActions>
+                            <DataTrigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource PanelFadeOut}"/>
+                            </DataTrigger.ExitActions>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsConfirmOpen}" Value="False">
+                            <Setter Property="IsHitTestVisible" Value="False"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+
+            <Border Background="{StaticResource PanelBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    Padding="20"
+                    MinWidth="320"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center">
+
+                <StackPanel>
+
+                    <TextBlock Text="{Binding ConfirmText}"
+                               Foreground="{StaticResource TextBrush}"
+                               FontSize="13"
+                               TextWrapping="Wrap"/>
+
+                    <DockPanel Margin="0,14,0,0">
+
+                        <Button Content="{loc:Loc CancelButton}"
+                                MinHeight="32"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                HorizontalAlignment="Left"
+                                Command="{Binding CancelConfirmCommand}"/>
+
+                        <Button Content="{loc:Loc ConfirmButton}"
+                                MinHeight="32"
+                                Style="{StaticResource MainButtonStyle}"
+                                HorizontalAlignment="Right"
+                                MinWidth="90"
+                                Command="{Binding ConfirmCommand}"/>
+
+                    </DockPanel>
+
+                </StackPanel>
+
+            </Border>
 
         </Border>
 

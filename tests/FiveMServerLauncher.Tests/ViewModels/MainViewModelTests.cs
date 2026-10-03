@@ -1071,9 +1071,127 @@ public class MainViewModelTests
     }
 
     [Fact]
-    public void DeleteSelectedSavedServer_ShouldRemoveFromCollectionAndRepository()
+    public void RequestConfirmation_WithTextAndAction_ShouldOpenConfirmOverlay()
+    {
+        // Given — a reusable overlay: parameterized text, captured confirm action.
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+
+        // When
+        vm.RequestConfirmation("Delete server \"My Server\"?", () => { });
+
+        // Then
+        Assert.True(vm.IsConfirmOpen);
+        Assert.Equal("Delete server \"My Server\"?", vm.ConfirmText);
+    }
+
+    [Fact]
+    public void ConfirmCommand_WhenConfirmed_ShouldRunCapturedActionAndClose()
     {
         // Given
+        var confirmed = false;
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+        vm.RequestConfirmation("Overwrite?", () => confirmed = true);
+
+        // When
+        vm.ConfirmCommand.Execute(null);
+
+        // Then
+        Assert.True(confirmed);
+        Assert.False(vm.IsConfirmOpen);
+    }
+
+    [Fact]
+    public void CancelConfirmCommand_WhenCancelled_ShouldCloseWithoutRunningAction()
+    {
+        // Given
+        var confirmed = false;
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+        vm.RequestConfirmation("Overwrite?", () => confirmed = true);
+
+        // When
+        vm.CancelConfirmCommand.Execute(null);
+
+        // Then
+        Assert.False(confirmed);
+        Assert.False(vm.IsConfirmOpen);
+    }
+
+    [Fact]
+    public void DeleteServerCommand_WithoutSelectionOrParameter_ShouldDoNothing()
+    {
+        // Given — no row handed over, nothing selected: the command is a no-op.
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/abc123"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository: repository);
+
+        // When
+        vm.DeleteServerCommand.Execute(null);
+
+        // Then
+        Assert.False(vm.IsConfirmOpen);
+        Assert.Single(vm.SavedServers);
+    }
+
+    [Fact]
+    public void ConfirmCommand_WhenNoConfirmationPending_ShouldBeASafeNoOp()
+    {
+        // Given — a stray confirm without a captured action must not throw.
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+        vm.RequestConfirmation("Overwrite?", () => { });
+        vm.CancelConfirmCommand.Execute(null);
+
+        // When
+        vm.ConfirmCommand.Execute(null);
+
+        // Then
+        Assert.False(vm.IsConfirmOpen);
+    }
+
+    [Fact]
+    public void DeleteServerCommand_WithRowParameter_ShouldConfirmForThatRowRegardlessOfSelection()
+    {
+        // Given — the context menu hands the row over directly; the confirm must
+        // target it even when the selection points elsewhere.
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("Selected Server", "cfx.re/join/aaaaaa"));
+        repository.Add(SavedServer.Create("Menu Target", "cfx.re/join/bbbbbb"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository: repository);
+        vm.SelectedServer = vm.SavedServers[0];
+
+        // When
+        vm.DeleteServerCommand.Execute(vm.SavedServers[1]);
+
+        // Then
+        Assert.True(vm.IsConfirmOpen);
+        Assert.Equal("Delete server \"Menu Target\"?", vm.ConfirmText);
+        Assert.Equal(2, vm.SavedServers.Count);
+    }
+
+    [Fact]
+    public void DeleteServerCommand_WithRowParameter_WhenConfirmed_ShouldRemoveThatRow()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("Selected Server", "cfx.re/join/aaaaaa"));
+        repository.Add(SavedServer.Create("Menu Target", "cfx.re/join/bbbbbb"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository: repository);
+        vm.SelectedServer = vm.SavedServers[0];
+        vm.DeleteServerCommand.Execute(vm.SavedServers[1]);
+
+        // When
+        vm.ConfirmCommand.Execute(null);
+
+        // Then
+        Assert.Single(vm.SavedServers);
+        Assert.Equal("cfx.re/join/aaaaaa", repository.GetAll().Single().Address);
+        Assert.Equal(vm.SavedServers[0], vm.SelectedServer);
+        Assert.False(vm.IsConfirmOpen);
+    }
+
+    [Fact]
+    public void DeleteSelectedSavedServer_ShouldAskForConfirmationWithName()
+    {
+        // Given — deleting is destructive: a menu misclick must never remove a server.
         var repository = new InMemoryServerRepository();
         repository.Add(SavedServer.Create("My Server", "cfx.re/join/abc123"));
         var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository: repository);
@@ -1083,9 +1201,48 @@ public class MainViewModelTests
         vm.DeleteServerCommand.Execute(null);
 
         // Then
+        Assert.True(vm.IsConfirmOpen);
+        Assert.Equal("Delete server \"My Server\"?", vm.ConfirmText);
+        Assert.Single(vm.SavedServers);
+    }
+
+    [Fact]
+    public void DeleteSelectedSavedServer_WhenConfirmed_ShouldRemoveFromCollectionAndRepository()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/abc123"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository: repository);
+        vm.SelectedServer = vm.SavedServers[0];
+        vm.DeleteServerCommand.Execute(null);
+
+        // When
+        vm.ConfirmCommand.Execute(null);
+
+        // Then
         Assert.Empty(vm.SavedServers);
         Assert.Empty(repository.GetAll());
         Assert.Null(vm.SelectedServer);
+        Assert.False(vm.IsConfirmOpen);
+    }
+
+    [Fact]
+    public void DeleteSelectedSavedServer_WhenCancelled_ShouldKeepServer()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/abc123"));
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository: repository);
+        vm.SelectedServer = vm.SavedServers[0];
+        vm.DeleteServerCommand.Execute(null);
+
+        // When
+        vm.CancelConfirmCommand.Execute(null);
+
+        // Then
+        Assert.Single(vm.SavedServers);
+        Assert.Single(repository.GetAll());
+        Assert.False(vm.IsConfirmOpen);
     }
 
     [Fact]

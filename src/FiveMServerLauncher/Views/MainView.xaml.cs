@@ -676,6 +676,71 @@ namespace FiveMServerLauncher.Views
             SavedServersList.Cursor = null;
         }
 
+        // Right-click selects the row it lands on so the context menu's
+        // selection-based commands act on the clicked server; the menu itself
+        // opens natively from the row template. Pure glue: only selection.
+        private void SavedServersList_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (FindAncestor<ListBoxItem>(e.OriginalSource as DependencyObject) is { } item)
+            {
+                item.IsSelected = true;
+            }
+        }
+
+        // The kebab opens the same context menu the right-click shows, anchored
+        // under the button (its Tag carries the view model, so the item
+        // bindings' PlacementTarget may be the button). The click that
+        // dismisses the open menu is delivered on to this same button, and its
+        // Click arrives on mouse-up - a full human press - so the guard window
+        // must span the whole press duration, not just the event gap.
+        // ContextMenu.Closed is NOT raised for outside-click dismissals (only
+        // for item clicks and ESC), so the close moment is tracked through an
+        // IsOpen value descriptor instead - it fires on every flip. Loaded
+        // fires once per menu instance and each row owns its own menu, so every
+        // menu gets its own watcher; the handler only stamps a timestamp.
+        private const long RowMenuToggleWindowMs = 400;
+        private readonly HashSet<ContextMenu> _watchedRowMenus = new();
+        private long _rowMenuClosedAt;
+
+        private void RowMenu_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is ContextMenu menu && _watchedRowMenus.Add(menu))
+            {
+                DependencyPropertyDescriptor.FromProperty(
+                    ContextMenu.IsOpenProperty,
+                    typeof(ContextMenu)).AddValueChanged(menu, RowMenuIsOpenChanged);
+            }
+        }
+
+        private void RowMenuIsOpenChanged(object? sender, EventArgs e)
+        {
+            if (sender is ContextMenu { IsOpen: false })
+            {
+                _rowMenuClosedAt = Environment.TickCount64;
+            }
+        }
+
+        private void RowMenuButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button button
+                || button.Tag is null
+                || Environment.TickCount64 - _rowMenuClosedAt < RowMenuToggleWindowMs)
+            {
+                return;
+            }
+
+            var menu = FindAncestor<Grid>(button)?.ContextMenu;
+
+            if (menu is null)
+            {
+                return;
+            }
+
+            menu.PlacementTarget = button;
+            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            menu.IsOpen = true;
+        }
+
         private static T? FindAncestor<T>(DependencyObject? node) where T : DependencyObject
         {
             while (node is not null && node is not T)

@@ -91,7 +91,7 @@ public class MainViewModel : INotifyPropertyChanged
         FiveMEnhancedStatus = new CfxStatusItem(GameClient.FiveMEnhanced, _localizer);
         RedMStatus = new CfxStatusItem(GameClient.RedM, _localizer);
         ConnectCommand = new AsyncRelayCommand(ConnectAsync, CanConnect);
-        DeleteServerCommand = new RelayCommand(DeleteServer, CanDeleteServer);
+        DeleteServerCommand = new RelayCommand(DeleteServer);
         MoveServerUpCommand = new RelayCommand(p => MoveServerBy(p as SavedServerItem, -1), () => IsReorderAvailable);
         MoveServerDownCommand = new RelayCommand(p => MoveServerBy(p as SavedServerItem, 1), () => IsReorderAvailable);
         OpenClientCommand = new AsyncRelayCommand(OpenClientAsync, CanOpenClient);
@@ -102,6 +102,8 @@ public class MainViewModel : INotifyPropertyChanged
         OpenEditServerDialogCommand = new RelayCommand(OpenEditServerDialog);
         SaveServerDialogCommand = new AsyncRelayCommand(SaveServerDialogAsync);
         CancelServerDialogCommand = new RelayCommand(CloseServerDialog);
+        ConfirmCommand = new RelayCommand(ConfirmPendingAction);
+        CancelConfirmCommand = new RelayCommand(CloseConfirm);
         RefreshServersCommand = new AsyncRelayCommand(RefreshServersAsync, () => !IsRefreshingServers);
         OpenServerBrowserCommand = new AsyncRelayCommand(OpenServerBrowserAsync);
         CloseServerBrowserCommand = new RelayCommand(_ => IsServerBrowserOpen = false);
@@ -157,6 +159,10 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand SaveServerDialogCommand { get; }
 
     public ICommand CancelServerDialogCommand { get; }
+
+    public ICommand ConfirmCommand { get; }
+
+    public ICommand CancelConfirmCommand { get; }
 
     public ICommand RefreshServersCommand { get; }
 
@@ -244,6 +250,9 @@ public class MainViewModel : INotifyPropertyChanged
     private int? _dialogPureMode;
     private GameClient? _dialogGameClient;
     private bool _isDialogLocalhost;
+    private bool _isConfirmOpen;
+    private string _confirmText = string.Empty;
+    private Action? _pendingConfirmAction;
 
     public SavedServerItem? EditingServer
     {
@@ -295,6 +304,38 @@ public class MainViewModel : INotifyPropertyChanged
     {
         get => _isDialogLocalhost;
         private set => SetProperty(ref _isDialogLocalhost, value);
+    }
+
+    public bool IsConfirmOpen
+    {
+        get => _isConfirmOpen;
+        private set => SetProperty(ref _isConfirmOpen, value);
+    }
+
+    public string ConfirmText
+    {
+        get => _confirmText;
+        private set => SetProperty(ref _confirmText, value);
+    }
+
+    public void RequestConfirmation(string text, Action onConfirm)
+    {
+        _pendingConfirmAction = onConfirm;
+        ConfirmText = text;
+        IsConfirmOpen = true;
+    }
+
+    private void ConfirmPendingAction()
+    {
+        var action = _pendingConfirmAction;
+        CloseConfirm();
+        action?.Invoke();
+    }
+
+    private void CloseConfirm()
+    {
+        _pendingConfirmAction = null;
+        IsConfirmOpen = false;
     }
 
     public string DialogCfxId
@@ -1134,16 +1175,30 @@ public class MainViewModel : INotifyPropertyChanged
             item.GameBuild, item.PureMode, item.GameClient));
     }
 
-    private void DeleteServer()
+    private void DeleteServer(object? parameter)
     {
-        if (SelectedServer is null)
+        var server = parameter as SavedServerItem ?? SelectedServer;
+
+        if (server is null)
         {
             return;
         }
 
-        _serverRepository.Remove(SelectedServer.Address);
-        SavedServers.Remove(SelectedServer);
-        SelectedServer = null;
+        RequestConfirmation(
+            _localizer.Format("ConfirmDeleteServerText", server.Name),
+            () => RemoveServer(server));
+    }
+
+    private void RemoveServer(SavedServerItem server)
+    {
+        _serverRepository.Remove(server.Address);
+        SavedServers.Remove(server);
+
+        if (ReferenceEquals(SelectedServer, server))
+        {
+            SelectedServer = null;
+        }
+
         UpdateRowMoveStates();
     }
 
@@ -1260,11 +1315,6 @@ public class MainViewModel : INotifyPropertyChanged
     private bool CanConnect()
     {
         return !string.IsNullOrWhiteSpace(ServerAddress) && !IsBusy;
-    }
-
-    private bool CanDeleteServer()
-    {
-        return SelectedServer is not null;
     }
 
     public async Task InitializeAsync(string? connectAddress = null)
