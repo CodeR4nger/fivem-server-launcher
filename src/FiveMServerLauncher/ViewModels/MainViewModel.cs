@@ -1267,7 +1267,7 @@ public class MainViewModel : INotifyPropertyChanged
         return SelectedServer is not null;
     }
 
-    public async Task InitializeAsync()
+    public async Task InitializeAsync(string? connectAddress = null)
     {
         try
         {
@@ -1291,9 +1291,13 @@ public class MainViewModel : INotifyPropertyChanged
 
             await RefreshCfxStatusAsync();
 
-            if (_settings.AutoLaunch && !string.IsNullOrWhiteSpace(_settings.LastServerAddress))
+            var startupAddress = !string.IsNullOrWhiteSpace(connectAddress)
+                ? connectAddress
+                : _settings.AutoLaunch ? _settings.LastServerAddress : null;
+
+            if (!string.IsNullOrWhiteSpace(startupAddress))
             {
-                ServerAddress = _settings.LastServerAddress;
+                ServerAddress = startupAddress;
                 await ConnectAsync();
             }
         }

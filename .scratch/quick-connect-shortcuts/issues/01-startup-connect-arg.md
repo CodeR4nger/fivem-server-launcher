@@ -7,22 +7,22 @@ auto-launch flow, but for an explicitly supplied address.
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] `--connect <address>` fills the address field and runs the connect in-line on startup,
+- [x] `--connect <address>` fills the address field and runs the connect in-line on startup,
      showing the same live status the button flow shows (resolving / starting app / launch
      result)
-- [ ] The connect is identical to a manual connect: saved-server requirements are merged,
+- [x] The connect is identical to a manual connect: saved-server requirements are merged,
      required apps are started and waited on until fully ready, the launch result is reported
      through the existing status mapping
-- [ ] An explicit `--connect` address suppresses the auto-launch block; without the arg,
+- [x] An explicit `--connect` address suppresses the auto-launch block; without the arg,
      auto-launch behaves exactly as today
-- [ ] A successful connect persists the address as the last-server memory; a failure never
+- [x] A successful connect persists the address as the last-server memory; a failure never
      clobbers it
-- [ ] Invalid or stale address → the existing "Invalid address" status; the window stays open
+- [x] Invalid or stale address → the existing "Invalid address" status; the window stays open
      on success and failure (no exit choreography)
-- [ ] Repeated flag → last wins; unknown args ignored; zero validation at parse time (the
+- [x] Repeated flag → last wins; unknown args ignored; zero validation at parse time (the
      connect pipeline owns validation)
-- [ ] The startup update check still runs afterwards
-- [ ] View-model tests cover: connect with the arg, auto-launch precedence without it,
+- [x] The startup update check still runs afterwards
+- [x] View-model tests cover: connect with the arg, auto-launch precedence without it,
      invalid address, persistence rules — through the existing fakes at the view-model seam

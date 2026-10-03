@@ -1424,6 +1424,119 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public async Task Initialize_WithConnectArg_ShouldConnectToArgAddressInsteadOfAutoLaunch()
+    {
+        // Given — an explicit connect argument beats the remembered auto-launch server.
+        const string argAddress = "cfx.re/join/y4lg95";
+        var storage = new InMemorySettingsStorage();
+        storage.Save(new LauncherSettings { AutoLaunch = true, LastServerAddress = "127.0.0.1:30120" });
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(processLauncher, CfxJson("gta5"), settings: new ConfigurationRepository(storage));
+
+        // When
+        await vm.InitializeAsync(argAddress);
+
+        // Then
+        Assert.Equal(argAddress, vm.ServerAddress);
+        var request = Assert.Single(processLauncher.Requests);
+        Assert.Equal("fivem://connect/" + argAddress, request.AbsoluteUri);
+        Assert.Equal("Launching FiveM...", vm.StatusText);
+        Assert.False(vm.IsBusy);
+    }
+
+    [Fact]
+    public async Task Initialize_WithInvalidConnectArg_ShouldShowInvalidAddressWithoutLaunching()
+    {
+        // Given — a stale shortcut: the embedded address no longer classifies.
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(processLauncher, CfxJson("gta5"));
+
+        // When
+        await vm.InitializeAsync("9 92");
+
+        // Then
+        Assert.Equal("Invalid address", vm.StatusText);
+        Assert.Empty(processLauncher.Requests);
+        Assert.False(vm.IsBusy);
+    }
+
+    [Fact]
+    public async Task Initialize_WithConnectArg_ShouldPersistLastServerAddressOnSuccess()
+    {
+        // Given
+        const string argAddress = "cfx.re/join/y4lg95";
+        var storage = new InMemorySettingsStorage();
+        storage.Save(new LauncherSettings { LastServerAddress = "127.0.0.1:30120" });
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(
+            processLauncher, CfxJson("gta5"), settings: new ConfigurationRepository(storage));
+
+        // When
+        await vm.InitializeAsync(argAddress);
+
+        // Then
+        Assert.Equal(argAddress, new ConfigurationRepository(storage).Load().LastServerAddress);
+    }
+
+    [Fact]
+    public async Task Initialize_WithInvalidConnectArg_ShouldNotClobberLastServerAddress()
+    {
+        // Given — a failed shortcut connect must leave the memory untouched.
+        var storage = new InMemorySettingsStorage();
+        storage.Save(new LauncherSettings { LastServerAddress = "127.0.0.1:30120" });
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(
+            processLauncher, CfxJson("gta5"), settings: new ConfigurationRepository(storage));
+
+        // When
+        await vm.InitializeAsync("9 92");
+
+        // Then
+        Assert.Equal("127.0.0.1:30120", new ConfigurationRepository(storage).Load().LastServerAddress);
+    }
+
+    [Fact]
+    public async Task Initialize_WithConnectArg_ShouldStillCheckForUpdates()
+    {
+        // Given — the startup update check runs after an argument connect, unchanged.
+        var feed = new FakeReleaseFeed { Update = NewerUpdate() };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            releaseFeed: feed,
+            updateApplier: new FakeUpdateApplier());
+
+        // When
+        await vm.InitializeAsync("cfx.re/join/y4lg95");
+
+        // Then
+        Assert.True(vm.IsUpdateAvailable);
+        Assert.Equal(1, feed.CheckCalls);
+    }
+
+    [Fact]
+    public async Task Initialize_WithWhitespaceOnlyConnectArg_ShouldFallBackToAutoLaunch()
+    {
+        // Given — "--connect" with no usable value means no explicit intent, so the
+        // remembered auto-launch server still applies (generated shortcuts can never
+        // produce this; only hand-edited arguments can).
+        const string remembered = "127.0.0.1:30120";
+        var storage = new InMemorySettingsStorage();
+        storage.Save(new LauncherSettings { AutoLaunch = true, LastServerAddress = remembered });
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(
+            processLauncher, CfxJson("gta5"), settings: new ConfigurationRepository(storage));
+
+        // When
+        await vm.InitializeAsync("   ");
+
+        // Then
+        Assert.Equal(remembered, vm.ServerAddress);
+        var request = Assert.Single(processLauncher.Requests);
+        Assert.Equal("fivem://connect/" + remembered, request.AbsoluteUri);
+    }
+
+    [Fact]
     public async Task Initialize_WithoutAutoLaunch_ShouldNotAutoConnect()
     {
         // Given

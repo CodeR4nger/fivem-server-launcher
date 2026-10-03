@@ -2,6 +2,7 @@
 using System.Net.Http;
 using System.Windows;
 using FiveMServerLauncher.Configuration;
+using FiveMServerLauncher.Core;
 using FiveMServerLauncher.Domain;
 using FiveMServerLauncher.Launch;
 using FiveMServerLauncher.Localization;
@@ -85,6 +86,8 @@ public partial class App : Application
 
         var refreshCts = new CancellationTokenSource();
 
+        var connectAddress = ConnectArgument.TryParse(e.Args);
+
         var window = new MainWindow();
         var serverRepository = new FileServerRepository(dataDirectory.ServersPath);
         var viewModel = new MainViewModel(
@@ -106,7 +109,7 @@ public partial class App : Application
             updateApplier: updateApplier);
         window.DataContext = viewModel;
         window.Show();
-        window.Dispatcher.InvokeAsync(viewModel.InitializeAsync);
+        window.Dispatcher.InvokeAsync(() => viewModel.InitializeAsync(connectAddress));
 
         window.Closed += (_, _) => refreshCts.Cancel();
         window.Dispatcher.InvokeAsync(() => viewModel.RunEnrichmentLoopAsync(refreshCts.Token));
