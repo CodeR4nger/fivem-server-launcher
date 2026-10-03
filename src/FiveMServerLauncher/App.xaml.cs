@@ -107,9 +107,13 @@ public partial class App : Application
             cancellationToken: refreshCts.Token,
             releaseFeed: releaseFeed,
             updateApplier: updateApplier,
-            shortcutCreator: new WshShortcutCreator(),
-            desktopPathProvider: () => Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
-            targetExePathProvider: () => Environment.ProcessPath);
+            shortcuts: new ShortcutDependencies(
+                new WshShortcutCreator(),
+                () => Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+                () => Environment.ProcessPath,
+                new ShortcutIconWriter(() => Path.Combine(
+                    Path.GetDirectoryName(Environment.ProcessPath) ?? string.Empty,
+                    "shortcut-icons"))));
         window.DataContext = viewModel;
         window.Show();
         window.Dispatcher.InvokeAsync(() => viewModel.InitializeAsync(connectAddress));

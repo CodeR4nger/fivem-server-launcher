@@ -1141,6 +1141,7 @@ public class MainViewModelTests
         Assert.Equal(System.IO.Path.Combine(desktop.DirectoryPath, "My Server.lnk"), call.ShortcutPath);
         Assert.Equal(@"C:\Games\CFXLauncher.exe", call.TargetPath);
         Assert.Equal("--connect \"cfx.re/join/abc123\"", call.Arguments);
+        Assert.Null(call.IconPath);
         Assert.Equal("Shortcut created", vm.StatusText);
     }
 
@@ -1381,6 +1382,108 @@ public class MainViewModelTests
         // Then
         var call = Assert.Single(creator.Calls);
         Assert.EndsWith("My Server.lnk", call.ShortcutPath);
+    }
+
+    [Fact]
+    public void CreateDesktopShortcutCommand_WhenRowHasIconBytes_ShouldReferenceMaterializedIconFile()
+    {
+        // Given — a row with icon bytes gets a real, deduped ICO beside the exe
+        // and the shortcut references it.
+        using var desktop = new TempSettingsDirectory();
+        using var icons = new TempSettingsDirectory();
+        var png = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==");
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/abc123"));
+        var creator = new FakeShortcutCreator();
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            shortcutCreator: creator,
+            desktopPathProvider: () => desktop.DirectoryPath,
+            targetExePathProvider: () => @"C:\Games\CFXLauncher.exe",
+            iconWriter: new ShortcutIconWriter(() => icons.DirectoryPath));
+        vm.SavedServers[0].SetIcon(png);
+
+        // When
+        vm.CreateDesktopShortcutCommand.Execute(vm.SavedServers[0]);
+
+        // Then
+        var call = Assert.Single(creator.Calls);
+        Assert.NotNull(call.IconPath);
+        Assert.StartsWith(icons.DirectoryPath, call.IconPath);
+        Assert.True(System.IO.File.Exists(call.IconPath));
+        Assert.Equal("Shortcut created", vm.StatusText);
+    }
+
+    [Fact]
+    public void CreateDesktopShortcutCommand_WhenIconWriterUnwired_ShouldCreateWithLauncherIcon()
+    {
+        // Given — the icon writer is optional inside the bundle: rows with
+        // bytes still get a shortcut, minus the server icon.
+        using var desktop = new TempSettingsDirectory();
+        var png = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==");
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/abc123"));
+        var creator = new FakeShortcutCreator();
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            shortcutCreator: creator,
+            desktopPathProvider: () => desktop.DirectoryPath,
+            targetExePathProvider: () => @"C:\Games\CFXLauncher.exe");
+        vm.SavedServers[0].SetIcon(png);
+
+        // When
+        vm.CreateDesktopShortcutCommand.Execute(vm.SavedServers[0]);
+
+        // Then
+        var call = Assert.Single(creator.Calls);
+        Assert.Null(call.IconPath);
+        Assert.Equal("Shortcut created", vm.StatusText);
+    }
+
+    [Fact]
+    public void CreateDesktopShortcutCommand_WhenIconWriteFails_ShouldStillCreateWithLauncherIcon()
+    {
+        // Given — the icon directory is unusable: the shortcut is still
+        // created, minus the server icon. Never a crash, never a lost
+        // shortcut over decoration.
+        using var desktop = new TempSettingsDirectory();
+        var blocker = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".txt");
+        System.IO.File.WriteAllText(blocker, "in the way");
+        var png = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==");
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/abc123"));
+        var creator = new FakeShortcutCreator();
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            shortcutCreator: creator,
+            desktopPathProvider: () => desktop.DirectoryPath,
+            targetExePathProvider: () => @"C:\Games\CFXLauncher.exe",
+            iconWriter: new ShortcutIconWriter(() => blocker));
+        vm.SavedServers[0].SetIcon(png);
+
+        try
+        {
+            // When
+            vm.CreateDesktopShortcutCommand.Execute(vm.SavedServers[0]);
+
+            // Then
+            var call = Assert.Single(creator.Calls);
+            Assert.Null(call.IconPath);
+            Assert.Equal("Shortcut created", vm.StatusText);
+        }
+        finally
+        {
+            System.IO.File.Delete(blocker);
+        }
     }
 
     [Fact]
@@ -4318,7 +4421,8 @@ public class MainViewModelTests
         IUpdateApplier? updateApplier = null,
         IShortcutCreator? shortcutCreator = null,
         Func<string>? desktopPathProvider = null,
-        Func<string?>? targetExePathProvider = null)
+        Func<string?>? targetExePathProvider = null,
+        ShortcutIconWriter? iconWriter = null)
     {
         var resolver = new ServerResolver(
             new CfxService(
@@ -4357,8 +4461,12 @@ public class MainViewModelTests
             refreshCooldown: refreshCooldown,
             releaseFeed: releaseFeed,
             updateApplier: updateApplier,
-            shortcutCreator: shortcutCreator,
-            desktopPathProvider: desktopPathProvider,
-            targetExePathProvider: targetExePathProvider);
+            shortcuts: shortcutCreator is null
+                ? null
+                : new ShortcutDependencies(
+                    shortcutCreator,
+                    desktopPathProvider ?? (() => "C:\\Desktop"),
+                    targetExePathProvider ?? (() => @"C:\Games\CFXLauncher.exe"),
+                    iconWriter));
     }
 }

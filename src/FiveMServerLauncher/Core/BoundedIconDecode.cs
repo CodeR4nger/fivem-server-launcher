@@ -1,6 +1,6 @@
 using System.Buffers.Binary;
 
-namespace FiveMServerLauncher.Views;
+namespace FiveMServerLauncher.Core;
 
 public readonly record struct DecodeBounds(int? Width, int? Height)
 {

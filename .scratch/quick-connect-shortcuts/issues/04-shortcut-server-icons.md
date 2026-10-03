@@ -7,18 +7,18 @@ creation time, falling back to the launcher icon otherwise.
 
 **Status:** ready-for-agent
 
-- [ ] Rows with icon bytes: the icon is materialized through the existing bounded decoder
+- [x] Rows with icon bytes: the icon is materialized through the existing bounded decoder
      (≤96 px, any input, any aspect ratio), re-encoded as PNG, embedded in an ICO container,
      and written to the shortcut-icons folder beside the running exe (portable-data
      convention)
-- [ ] Icon files are named by content hash — identical artwork dedupes to one file; orphans
+- [x] Icon files are named by content hash — identical artwork dedupes to one file; orphans
      are never swept
-- [ ] The shortcut references the materialized icon path
-- [ ] Missing bytes → launcher icon, no fetch attempt at creation time (re-creating the
+- [x] The shortcut references the materialized icon path
+- [x] Missing bytes → launcher icon, no fetch attempt at creation time (re-creating the
      shortcut later picks the icon up)
-- [ ] A non-writable exe dir → the icon write fails → launcher-icon fallback, and the
+- [x] A non-writable exe dir → the icon write fails → launcher-icon fallback, and the
      shortcut is still created
-- [ ] The materializer is a real class with no interface (there is no surrounding logic
+- [x] The materializer is a real class with no interface (there is no surrounding logic
      class), tested with real temp-directory I/O and parse-back assertions on the ICO
      container bytes: header, entry, embedded PNG, hash dedup, and garbage/oversized input
      normalizing through the bounded decoder

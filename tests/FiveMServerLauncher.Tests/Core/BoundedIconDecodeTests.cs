@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
-using FiveMServerLauncher.Views;
+using FiveMServerLauncher.Core;
 
-namespace FiveMServerLauncher.Tests.Views;
+namespace FiveMServerLauncher.Tests.Core;
 
 public class BoundedIconDecodeTests
 {

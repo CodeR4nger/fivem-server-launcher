@@ -34,9 +34,7 @@ public class MainViewModel : INotifyPropertyChanged
     private LauncherSettings _settings;
     private readonly IReleaseFeed? _releaseFeed;
     private readonly IUpdateApplier? _updateApplier;
-    private readonly IShortcutCreator? _shortcutCreator;
-    private readonly Func<string>? _desktopPathProvider;
-    private readonly Func<string?>? _targetExePathProvider;
+    private readonly ShortcutDependencies? _shortcuts;
     private LauncherUpdate? _latestUpdate;
     private bool _isUpdateAvailable;
     private bool _isUpdateInProgress;
@@ -65,9 +63,7 @@ public class MainViewModel : INotifyPropertyChanged
         CancellationToken? cancellationToken = null,
         IReleaseFeed? releaseFeed = null,
         IUpdateApplier? updateApplier = null,
-        IShortcutCreator? shortcutCreator = null,
-        Func<string>? desktopPathProvider = null,
-        Func<string?>? targetExePathProvider = null)
+        ShortcutDependencies? shortcuts = null)
     {
         _resolver = resolver;
         _launcher = launcher;
@@ -83,9 +79,7 @@ public class MainViewModel : INotifyPropertyChanged
         _cancellationToken = cancellationToken ?? CancellationToken.None;
         _releaseFeed = releaseFeed;
         _updateApplier = updateApplier;
-        _shortcutCreator = shortcutCreator;
-        _desktopPathProvider = desktopPathProvider;
-        _targetExePathProvider = targetExePathProvider;
+        _shortcuts = shortcuts;
         _settings = settingsRepository.Load();
         LanguageOptions = BuildLanguageOptions();
         _selectedLanguageOption = LanguageOptions.FirstOrDefault(o => o.Tag == _settings.Language)
@@ -1216,7 +1210,9 @@ public class MainViewModel : INotifyPropertyChanged
 
     private void CreateDesktopShortcut(object? parameter)
     {
-        if (_shortcutCreator is null || _desktopPathProvider is null || _targetExePathProvider is null)
+        var shortcuts = _shortcuts;
+
+        if (shortcuts is null)
         {
             return;
         }
@@ -1228,7 +1224,7 @@ public class MainViewModel : INotifyPropertyChanged
             return;
         }
 
-        var desktopPath = _desktopPathProvider();
+        var desktopPath = shortcuts.DesktopPathProvider();
 
         if (string.IsNullOrWhiteSpace(desktopPath))
         {
@@ -1242,11 +1238,11 @@ public class MainViewModel : INotifyPropertyChanged
         {
             RequestConfirmation(
                 _localizer.Format("ShortcutOverwriteText", Path.GetFileNameWithoutExtension(shortcutPath)),
-                () => WriteShortcut(server, shortcutPath));
+                () => WriteShortcut(shortcuts, server, shortcutPath));
             return;
         }
 
-        WriteShortcut(server, shortcutPath);
+        WriteShortcut(shortcuts, server, shortcutPath);
     }
 
     private static readonly HashSet<string> ReservedDeviceNames = new(StringComparer.Ordinal)
@@ -1274,11 +1270,11 @@ public class MainViewModel : INotifyPropertyChanged
         return sanitized;
     }
 
-    private void WriteShortcut(SavedServerItem server, string shortcutPath)
+    private void WriteShortcut(ShortcutDependencies shortcuts, SavedServerItem server, string shortcutPath)
     {
         try
         {
-            var targetPath = _targetExePathProvider!();
+            var targetPath = shortcuts.TargetExePathProvider();
 
             if (targetPath is null)
             {
@@ -1286,11 +1282,12 @@ public class MainViewModel : INotifyPropertyChanged
                 return;
             }
 
-            _shortcutCreator!.CreateShortcut(
+            var iconPath = shortcuts.IconWriter?.TryWrite(server.Icon);
+            shortcuts.Creator.CreateShortcut(
                 shortcutPath,
                 targetPath,
                 "--connect \"" + server.Address + "\"",
-                null);
+                iconPath);
             StatusText = _localizer.Get("StatusShortcutCreated");
         }
         catch
