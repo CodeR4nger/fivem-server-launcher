@@ -34,6 +34,9 @@ public class MainViewModel : INotifyPropertyChanged
     private LauncherSettings _settings;
     private readonly IReleaseFeed? _releaseFeed;
     private readonly IUpdateApplier? _updateApplier;
+    private readonly IShortcutCreator? _shortcutCreator;
+    private readonly Func<string>? _desktopPathProvider;
+    private readonly Func<string?>? _targetExePathProvider;
     private LauncherUpdate? _latestUpdate;
     private bool _isUpdateAvailable;
     private bool _isUpdateInProgress;
@@ -61,7 +64,10 @@ public class MainViewModel : INotifyPropertyChanged
         TimeSpan? refreshCooldown = null,
         CancellationToken? cancellationToken = null,
         IReleaseFeed? releaseFeed = null,
-        IUpdateApplier? updateApplier = null)
+        IUpdateApplier? updateApplier = null,
+        IShortcutCreator? shortcutCreator = null,
+        Func<string>? desktopPathProvider = null,
+        Func<string?>? targetExePathProvider = null)
     {
         _resolver = resolver;
         _launcher = launcher;
@@ -77,6 +83,9 @@ public class MainViewModel : INotifyPropertyChanged
         _cancellationToken = cancellationToken ?? CancellationToken.None;
         _releaseFeed = releaseFeed;
         _updateApplier = updateApplier;
+        _shortcutCreator = shortcutCreator;
+        _desktopPathProvider = desktopPathProvider;
+        _targetExePathProvider = targetExePathProvider;
         _settings = settingsRepository.Load();
         LanguageOptions = BuildLanguageOptions();
         _selectedLanguageOption = LanguageOptions.FirstOrDefault(o => o.Tag == _settings.Language)
@@ -92,6 +101,7 @@ public class MainViewModel : INotifyPropertyChanged
         RedMStatus = new CfxStatusItem(GameClient.RedM, _localizer);
         ConnectCommand = new AsyncRelayCommand(ConnectAsync, CanConnect);
         DeleteServerCommand = new RelayCommand(DeleteServer);
+        CreateDesktopShortcutCommand = new RelayCommand(CreateDesktopShortcut);
         MoveServerUpCommand = new RelayCommand(p => MoveServerBy(p as SavedServerItem, -1), () => IsReorderAvailable);
         MoveServerDownCommand = new RelayCommand(p => MoveServerBy(p as SavedServerItem, 1), () => IsReorderAvailable);
         OpenClientCommand = new AsyncRelayCommand(OpenClientAsync, CanOpenClient);
@@ -134,6 +144,8 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand ConnectCommand { get; }
 
     public ICommand DeleteServerCommand { get; }
+
+    public ICommand CreateDesktopShortcutCommand { get; }
 
     public ICommand MoveServerUpCommand { get; }
 
@@ -1200,6 +1212,91 @@ public class MainViewModel : INotifyPropertyChanged
         }
 
         UpdateRowMoveStates();
+    }
+
+    private void CreateDesktopShortcut(object? parameter)
+    {
+        if (_shortcutCreator is null || _desktopPathProvider is null || _targetExePathProvider is null)
+        {
+            return;
+        }
+
+        var server = parameter as SavedServerItem ?? SelectedServer;
+
+        if (server is null)
+        {
+            return;
+        }
+
+        var desktopPath = _desktopPathProvider();
+
+        if (string.IsNullOrWhiteSpace(desktopPath))
+        {
+            StatusText = _localizer.Get("StatusCouldNotCreateShortcut");
+            return;
+        }
+
+        var shortcutPath = Path.Combine(desktopPath, SanitizeFileName(server.Name) + ".lnk");
+
+        if (File.Exists(shortcutPath))
+        {
+            RequestConfirmation(
+                _localizer.Format("ShortcutOverwriteText", Path.GetFileNameWithoutExtension(shortcutPath)),
+                () => WriteShortcut(server, shortcutPath));
+            return;
+        }
+
+        WriteShortcut(server, shortcutPath);
+    }
+
+    private static readonly HashSet<string> ReservedDeviceNames = new(StringComparer.Ordinal)
+    {
+        "CON", "PRN", "AUX", "NUL",
+        "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+        "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
+    };
+
+    private static string SanitizeFileName(string name)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var sanitized = new string(name.Where(c => !invalid.Contains(c)).ToArray());
+
+        if (sanitized.Length == 0)
+        {
+            sanitized = "Server";
+        }
+
+        if (ReservedDeviceNames.Contains(sanitized.ToUpperInvariant()))
+        {
+            sanitized += "_";
+        }
+
+        return sanitized;
+    }
+
+    private void WriteShortcut(SavedServerItem server, string shortcutPath)
+    {
+        try
+        {
+            var targetPath = _targetExePathProvider!();
+
+            if (targetPath is null)
+            {
+                StatusText = _localizer.Get("StatusCouldNotCreateShortcut");
+                return;
+            }
+
+            _shortcutCreator!.CreateShortcut(
+                shortcutPath,
+                targetPath,
+                "--connect \"" + server.Address + "\"",
+                null);
+            StatusText = _localizer.Get("StatusShortcutCreated");
+        }
+        catch
+        {
+            StatusText = _localizer.Get("StatusCouldNotCreateShortcut");
+        }
     }
 
     // The drag entry point: drop position addressed by row, never by a view index —

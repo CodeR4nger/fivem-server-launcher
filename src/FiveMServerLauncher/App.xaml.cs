@@ -106,7 +106,10 @@ public partial class App : Application
             localizer,
             cancellationToken: refreshCts.Token,
             releaseFeed: releaseFeed,
-            updateApplier: updateApplier);
+            updateApplier: updateApplier,
+            shortcutCreator: new WshShortcutCreator(),
+            desktopPathProvider: () => Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+            targetExePathProvider: () => Environment.ProcessPath);
         window.DataContext = viewModel;
         window.Show();
         window.Dispatcher.InvokeAsync(() => viewModel.InitializeAsync(connectAddress));

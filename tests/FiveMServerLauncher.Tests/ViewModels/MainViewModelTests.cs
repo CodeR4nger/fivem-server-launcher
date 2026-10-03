@@ -1117,6 +1117,273 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public void CreateDesktopShortcutCommand_WithRow_ShouldWriteLnkWithConnectArgsToDesktop()
+    {
+        // Given — the end-to-end story: a .lnk on the desktop pointing at the
+        // running exe with the server's connect address as arguments.
+        using var desktop = new TempSettingsDirectory();
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/abc123"));
+        var creator = new FakeShortcutCreator();
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            shortcutCreator: creator,
+            desktopPathProvider: () => desktop.DirectoryPath,
+            targetExePathProvider: () => @"C:\Games\CFXLauncher.exe");
+
+        // When
+        vm.CreateDesktopShortcutCommand.Execute(vm.SavedServers[0]);
+
+        // Then
+        var call = Assert.Single(creator.Calls);
+        Assert.Equal(System.IO.Path.Combine(desktop.DirectoryPath, "My Server.lnk"), call.ShortcutPath);
+        Assert.Equal(@"C:\Games\CFXLauncher.exe", call.TargetPath);
+        Assert.Equal("--connect \"cfx.re/join/abc123\"", call.Arguments);
+        Assert.Equal("Shortcut created", vm.StatusText);
+    }
+
+    [Fact]
+    public void CreateDesktopShortcutCommand_WhenNameHasInvalidFileChars_ShouldSanitize()
+    {
+        // Given — Windows filename-invalid characters must never reach the path.
+        using var desktop = new TempSettingsDirectory();
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My:Ser/ver?", "cfx.re/join/abc123"));
+        var creator = new FakeShortcutCreator();
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            shortcutCreator: creator,
+            desktopPathProvider: () => desktop.DirectoryPath,
+            targetExePathProvider: () => @"C:\Games\CFXLauncher.exe");
+
+        // When
+        vm.CreateDesktopShortcutCommand.Execute(vm.SavedServers[0]);
+
+        // Then
+        var call = Assert.Single(creator.Calls);
+        Assert.Equal(System.IO.Path.Combine(desktop.DirectoryPath, "MyServer.lnk"), call.ShortcutPath);
+    }
+
+    [Fact]
+    public void CreateDesktopShortcutCommand_WhenShortcutExists_ShouldAskBeforeOverwriting()
+    {
+        // Given — a same-named shortcut already exists on the desktop.
+        using var desktop = new TempSettingsDirectory();
+        System.IO.Directory.CreateDirectory(desktop.DirectoryPath);
+        System.IO.File.WriteAllText(
+            System.IO.Path.Combine(desktop.DirectoryPath, "My Server.lnk"), "previous");
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/abc123"));
+        var creator = new FakeShortcutCreator();
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            shortcutCreator: creator,
+            desktopPathProvider: () => desktop.DirectoryPath,
+            targetExePathProvider: () => @"C:\Games\CFXLauncher.exe");
+
+        // When
+        vm.CreateDesktopShortcutCommand.Execute(vm.SavedServers[0]);
+
+        // Then — nothing is written until the overwrite is confirmed.
+        Assert.True(vm.IsConfirmOpen);
+        Assert.Equal("A shortcut named \"My Server\" already exists. Overwrite?", vm.ConfirmText);
+        Assert.Empty(creator.Calls);
+    }
+
+    [Fact]
+    public void CreateDesktopShortcutCommand_WhenOverwriteConfirmed_ShouldWriteShortcut()
+    {
+        // Given — the overwrite confirmation is pending.
+        using var desktop = new TempSettingsDirectory();
+        System.IO.Directory.CreateDirectory(desktop.DirectoryPath);
+        System.IO.File.WriteAllText(
+            System.IO.Path.Combine(desktop.DirectoryPath, "My Server.lnk"), "previous");
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/abc123"));
+        var creator = new FakeShortcutCreator();
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            shortcutCreator: creator,
+            desktopPathProvider: () => desktop.DirectoryPath,
+            targetExePathProvider: () => @"C:\Games\CFXLauncher.exe");
+        vm.CreateDesktopShortcutCommand.Execute(vm.SavedServers[0]);
+
+        // When
+        vm.ConfirmCommand.Execute(null);
+
+        // Then
+        Assert.False(vm.IsConfirmOpen);
+        Assert.Single(creator.Calls);
+        Assert.Equal("Shortcut created", vm.StatusText);
+    }
+
+    [Fact]
+    public void CreateDesktopShortcutCommand_WhenCreatorThrows_ShouldShowFailureStatus()
+    {
+        // Given — the shortcut system faults; the launcher must never crash.
+        using var desktop = new TempSettingsDirectory();
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/abc123"));
+        var creator = new FakeShortcutCreator { ThrowOnCreate = true };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            shortcutCreator: creator,
+            desktopPathProvider: () => desktop.DirectoryPath,
+            targetExePathProvider: () => @"C:\Games\CFXLauncher.exe");
+
+        // When
+        vm.CreateDesktopShortcutCommand.Execute(vm.SavedServers[0]);
+
+        // Then
+        Assert.Equal("Could not create shortcut", vm.StatusText);
+    }
+
+    [Fact]
+    public void CreateDesktopShortcutCommand_WhenTargetExeMissing_ShouldShowFailureStatus()
+    {
+        // Given — the running exe path cannot be resolved.
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/abc123"));
+        var creator = new FakeShortcutCreator();
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            shortcutCreator: creator,
+            desktopPathProvider: () => "C:\\Desktop",
+            targetExePathProvider: () => null);
+
+        // When
+        vm.CreateDesktopShortcutCommand.Execute(vm.SavedServers[0]);
+
+        // Then
+        Assert.Empty(creator.Calls);
+        Assert.Equal("Could not create shortcut", vm.StatusText);
+    }
+
+    [Fact]
+    public void CreateDesktopShortcutCommand_WhenSeamUnwired_ShouldBeASilentNoOp()
+    {
+        // Given — pre-feature constructions stay untouched: unwired = off.
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+
+        // When
+        vm.CreateDesktopShortcutCommand.Execute(null);
+
+        // Then
+        Assert.Equal("Ready", vm.StatusText);
+    }
+
+    [Fact]
+    public void CreateDesktopShortcutCommand_WhenNameIsAllInvalidChars_ShouldFallBackToPlainName()
+    {
+        // Given — a name made entirely of filename-invalid characters must not
+        // produce a hidden ".lnk" oddity reported as success.
+        using var desktop = new TempSettingsDirectory();
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("?:*", "cfx.re/join/abc123"));
+        var creator = new FakeShortcutCreator();
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            shortcutCreator: creator,
+            desktopPathProvider: () => desktop.DirectoryPath,
+            targetExePathProvider: () => @"C:\Games\CFXLauncher.exe");
+
+        // When
+        vm.CreateDesktopShortcutCommand.Execute(vm.SavedServers[0]);
+
+        // Then
+        var call = Assert.Single(creator.Calls);
+        Assert.Equal(System.IO.Path.Combine(desktop.DirectoryPath, "Server.lnk"), call.ShortcutPath);
+    }
+
+    [Fact]
+    public void CreateDesktopShortcutCommand_WhenNameIsAReservedDeviceName_ShouldDefuseIt()
+    {
+        // Given — Windows reserves device names like CON: "CON.lnk" cannot be
+        // created, so a legitimate server named CON would wrongly fail.
+        using var desktop = new TempSettingsDirectory();
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("CON", "cfx.re/join/abc123"));
+        var creator = new FakeShortcutCreator();
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            shortcutCreator: creator,
+            desktopPathProvider: () => desktop.DirectoryPath,
+            targetExePathProvider: () => @"C:\Games\CFXLauncher.exe");
+
+        // When
+        vm.CreateDesktopShortcutCommand.Execute(vm.SavedServers[0]);
+
+        // Then
+        var call = Assert.Single(creator.Calls);
+        Assert.Equal(System.IO.Path.Combine(desktop.DirectoryPath, "CON_.lnk"), call.ShortcutPath);
+    }
+
+    [Fact]
+    public void CreateDesktopShortcutCommand_WhenDesktopPathUnresolvable_ShouldShowFailureStatus()
+    {
+        // Given — a desktop that resolves to nothing must fail loudly, never
+        // silently write a relative path to the working directory.
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/abc123"));
+        var creator = new FakeShortcutCreator();
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            shortcutCreator: creator,
+            desktopPathProvider: () => "",
+            targetExePathProvider: () => @"C:\Games\CFXLauncher.exe");
+
+        // When
+        vm.CreateDesktopShortcutCommand.Execute(vm.SavedServers[0]);
+
+        // Then
+        Assert.Empty(creator.Calls);
+        Assert.Equal("Could not create shortcut", vm.StatusText);
+    }
+
+    [Fact]
+    public void CreateDesktopShortcutCommand_WithoutRowParameter_ShouldUseSelectedServer()
+    {
+        // Given — parameterless callers act on the selection, like delete.
+        using var desktop = new TempSettingsDirectory();
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/abc123"));
+        var creator = new FakeShortcutCreator();
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            shortcutCreator: creator,
+            desktopPathProvider: () => desktop.DirectoryPath,
+            targetExePathProvider: () => @"C:\Games\CFXLauncher.exe");
+        vm.SelectedServer = vm.SavedServers[0];
+
+        // When
+        vm.CreateDesktopShortcutCommand.Execute(null);
+
+        // Then
+        var call = Assert.Single(creator.Calls);
+        Assert.EndsWith("My Server.lnk", call.ShortcutPath);
+    }
+
+    [Fact]
     public void DeleteServerCommand_WithoutSelectionOrParameter_ShouldDoNothing()
     {
         // Given — no row handed over, nothing selected: the command is a no-op.
@@ -4048,7 +4315,10 @@ public class MainViewModelTests
         HttpClient? cfxHttpClient = null,
         ILocalizer? localizer = null,
         IReleaseFeed? releaseFeed = null,
-        IUpdateApplier? updateApplier = null)
+        IUpdateApplier? updateApplier = null,
+        IShortcutCreator? shortcutCreator = null,
+        Func<string>? desktopPathProvider = null,
+        Func<string?>? targetExePathProvider = null)
     {
         var resolver = new ServerResolver(
             new CfxService(
@@ -4086,6 +4356,9 @@ public class MainViewModelTests
             localizer ?? TestLocalizer.English(),
             refreshCooldown: refreshCooldown,
             releaseFeed: releaseFeed,
-            updateApplier: updateApplier);
+            updateApplier: updateApplier,
+            shortcutCreator: shortcutCreator,
+            desktopPathProvider: desktopPathProvider,
+            targetExePathProvider: targetExePathProvider);
     }
 }
