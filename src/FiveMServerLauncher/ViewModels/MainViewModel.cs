@@ -210,6 +210,17 @@ public class MainViewModel : INotifyPropertyChanged
         await ConnectAsync();
     }
 
+    public async Task HandleForwardedConnectAsync(string? address)
+    {
+        if (string.IsNullOrWhiteSpace(address) || IsBusy)
+        {
+            return;
+        }
+
+        ServerAddress = address;
+        await ConnectAsync();
+    }
+
     private bool _isRefreshingServers;
 
     private static readonly TimeSpan DefaultRefreshCooldown = TimeSpan.FromSeconds(15);

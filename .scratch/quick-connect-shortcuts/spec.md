@@ -1,6 +1,6 @@
 # Feature: Quick-connect desktop shortcuts (--connect entry + row action menu)
 
-Status: ready-for-agent
+Status: done
 
 ## Problem Statement
 
@@ -183,3 +183,12 @@ Two halves delivered together:
   IPC forwarding. Each is a vertical slice.
 - The feature delivers the earlier "per-server auto-launch" idea that was cut as YAGNI:
   explicit shortcuts are the better answer to "always connect to this one".
+- Known behavior (observed at E2E, 2026-10-03): firing a second shortcut while the
+  first game is still LOADING hits a race inside FiveM's own client-side single-instance
+  handoff ("Failed to send LinkProtocolIPC message, no master process" — its own dialog,
+  not the launcher's). The launcher-side wait was considered and DECLINED: FiveM's master
+  readiness is not externally observable, so any wait would be a guessed timer violating
+  the repo's "never equate process started with service ready" rule, and a queued
+  delayed connect is the action-at-a-distance the forwarding design rejects. Once the
+  first game is fully loaded, a second shortcut switches servers through FiveM's own
+  handoff, verified working. The real fix home is the CitizenFX client, upstream.

@@ -1487,6 +1487,73 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public async Task HandleForwardedConnect_WhenIdle_ShouldConnectAndPersist()
+    {
+        // Given — the first instance receives an address over the IPC pipe.
+        const string address = "cfx.re/join/y4lg95";
+        var storage = new InMemorySettingsStorage();
+        storage.Save(new LauncherSettings { LastServerAddress = "127.0.0.1:30120" });
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(
+            processLauncher, CfxJson("gta5"), settings: new ConfigurationRepository(storage));
+
+        // When
+        await vm.HandleForwardedConnectAsync(address);
+
+        // Then — the browser-connect precedent: fill address, connect, persist.
+        Assert.Equal(address, vm.ServerAddress);
+        var request = Assert.Single(processLauncher.Requests);
+        Assert.Equal("fivem://connect/" + address, request.AbsoluteUri);
+        Assert.Equal("Launching FiveM...", vm.StatusText);
+        Assert.False(vm.IsBusy);
+        Assert.Equal(address, new ConfigurationRepository(storage).Load().LastServerAddress);
+    }
+
+    [Fact]
+    public async Task HandleForwardedConnect_WhenBusy_ShouldIgnoreWithoutClobbering()
+    {
+        // Given — a connect is already in flight: forwarded requests are
+        // silently ignored, never queued, never clobbering the user's address.
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var handler = new GatedHttpHandler(gate.Task, CfxJson("gta5"));
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(
+            processLauncher, CfxJson("gta5"), cfxHttpClient: new HttpClient(handler));
+        vm.ServerAddress = "cfx.re/join/first";
+        var inFlight = vm.ConnectAsync();
+
+        // When
+        await vm.HandleForwardedConnectAsync("cfx.re/join/second");
+
+        // Then
+        Assert.Equal("cfx.re/join/first", vm.ServerAddress);
+        Assert.True(vm.IsBusy);
+
+        gate.SetResult();
+        await inFlight;
+
+        Assert.Single(processLauncher.Requests);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task HandleForwardedConnect_WithGarbageAddress_ShouldIgnore(string? address)
+    {
+        // Given — anything unusable over the pipe is a no-op.
+        var processLauncher = new FakeGameProcessLauncher();
+        var vm = CreateViewModel(processLauncher, CfxJson("gta5"));
+
+        // When
+        await vm.HandleForwardedConnectAsync(address);
+
+        // Then
+        Assert.Empty(processLauncher.Requests);
+        Assert.True(string.IsNullOrEmpty(vm.ServerAddress));
+    }
+
+    [Fact]
     public void DeleteServerCommand_WithoutSelectionOrParameter_ShouldDoNothing()
     {
         // Given — no row handed over, nothing selected: the command is a no-op.
@@ -4400,6 +4467,19 @@ public class MainViewModelTests
         // Then: the banner re-emits in the new language
         Assert.Contains(nameof(MainViewModel.UpdateBannerText), raised);
         Assert.Equal("Nueva versión: v1.4.0", vm.UpdateBannerText);
+    }
+
+    private sealed class GatedHttpHandler(Task gate, string payload) : HttpMessageHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            await gate;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(payload, System.Text.Encoding.UTF8, "application/json")
+            };
+        }
     }
 
     private static MainViewModel CreateViewModel(

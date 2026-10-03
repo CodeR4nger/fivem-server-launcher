@@ -30,6 +30,16 @@ public partial class App : Application
 
         if (!singleInstance.TryStart())
         {
+            // The duplicate never reaches the view model: the activator already
+            // brought the running window forward, so the shortcut's address —
+            // and nothing else — travels the pipe.
+            var forwardedAddress = ConnectArgument.TryParse(e.Args);
+
+            if (forwardedAddress is not null)
+            {
+                new ConnectRequestForwarder().TryForward(forwardedAddress);
+            }
+
             Shutdown();
             return;
         }
@@ -121,6 +131,27 @@ public partial class App : Application
         window.Closed += (_, _) => refreshCts.Cancel();
         window.Dispatcher.InvokeAsync(() => viewModel.RunEnrichmentLoopAsync(refreshCts.Token));
         _ = RefreshSessionGameBuildDataAsync(window, viewModel, gameBuildData);
+
+        // The IPC listener lives for the whole session: a shortcut against the
+        // running instance forwards its address through the pipe, and the
+        // dispatcher hands it to the same connect flow the browser uses.
+        var connectCts = new CancellationTokenSource();
+        Exit += (_, _) => connectCts.Cancel();
+        var connectListener = new ConnectRequestListener();
+        connectListener.Start(
+            address => window.Dispatcher.InvokeAsync(async () =>
+            {
+                try
+                {
+                    await viewModel.HandleForwardedConnectAsync(address);
+                }
+                catch
+                {
+                    // The browser and manual paths ride the same swallow through
+                    // AsyncRelayCommand; a forwarded connect gets parity.
+                }
+            }),
+            connectCts.Token);
     }
 
     private static async Task RefreshSessionGameBuildDataAsync(
