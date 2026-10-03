@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0] (2026-10-03)
+
+### Added
+- **Quick-connect desktop shortcuts** — right-click any saved server and choose "Create desktop shortcut": double-clicking the new shortcut on your desktop connects straight into that server, with no launcher window and no button press. The shortcut runs the same validated pipeline as a manual connect — server data, Steam/Discord started and waited until fully ready, launch — so a shortcut connect is never a second-class connect. The shortcut carries the server's own icon on the desktop (the launcher icon when the server has none), and if the launcher is already running, the shortcut brings it forward and connects through it. Note: firing a second shortcut while the first game is still loading shows a FiveM client error (its own single-instance handoff racing its startup) — once the game has loaded, shortcuts switch servers normally.
+- **Row action menu** — right-click anywhere on a saved server row, or the ⋮ button on the selected row, opens one dark context menu with every row action: Edit server, Create desktop shortcut, Delete server. Right-clicking also selects the row, so the menu always acts on the server you clicked.
+- **Delete confirmation** — deleting a saved server now asks first ("Delete server "X"?"), so one misclick in a menu can never remove it.
+
+### Changed
+- The footer's big DELETE button is gone — deleting lives in the row's action menu now, and BROWSE fills the freed space next to + NEW SERVER.
+- The edit pencil became a ⋮ kebab — same selection-only visibility, same one-click idiom as the other glyph buttons.
+- Re-creating a shortcut after editing a server updates it in place, with a confirmation before overwriting an existing shortcut of the same name.
+
 ## [1.2.0] (2026-09-30)
 
 ### Added
