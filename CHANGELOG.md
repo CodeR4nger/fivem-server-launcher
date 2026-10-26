@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.3.1] (2026-10-26)
+
+### Fixed
+- **Server icons load again** — CFX moved server icons off the icon-version field the launcher was reading onto a new per-server icon URL served as WebP, a format the launcher could neither see nor decode. The launcher now reads the new field, downloads the image directly and converts it natively, so icons are back in the saved list, the server browser and desktop shortcuts — including oversized images that the old download limit silently dropped.
+
 ## [1.3.0] (2026-10-03)
 
 ### Added
