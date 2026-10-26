@@ -19,6 +19,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Real captured icon fixtures (provenance: cfx-server-metadata, 2026-10-26)
+         read by the icon pipeline tests. -->
+    <Content Include="Service\Fixtures\**\*.webp" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\FiveMServerLauncher\FiveMServerLauncher.csproj" />
   </ItemGroup>
 

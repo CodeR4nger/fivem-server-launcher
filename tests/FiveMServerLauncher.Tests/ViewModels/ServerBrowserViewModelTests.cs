@@ -390,7 +390,7 @@ public class ServerBrowserViewModelTests
         // Given
         var enrichment = new FakeServerEnrichmentService { Icon = [9, 8, 7] };
         var server = Entry("aaaaaa", "Alpha", game: "gta5", players: 3, max: 32);
-        server.Data.IconVersion = 55;
+        server.Data.Vars["icon_url"] = "https://cfx-server-metadata.cfx-services.net/images/7665c31f-234f-4758-bc1a-a24d2eb4f530";
         var vm = CreateViewModel(CatalogBytes(server), enrichment: enrichment);
         await vm.LoadAsync();
         var row = vm.Servers[0];
@@ -406,10 +406,10 @@ public class ServerBrowserViewModelTests
     }
 
     [Fact]
-    public async Task RowIcon_WhenCatalogPublishesNoIconVersion_ShouldNotProbeForOne()
+    public async Task RowIcon_WhenCatalogPublishesNoIconUrl_ShouldNotProbeForOne()
     {
-        // Given — the snapshot is the proof: a server publishing no iconVersion has no
-        // icon, so the row never falls back to a /single/ probe (request hygiene).
+        // Given — the snapshot is the proof: a server publishing no `icon_url` var has
+        // no icon, so the row never falls back to a /single/ probe (request hygiene).
         var enrichment = new FakeServerEnrichmentService { Icon = [9, 8, 7] };
         var vm = CreateViewModel(
             CatalogBytes(Entry("aaaaaa", "Alpha", game: "gta5", players: 3, max: 32)),
@@ -449,12 +449,13 @@ public class ServerBrowserViewModelTests
     }
 
     [Fact]
-    public async Task RowIcon_WhenCatalogPublishesIconVersion_ShouldUseItDirectly()
+    public async Task RowIcon_WhenCatalogPublishesIconUrl_ShouldUseItDirectly()
     {
         // Given
+        const string iconUrl = "https://cfx-server-metadata.cfx-services.net/images/7665c31f-234f-4758-bc1a-a24d2eb4f530";
         var enrichment = new FakeServerEnrichmentService { Icon = [9, 8, 7] };
         var server = Entry("aaaaaa", "Alpha", game: "gta5", players: 3, max: 32);
-        server.Data.IconVersion = 55;
+        server.Data.Vars["icon_url"] = iconUrl;
         var vm = CreateViewModel(CatalogBytes(server), enrichment: enrichment);
         await vm.LoadAsync();
         var row = vm.Servers[0];
@@ -465,7 +466,7 @@ public class ServerBrowserViewModelTests
 
         // Then
         Assert.Equal(1, enrichment.DirectIconCalls);
-        Assert.Equal("55", enrichment.LastRequestedIconVersion);
+        Assert.Equal(iconUrl, enrichment.LastRequestedIconUrl);
         Assert.Equal(new byte[] { 9, 8, 7 }, row.Icon);
     }
 

@@ -11,7 +11,7 @@ public sealed class ServerBrowserItem : INotifyPropertyChanged
 {
     private static readonly Regex ColorCodePattern = new(@"\^[0-9r]", RegexOptions.Compiled);
 
-    private ServerBrowserItem(string cfxId, string name, GameClient? game, int players, int maxPlayers, string address, string? iconVersion)
+    private ServerBrowserItem(string cfxId, string name, GameClient? game, int players, int maxPlayers, string address, string? iconUrl)
     {
         CfxId = cfxId;
         Name = name;
@@ -19,7 +19,7 @@ public sealed class ServerBrowserItem : INotifyPropertyChanged
         Players = players;
         MaxPlayers = maxPlayers;
         Address = address;
-        IconVersion = iconVersion;
+        IconUrl = iconUrl;
     }
 
     public string CfxId { get; }
@@ -34,7 +34,7 @@ public sealed class ServerBrowserItem : INotifyPropertyChanged
 
     public string Address { get; }
 
-    public string? IconVersion { get; }
+    public string? IconUrl { get; }
 
     private bool _isSaved;
 
@@ -101,7 +101,7 @@ public sealed class ServerBrowserItem : INotifyPropertyChanged
             data.Clients,
             data.SvMaxclients,
             address,
-            CfxVars.TryGetIconVersion(data));
+            CfxVars.TryGetIconUrl(data.Vars));
     }
 
     private static string ResolveName(Master.ServerData data)

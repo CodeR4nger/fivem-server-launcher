@@ -28,6 +28,13 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <!-- Native transport for the WebP icon decoder (CFX serves icons as WebP since
+         the 2026-10 icon_url change; WPF/WIC cannot decode WebP). MIT package
+         carrying the official libwebp 1.6.1 win-x64 binaries (~400 KB). Consumed
+         only through the IWebpDecoder P/Invoke seam, never through its managed API.
+         RID-native layout: flows into both dev output and the single-file publish
+         (IncludeNativeLibrariesForSelfExtract). -->
+    <PackageReference Include="Imazen.WebP.NativeRuntime.win-x64" Version="1.6.1" />
   </ItemGroup>
 
   <ItemGroup>

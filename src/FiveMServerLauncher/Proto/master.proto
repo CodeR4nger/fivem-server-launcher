@@ -16,9 +16,10 @@ message ServerData
     string gametype = 5;
     string mapname = 6;
     string server = 9;
-    // Verified against the live streamRedir payload: iconVersion is a typed field
-    // (field 11), never a var. Zero (field absent) = no icon; any non-zero value —
-    // including negative — is a valid icon version.
+    // Historical (pre-2026-10) icon source: CFX stopped publishing this typed
+    // field when icons moved to the `icon_url` var (cfx-server-metadata serves the
+    // actual bytes, as WebP). Verified live 2026-10-26: 0/33,548 servers carry it.
+    // Kept as wire-format documentation; nothing consumes it.
     int64 iconVersion = 11;
     map<string, string> vars = 12;
     repeated string connectEndPoints = 18;

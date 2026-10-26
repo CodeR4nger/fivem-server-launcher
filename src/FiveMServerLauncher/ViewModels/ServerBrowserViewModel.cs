@@ -307,14 +307,14 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
 
     private async Task LoadIconAsync(ServerBrowserItem item)
     {
-        // The snapshot is the proof: a server publishing no iconVersion has no icon,
-        // so the row never probes /single/ for one (request hygiene).
-        if (item.IconVersion is null)
+        // The snapshot is the proof: a server publishing no `icon_url` var has no
+        // icon, so the row never probes /single/ for one (request hygiene).
+        if (item.IconUrl is null)
         {
             return;
         }
 
-        var icon = await _enrichment.GetIconAsync(item.CfxId, item.IconVersion);
+        var icon = await _enrichment.GetIconAsync(item.IconUrl);
 
         if (icon is not null)
         {

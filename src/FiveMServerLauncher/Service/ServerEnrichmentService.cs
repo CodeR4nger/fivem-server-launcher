@@ -9,7 +9,7 @@ public sealed record ServerPresence(
     int Players,
     int MaxPlayers,
     GameClient? Game,
-    string? IconVersion = null)
+    string? IconUrl = null)
 {
     public static ServerPresence Offline { get; } = new(false, 0, 0, null);
 }
@@ -18,18 +18,16 @@ public interface IServerEnrichmentService
 {
     Task<IReadOnlyDictionary<string, ServerPresence>?> RefreshAsync(bool forceRefresh = false);
 
-    Task<byte[]?> GetIconAsync(string cfxId, string iconVersion);
+    Task<byte[]?> GetIconAsync(string iconUrl);
 
     Task<string?> ResolveCfxIdAsync(string address);
 }
 
 public sealed class ServerEnrichmentService : IServerEnrichmentService
 {
-    private const string IconUrl = "https://frontend.cfx-services.net/api/servers/icon/{0}/{1}.png";
-
     private static readonly TimeSpan DefaultCacheTtl = TimeSpan.FromSeconds(45);
     private static readonly TimeSpan DefaultForceCooldown = TimeSpan.FromSeconds(15);
-    private const long DefaultMaxIconBytes = 2 * 1024 * 1024;
+    private const long DefaultMaxIconBytes = 8 * 1024 * 1024;
     private const int DefaultMaxConcurrentIconDownloads = 4;
     private const int DefaultMaxCachedIcons = 256;
 
@@ -42,8 +40,9 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
     private readonly int _maxCachedIcons;
     private readonly SemaphoreSlim _iconDownloadSlots;
     private readonly object _iconGate = new();
-    private readonly LruCache<(string CfxId, string Version), byte[]> _iconCache;
-    private readonly Dictionary<(string CfxId, string Version), Task<byte[]?>> _inFlightIcons = new();
+    private readonly LruCache<string, byte[]> _iconCache;
+    private readonly Dictionary<string, Task<byte[]?>> _inFlightIcons = new();
+    private readonly IconImageNormalizer _iconNormalizer = new(new LibWebpDecoder());
 
     private DateTimeOffset _lastForcedAt = DateTimeOffset.MinValue;
 
@@ -65,7 +64,7 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
         _maxIconBytes = maxIconBytes ?? DefaultMaxIconBytes;
         _maxCachedIcons = Math.Max(1, maxCachedIcons ?? DefaultMaxCachedIcons);
         _iconDownloadSlots = new SemaphoreSlim(Math.Max(1, maxConcurrentIconDownloads ?? DefaultMaxConcurrentIconDownloads));
-        _iconCache = new LruCache<(string CfxId, string Version), byte[]>(_maxCachedIcons);
+        _iconCache = new LruCache<string, byte[]>(_maxCachedIcons);
     }
 
     public ServerEnrichmentService(HttpClient httpClient, TimeProvider? timeProvider = null, TimeSpan? cacheTtl = null, IDnsResolver? dnsResolver = null, TimeSpan? forceCooldown = null, long? maxIconBytes = null, int? maxConcurrentIconDownloads = null, int? maxCachedIcons = null)
@@ -102,13 +101,22 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
                         server.Data!.Clients,
                         server.Data.SvMaxclients,
                         CfxVars.TryGetGameClient(server.Data.Vars),
-                        CfxVars.TryGetIconVersion(server.Data));
+                        CfxVars.TryGetIconUrl(server.Data.Vars));
                 });
     }
 
-    public Task<byte[]?> GetIconAsync(string cfxId, string iconVersion)
+    public Task<byte[]?> GetIconAsync(string iconUrl)
     {
-        var key = (cfxId, iconVersion);
+        // The URL is server-published, untrusted input: only a validated absolute
+        // https URL is ever fetched. Rejection happens before HttpClient is reached
+        // — GetAsync on a non-http scheme (e.g. file://) throws
+        // NotSupportedException, which sits outside the sanctioned swallow set.
+        if (!IsSafeIconUrl(iconUrl))
+        {
+            return Task.FromResult<byte[]?>(null);
+        }
+
+        var key = iconUrl;
         TaskCompletionSource<byte[]?>? pending = null;
 
         lock (_iconGate)
@@ -141,12 +149,12 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
     }
 
     private async Task CompleteIconDownloadAsync(
-        (string CfxId, string Version) key,
+        string key,
         TaskCompletionSource<byte[]?> completion)
     {
         try
         {
-            completion.SetResult(await DownloadIconAsync(key));
+            completion.SetResult(await DownloadIconAsync(key).ConfigureAwait(false));
         }
         catch (Exception exception)
         {
@@ -161,34 +169,51 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
         }
     }
 
-    private async Task<byte[]?> DownloadIconAsync((string CfxId, string Version) key)
+    private async Task<byte[]?> DownloadIconAsync(string iconUrl)
     {
         try
         {
-            await _iconDownloadSlots.WaitAsync();
+            // ConfigureAwait(false) throughout: this service is awaited from the
+            // UI thread (the enrichment loop runs on the window dispatcher and
+            // browser icons load from a binding getter), and the work after the
+            // HTTP read — the bounded read plus the native WebP decode and PNG
+            // re-encode — must run on the pool, never on the dispatcher. Callers'
+            // own awaits still capture their context; only these continuations
+            // move.
+            await _iconDownloadSlots.WaitAsync().ConfigureAwait(false);
 
             try
             {
-                var response = await _httpClient.GetAsync(string.Format(IconUrl, key.CfxId, key.Version));
+                var response = await _httpClient.GetAsync(iconUrl).ConfigureAwait(false);
 
                 if (!response.IsSuccessStatusCode)
                 {
                     return null;
                 }
 
-                var icon = await BoundedContent.ReadAsByteArrayAsync(response.Content, _maxIconBytes);
+                var icon = await BoundedContent.ReadAsByteArrayAsync(response.Content, _maxIconBytes).ConfigureAwait(false);
 
                 if (icon is null)
                 {
                     return null;
                 }
 
-                lock (_iconGate)
+                // Normalize before caching: the icon host serves WebP, which WPF
+                // cannot render; the cache stores bounded PNG so every consumer
+                // stays byte-format-agnostic and LRU entries hold ~KBs, not MBs.
+                var normalized = _iconNormalizer.Normalize(icon);
+
+                if (normalized is null)
                 {
-                    _iconCache.Set(key, icon);
+                    return null;
                 }
 
-                return icon;
+                lock (_iconGate)
+                {
+                    _iconCache.Set(iconUrl, normalized);
+                }
+
+                return normalized;
             }
             finally
             {
@@ -203,6 +228,15 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
         {
             return null;
         }
+    }
+
+    private static bool IsSafeIconUrl(string? iconUrl)
+    {
+        return !string.IsNullOrWhiteSpace(iconUrl)
+            && Uri.TryCreate(iconUrl, UriKind.Absolute, out var uri)
+            && uri.Scheme == Uri.UriSchemeHttps
+            && !string.IsNullOrEmpty(uri.Host)
+            && string.IsNullOrEmpty(uri.UserInfo);
     }
 
     public async Task<string?> ResolveCfxIdAsync(string address)

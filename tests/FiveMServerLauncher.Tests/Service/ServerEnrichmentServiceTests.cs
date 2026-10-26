@@ -1,3 +1,4 @@
+using System.IO;
 using System.Net;
 using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Service;
@@ -171,13 +172,12 @@ public class ServerEnrichmentServiceTests
     }
 
     [Fact]
-    public async Task RefreshAsync_WhenIconVersionPublishedInSnapshot_ShouldExposeItOnPresence()
+    public async Task RefreshAsync_WhenIconUrlPublishedInVars_ShouldExposeItOnPresence()
     {
-        // Given — the catalog snapshot carries each server's iconVersion as a typed
-        // proto field (field 11): any non-zero value (including negative) means the
-        // server has an icon; only zero (field absent) means it has none. The
-        // enrichment loop uses the direct icon path with no /single/ probes; a stale
-        // version that 404s degrades to a null icon in the download step.
+        // Given — CFX no longer publishes the typed iconVersion field; the icon
+        // truth is the `icon_url` var carried in the catalog snapshot (verified live
+        // 2026-10-26: 0/33,548 servers publish the field, 25,697 publish the var).
+        // A missing or empty var means the server has no icon.
         var handler = new RoutedHttpMessageHandler();
         handler.AddBytesRoute(
             "streamRedir",
@@ -186,12 +186,17 @@ public class ServerEnrichmentServiceTests
                 TestProtobufFrames.BuildFrameStream(new Master.Server
                 {
                     EndPoint = "withicon",
-                    Data = new Master.ServerData { IconVersion = 288154985 }
+                    Data = new Master.ServerData
+                    {
+                        Clients = 1,
+                        SvMaxclients = 32,
+                        Vars = { ["icon_url"] = "https://cfx-server-metadata.cfx-services.net/images/7665c31f-234f-4758-bc1a-a24d2eb4f530" }
+                    }
                 }),
                 TestProtobufFrames.BuildFrameStream(new Master.Server
                 {
-                    EndPoint = "negativeicon",
-                    Data = new Master.ServerData { IconVersion = -208647301, Clients = 1, SvMaxclients = 32 }
+                    EndPoint = "emptyvar",
+                    Data = new Master.ServerData { Clients = 1, SvMaxclients = 32, Vars = { ["icon_url"] = "" } }
                 }),
                 TestProtobufFrames.BuildFrameStream(new Master.Server
                 {
@@ -205,65 +210,191 @@ public class ServerEnrichmentServiceTests
         var result = await service.RefreshAsync();
 
         // Then
-        Assert.Equal("288154985", result!["withicon"].IconVersion);
-        Assert.Equal("-208647301", result["negativeicon"].IconVersion);
-        Assert.Null(result["noicon"].IconVersion);
+        Assert.Equal(
+            "https://cfx-server-metadata.cfx-services.net/images/7665c31f-234f-4758-bc1a-a24d2eb4f530",
+            result!["withicon"].IconUrl);
+        Assert.Null(result["emptyvar"].IconUrl);
+        Assert.Null(result["noicon"].IconUrl);
     }
+
+    [Fact]
+    public async Task GetIconAsync_WhenIconExceedsLegacySizeCap_ShouldServeItUnderTheRaisedDefaultCap()
+    {
+        // Given — real CFX metadata icons (observed live 2026-10-26) run up to
+        // 5.07 MB; the legacy 2 MB cap silently dropped them. The payload is
+        // deliberately NOT WebP: non-WebP bytes pass through untouched, so this
+        // pins the byte cap itself (the WebP normalization path has its own
+        // tests below).
+        var largeIcon = new byte[5 * 1024 * 1024 + 7];
+        var handler = new RoutedHttpMessageHandler();
+        handler.AddBytesRoute("images/7665c31f", HttpStatusCode.OK, largeIcon);
+        using var httpClient = new HttpClient(handler);
+        var service = new ServerEnrichmentService(httpClient);
+
+        // When
+        var icon = await service.GetIconAsync(IconUrlFor("7665c31f"));
+
+        // Then
+        Assert.NotNull(icon);
+        Assert.Equal(largeIcon.Length, icon!.Length);
+    }
+
+    private static string IconUrlFor(string id) =>
+        $"https://cfx-server-metadata.cfx-services.net/images/{id}";
 
     [Fact]
     public async Task GetIconAsync_WhenIconExceedsMaxSize_ShouldReturnNull()
     {
         // Given — a decompression-bomb style icon is dropped, never decoded into the cache.
         var handler = new RoutedHttpMessageHandler();
-        handler.AddBytesRoute("icon/y4lg95/7.png", HttpStatusCode.OK, new byte[500]);
+        handler.AddBytesRoute("images/7665c31f", HttpStatusCode.OK, new byte[500]);
         using var httpClient = new HttpClient(handler);
         var service = new ServerEnrichmentService(httpClient, maxIconBytes: 100);
 
         // When
-        var result = await service.GetIconAsync("y4lg95", "7");
+        var result = await service.GetIconAsync(IconUrlFor("7665c31f"));
 
         // Then
         Assert.Null(result);
     }
 
     [Fact]
-    public async Task GetIconAsync_WhenVersionUnchanged_ShouldServeCachedIconWithoutRedownload()
+    public async Task GetIconAsync_WhenIconUrlUnchanged_ShouldServeCachedIconWithoutRedownload()
     {
-        // Given
+        // Given — the icon URL is the complete icon identity since CFX's 2026-10
+        // change (a re-uploaded icon gets a new guid URL), so it is the whole cache
+        // key: an unchanged URL never re-downloads.
+        const string iconUrl = "https://cfx-server-metadata.cfx-services.net/images/7665c31f-234f-4758-bc1a-a24d2eb4f530";
         var handler = new RoutedHttpMessageHandler();
-        handler.AddBytesRoute("icon/y4lg95/288154985.png", HttpStatusCode.OK, [1, 2, 3, 4]);
+        handler.AddBytesRoute(iconUrl, HttpStatusCode.OK, [1, 2, 3, 4]);
         using var httpClient = new HttpClient(handler);
         var service = new ServerEnrichmentService(httpClient);
 
         // When
-        var first = await service.GetIconAsync("y4lg95", "288154985");
-        var second = await service.GetIconAsync("y4lg95", "288154985");
+        var first = await service.GetIconAsync(iconUrl);
+        var second = await service.GetIconAsync(iconUrl);
 
         // Then
         Assert.Equal([1, 2, 3, 4], first);
         Assert.Equal([1, 2, 3, 4], second);
-        Assert.Equal(1, handler.RequestCountByPath("icon/y4lg95/288154985.png"));
+        Assert.Equal(1, handler.RequestCountByPath("images/7665c31f"));
     }
 
     [Fact]
-    public async Task GetIconAsync_WhenVersionChanges_ShouldDownloadNewIcon()
+    public async Task GetIconAsync_WhenIconUrlChanges_ShouldDownloadNewIcon()
     {
-        // Given
+        // Given — a different URL is a different icon; the cache key changes with it.
         var handler = new RoutedHttpMessageHandler();
-        handler.AddBytesRoute("icon/y4lg95/1.png", HttpStatusCode.OK, [1]);
-        handler.AddBytesRoute("icon/y4lg95/2.png", HttpStatusCode.OK, [2]);
+        handler.AddBytesRoute("images/7665c31f", HttpStatusCode.OK, [1]);
+        handler.AddBytesRoute("images/0af60b69", HttpStatusCode.OK, [2]);
         using var httpClient = new HttpClient(handler);
         var service = new ServerEnrichmentService(httpClient);
 
         // When
-        var first = await service.GetIconAsync("y4lg95", "1");
-        var second = await service.GetIconAsync("y4lg95", "2");
+        var first = await service.GetIconAsync(IconUrlFor("7665c31f"));
+        var second = await service.GetIconAsync(IconUrlFor("0af60b69"));
 
         // Then
         Assert.Equal([1], first);
         Assert.Equal([2], second);
-        Assert.Equal(1, handler.RequestCountByPath("icon/y4lg95/1.png"));
-        Assert.Equal(1, handler.RequestCountByPath("icon/y4lg95/2.png"));
+        Assert.Equal(1, handler.RequestCountByPath("images/7665c31f"));
+        Assert.Equal(1, handler.RequestCountByPath("images/0af60b69"));
+    }
+
+    [Fact]
+    public async Task GetIconAsync_WhenIconUrlIsNotSafeHttps_ShouldReturnNullWithoutAnyRequest()
+    {
+        // Given — the icon URL is server-published, untrusted input: only a
+        // validated absolute https URL without credentials is ever downloaded.
+        // Rejection must happen BEFORE HttpClient is reached — GetAsync("file://…")
+        // throws NotSupportedException, which sits outside the sanctioned swallow
+        // set and would fault every caller sharing the in-flight download.
+        string[] unsafeUrls =
+        [
+            "http://cfx-server-metadata.cfx-services.net/images/7665c31f",
+            "ftp://example.com/icon.webp",
+            "file:///C:/Windows/System32/config.sys",
+            "//cfx-server-metadata.cfx-services.net/images/7665c31f",
+            "/images/7665c31f",
+            "cfx-server-metadata.cfx-services.net/images/7665c31f",
+            "https://user:pass@cfx-server-metadata.cfx-services.net/images/7665c31f",
+            "not a url",
+            "",
+            "   "
+        ];
+        var handler = new RoutedHttpMessageHandler();
+        handler.AddBytesRoute(
+            "cfx-server-metadata.cfx-services.net/images/",
+            HttpStatusCode.OK,
+            [9, 9, 9]);
+        using var httpClient = new HttpClient(handler);
+        var service = new ServerEnrichmentService(httpClient);
+
+        foreach (var url in unsafeUrls)
+        {
+            // When
+            var icon = await service.GetIconAsync(url);
+
+            // Then
+            Assert.Null(icon);
+        }
+
+        Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
+    public async Task GetIconAsync_WhenIconUrlServesWebP_ShouldReturnNormalizedPng()
+    {
+        // Given — CFX's icon host serves WebP, which WPF cannot render; the icon
+        // seam must hand normalized, bounded PNG bytes to every caller (row
+        // converter LRU, shortcut ICO writer), and cache them in that form.
+        var webp = TestWebpEncoder.EncodeRgba(400, 400);
+        var handler = new RoutedHttpMessageHandler();
+        handler.AddBytesRoute("images/7665c31f", HttpStatusCode.OK, webp);
+        using var httpClient = new HttpClient(handler);
+        var service = new ServerEnrichmentService(httpClient);
+
+        // When
+        var icon = await service.GetIconAsync(IconUrlFor("7665c31f"));
+
+        // Then — PNG bounded to the 96px headroom.
+        Assert.NotNull(icon);
+        Assert.Equal(0x89, icon![0]);
+        Assert.Equal((byte)'P', icon[1]);
+        var frame = System.Windows.Media.Imaging.BitmapFrame.Create(
+            new MemoryStream(icon), default, System.Windows.Media.Imaging.BitmapCacheOption.OnLoad);
+        Assert.Equal((96, 96), (frame.PixelWidth, frame.PixelHeight));
+
+        // And — the cache serves the same normalized instance without a re-download.
+        var again = await service.GetIconAsync(IconUrlFor("7665c31f"));
+        Assert.Same(icon, again);
+        Assert.Equal(1, handler.RequestCountByPath("images/7665c31f"));
+    }
+
+    [Fact]
+    public async Task GetIconAsync_WhenIconUrlServesUndecodableWebP_ShouldReturnNullWithoutCaching()
+    {
+        // Given — bytes with a WebP signature but no decodable payload: they must
+        // degrade to no icon AND never enter the cache (a later successful upload
+        // gets a new URL anyway, but the failed slot must not pin null bytes).
+        var handler = new RoutedHttpMessageHandler();
+        handler.AddBytesRoute("images/7665c31f", HttpStatusCode.OK,
+        [
+            (byte)'R', (byte)'I', (byte)'F', (byte)'F', 0x00, 0x00, 0x00, 0x00,
+            (byte)'W', (byte)'E', (byte)'B', (byte)'P', 0x01, 0x02, 0x03, 0x04
+        ]);
+        using var httpClient = new HttpClient(handler);
+        var service = new ServerEnrichmentService(httpClient);
+
+        // When
+        var icon = await service.GetIconAsync(IconUrlFor("7665c31f"));
+
+        // Then
+        Assert.Null(icon);
+
+        // And — nothing was cached: the fetch repeats rather than pinning null.
+        Assert.Null(await service.GetIconAsync(IconUrlFor("7665c31f")));
+        Assert.Equal(2, handler.RequestCountByPath("images/7665c31f"));
     }
 
     [Fact]
@@ -271,12 +402,12 @@ public class ServerEnrichmentServiceTests
     {
         // Given
         var handler = new RoutedHttpMessageHandler();
-        handler.AddBytesRoute("icon/y4lg95/5.png", HttpStatusCode.NotFound, Array.Empty<byte>());
+        handler.AddBytesRoute("images/7665c31f", HttpStatusCode.NotFound, Array.Empty<byte>());
         using var httpClient = new HttpClient(handler);
         var service = new ServerEnrichmentService(httpClient);
 
         // When
-        var result = await service.GetIconAsync("y4lg95", "5");
+        var result = await service.GetIconAsync(IconUrlFor("7665c31f"));
 
         // Then
         Assert.Null(result);
@@ -292,8 +423,8 @@ public class ServerEnrichmentServiceTests
         var service = new ServerEnrichmentService(httpClient);
 
         // When — caller two joins the in-flight download before it faults.
-        var first = service.GetIconAsync("y4lg95", "7");
-        var second = service.GetIconAsync("y4lg95", "7");
+        var first = service.GetIconAsync(IconUrlFor("7665c31f"));
+        var second = service.GetIconAsync(IconUrlFor("7665c31f"));
         Assert.Equal(1, handler.TotalRequests);
         handler.Release();
 
@@ -587,38 +718,21 @@ public class ServerEnrichmentServiceTests
     }
 
     [Fact]
-    public async Task GetIconAsync_WithKnownVersion_ShouldDownloadDirectlyWithoutSingleCall()
+    public async Task GetIconAsync_WhenIconUrlServed_ShouldFetchOnlyTheIconEndpoint()
     {
-        // Given
+        // Given — request hygiene: the icon URL is the single icon fact, so fetching
+        // an icon must never touch the /single/ endpoint.
         var handler = new RoutedHttpMessageHandler();
-        handler.AddBytesRoute("icon/y4lg95/55.png", HttpStatusCode.OK, [1, 2, 3]);
+        handler.AddBytesRoute("images/7665c31f", HttpStatusCode.OK, [1, 2, 3]);
         using var httpClient = new HttpClient(handler);
         var service = new ServerEnrichmentService(httpClient);
 
         // When
-        var icon = await service.GetIconAsync("y4lg95", "55");
+        var icon = await service.GetIconAsync(IconUrlFor("7665c31f"));
 
         // Then
         Assert.Equal(new byte[] { 1, 2, 3 }, icon);
         Assert.Equal(0, handler.RequestCountByPath("single"));
-    }
-
-    [Fact]
-    public async Task GetIconAsync_WithKnownVersion_ShouldCacheByIdAndVersion()
-    {
-        // Given
-        var handler = new RoutedHttpMessageHandler();
-        handler.AddBytesRoute("icon/y4lg95/55.png", HttpStatusCode.OK, [1, 2, 3]);
-        using var httpClient = new HttpClient(handler);
-        var service = new ServerEnrichmentService(httpClient);
-
-        // When
-        await service.GetIconAsync("y4lg95", "55");
-        var again = await service.GetIconAsync("y4lg95", "55");
-
-        // Then
-        Assert.Equal(new byte[] { 1, 2, 3 }, again);
-        Assert.Equal(1, handler.RequestCountByPath("icon/y4lg95/55.png"));
     }
 
     [Fact]
@@ -632,7 +746,7 @@ public class ServerEnrichmentServiceTests
 
         // When
         var requests = Enumerable.Range(0, 6)
-            .Select(_ => service.GetIconAsync("y4lg95", "7"))
+            .Select(_ => service.GetIconAsync(IconUrlFor("7665c31f")))
             .ToList();
         Assert.Equal(1, handler.TotalRequests);
         handler.Release();
@@ -654,7 +768,7 @@ public class ServerEnrichmentServiceTests
 
         // When
         var requests = Enumerable.Range(0, 6)
-            .Select(i => service.GetIconAsync($"srv{i}", "7"))
+            .Select(i => service.GetIconAsync(IconUrlFor($"srv{i}")))
             .ToList();
         Assert.Equal(2, handler.TotalRequests);
         handler.Release();
@@ -672,28 +786,28 @@ public class ServerEnrichmentServiceTests
         // Given — the icon cache is bounded for the app's lifetime; beyond capacity the
         // least recently used icon is evicted (a re-touched older icon survives).
         var handler = new RoutedHttpMessageHandler();
-        handler.AddBytesRoute("icon/srv0/1.png", HttpStatusCode.OK, [10]);
-        handler.AddBytesRoute("icon/srv1/1.png", HttpStatusCode.OK, [11]);
-        handler.AddBytesRoute("icon/srv2/1.png", HttpStatusCode.OK, [12]);
-        handler.AddBytesRoute("icon/srv3/1.png", HttpStatusCode.OK, [13]);
+        handler.AddBytesRoute("images/srv0", HttpStatusCode.OK, [10]);
+        handler.AddBytesRoute("images/srv1", HttpStatusCode.OK, [11]);
+        handler.AddBytesRoute("images/srv2", HttpStatusCode.OK, [12]);
+        handler.AddBytesRoute("images/srv3", HttpStatusCode.OK, [13]);
         using var httpClient = new HttpClient(handler);
         var service = new ServerEnrichmentService(httpClient, maxCachedIcons: 3);
 
         // When
-        await service.GetIconAsync("srv0", "1");
-        await service.GetIconAsync("srv1", "1");
-        await service.GetIconAsync("srv2", "1");
-        await service.GetIconAsync("srv0", "1");
-        await service.GetIconAsync("srv3", "1");
-        var evicted = await service.GetIconAsync("srv1", "1");
-        var retained = await service.GetIconAsync("srv0", "1");
+        await service.GetIconAsync(IconUrlFor("srv0"));
+        await service.GetIconAsync(IconUrlFor("srv1"));
+        await service.GetIconAsync(IconUrlFor("srv2"));
+        await service.GetIconAsync(IconUrlFor("srv0"));
+        await service.GetIconAsync(IconUrlFor("srv3"));
+        var evicted = await service.GetIconAsync(IconUrlFor("srv1"));
+        var retained = await service.GetIconAsync(IconUrlFor("srv0"));
 
         // Then — srv1 was evicted (LRU: srv0 was re-touched and survived); srv0 stays cached.
         Assert.Equal(new byte[] { 11 }, evicted);
         Assert.Equal(new byte[] { 10 }, retained);
-        Assert.Equal(2, handler.RequestCountByPath("icon/srv1/1.png"));
-        Assert.Equal(1, handler.RequestCountByPath("icon/srv0/1.png"));
-        Assert.Equal(1, handler.RequestCountByPath("icon/srv3/1.png"));
+        Assert.Equal(2, handler.RequestCountByPath("images/srv1"));
+        Assert.Equal(1, handler.RequestCountByPath("images/srv0"));
+        Assert.Equal(1, handler.RequestCountByPath("images/srv3"));
     }
 
     [Fact]
@@ -703,19 +817,19 @@ public class ServerEnrichmentServiceTests
         // routed handler answers synchronously); a completed task parked as in-flight
         // would later serve stale bytes with no download after an eviction.
         var handler = new RoutedHttpMessageHandler();
-        handler.AddBytesRoute("icon/srva/1.png", HttpStatusCode.OK, [10]);
-        handler.AddBytesRoute("icon/srvb/1.png", HttpStatusCode.OK, [11]);
+        handler.AddBytesRoute("images/srva", HttpStatusCode.OK, [10]);
+        handler.AddBytesRoute("images/srvb", HttpStatusCode.OK, [11]);
         using var httpClient = new HttpClient(handler);
         var service = new ServerEnrichmentService(httpClient, maxCachedIcons: 1);
 
         // When
-        await service.GetIconAsync("srva", "1");
-        await service.GetIconAsync("srvb", "1");
-        var refetched = await service.GetIconAsync("srva", "1");
+        await service.GetIconAsync(IconUrlFor("srva"));
+        await service.GetIconAsync(IconUrlFor("srvb"));
+        var refetched = await service.GetIconAsync(IconUrlFor("srva"));
 
         // Then — srva was evicted by srvb, so the re-request downloads again.
         Assert.Equal(new byte[] { 10 }, refetched);
-        Assert.Equal(2, handler.RequestCountByPath("icon/srva/1.png"));
+        Assert.Equal(2, handler.RequestCountByPath("images/srva"));
     }
 
     private sealed class HttpMessageHandlerStub : HttpMessageHandler

@@ -958,14 +958,14 @@ public class MainViewModel : INotifyPropertyChanged
 
             item.ApplyPresence(serverPresence);
 
-            // The snapshot either publishes the icon version or proves there is none,
+            // The snapshot either publishes the icon URL or proves there is none,
             // so the loop never needs to probe /single/ for it.
-            if (serverPresence.IconVersion is null)
+            if (serverPresence.IconUrl is null)
             {
                 continue;
             }
 
-            var icon = await _enrichment.GetIconAsync(item.CfxId!, serverPresence.IconVersion);
+            var icon = await _enrichment.GetIconAsync(serverPresence.IconUrl);
 
             if (icon is not null && item.Icon != icon)
             {

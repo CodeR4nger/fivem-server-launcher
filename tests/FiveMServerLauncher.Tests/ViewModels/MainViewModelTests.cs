@@ -665,7 +665,7 @@ public class MainViewModelTests
         {
             Presence = new Dictionary<string, ServerPresence>
             {
-                ["y4lg95"] = new ServerPresence(true, 12, 64, GameClient.FiveM, "288154985")
+                ["y4lg95"] = new ServerPresence(true, 12, 64, GameClient.FiveM, IconUrl: "https://cfx-server-metadata.cfx-services.net/images/7665c31f-234f-4758-bc1a-a24d2eb4f530")
             },
             Icon = [1, 2, 3]
         };
@@ -713,17 +713,19 @@ public class MainViewModelTests
     }
 
     [Fact]
-    public async Task RefreshServerInfoAsync_WhenPresenceCarriesIconVersion_ShouldUseDirectIconPathWithoutSingleProbe()
+    public async Task RefreshServerInfoAsync_WhenPresenceCarriesIconUrl_ShouldFetchIconByUrlWithoutSingleProbe()
     {
-        // Given — the catalog snapshot publishes the icon version, so the refresh loop
-        // fetches the icon directly and never probes /single/ per row.
+        // Given — the presence carries the server-published icon URL (the catalog's
+        // `icon_url` var), so the refresh loop fetches the icon directly by URL and
+        // never probes /single/ per row.
+        const string iconUrl = "https://cfx-server-metadata.cfx-services.net/images/7665c31f-234f-4758-bc1a-a24d2eb4f530";
         var repository = new InMemoryServerRepository();
         repository.Add(SavedServer.Create("My Server", "cfx.re/join/y4lg95"));
         var enrichment = new FakeServerEnrichmentService
         {
             Presence = new Dictionary<string, ServerPresence>
             {
-                ["y4lg95"] = new ServerPresence(true, 12, 64, GameClient.FiveM, "288154985")
+                ["y4lg95"] = new ServerPresence(true, 12, 64, GameClient.FiveM, IconUrl: iconUrl)
             },
             Icon = [1, 2, 3]
         };
@@ -740,13 +742,13 @@ public class MainViewModelTests
         var item = Assert.Single(vm.SavedServers);
         Assert.True(item.HasIcon);
         Assert.Equal(1, enrichment.DirectIconCalls);
-        Assert.Equal("288154985", enrichment.LastRequestedIconVersion);
+        Assert.Equal(iconUrl, enrichment.LastRequestedIconUrl);
     }
 
     [Fact]
-    public async Task RefreshServerInfoAsync_WhenPresenceHasNoIconVersion_ShouldSkipIconFetch()
+    public async Task RefreshServerInfoAsync_WhenPresenceHasNoIconUrl_ShouldSkipIconFetch()
     {
-        // Given — a server without a published icon version has no icon to fetch; the
+        // Given — a server without a published icon URL has no icon to fetch; the
         // loop skips it instead of probing /single/ every cycle.
         var repository = new InMemoryServerRepository();
         repository.Add(SavedServer.Create("My Server", "cfx.re/join/y4lg95"));
@@ -2540,7 +2542,7 @@ public class MainViewModelTests
             ResolvedCfxId = "abc123",
             Presence = new Dictionary<string, ServerPresence>
             {
-                ["abc123"] = new ServerPresence(true, 12, 48, GameClient.FiveM, "55")
+                ["abc123"] = new ServerPresence(true, 12, 48, GameClient.FiveM, IconUrl: "https://cfx-server-metadata.cfx-services.net/images/7665c31f-234f-4758-bc1a-a24d2eb4f530")
             },
             Icon = [1, 2, 3]
         };
