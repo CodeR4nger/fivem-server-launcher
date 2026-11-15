@@ -5,6 +5,7 @@ Windows-only C#/.NET 10 WPF launcher for FiveM. Design decisions and UX philosop
 ## Commands
 - Build: `dotnet build FiveMServerLauncher.slnx`
 - Test all: `dotnet test`
+- CI: `.github/workflows/ci.yml` runs build + tests on `windows-latest` for pushes and PRs to `main` (tests only — releases stay manual).
 - Run one test class: `dotnet test --filter FullyQualifiedName~CfxServiceTests` (xUnit)
 - Publish portable single-file win-x64 (`CFXLauncher.exe`, self-contained, one file; native
   WPF libs self-extract to temp at startup). First build, then publish with `--no-build` (a
