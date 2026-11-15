@@ -133,9 +133,12 @@ public partial class MainViewModelTests
     [Fact]
     public async Task ConnectAsync_WhenUnresolvableCfxIdAndNoSavedRow_ShouldShowInvalidAddress()
     {
-        // Given — an unknown id with no saved context still fails as before.
+        // Given — CFX authoritatively answers 404 for an id with no saved context.
         var processLauncher = new FakeGameProcessLauncher();
-        var vm = CreateViewModel(processLauncher, "{}");
+        var vm = CreateViewModel(
+            processLauncher,
+            "{}",
+            cfxHttpClient: new HttpClient(new FakeHttpMessageHandler(System.Net.HttpStatusCode.NotFound, string.Empty)));
         vm.ServerAddress = "y4lg95";
 
         // When
@@ -171,10 +174,9 @@ public partial class MainViewModelTests
     }
 
     [Fact]
-    public async Task ConnectAsync_WhenCfxServiceOutageAndNoSavedRow_ShouldShowInvalidAddress()
+    public async Task ConnectAsync_WhenCfxServiceOutageAndNoSavedRow_ShouldConnectThroughJoinForm()
     {
-        // Given — during an outage an unknown id degrades to the invalid-address status
-        // instead of an unhandled transport failure.
+        // Given — during an outage FiveM can still resolve the id itself.
         var processLauncher = new FakeGameProcessLauncher();
         var vm = CreateViewModel(
             processLauncher,
@@ -186,8 +188,8 @@ public partial class MainViewModelTests
         await vm.ConnectAsync();
 
         // Then
-        Assert.Equal("Invalid address", vm.StatusText);
-        Assert.Empty(processLauncher.Requests);
+        Assert.Equal("fivem://connect/cfx.re/join/y4lg95", Assert.Single(processLauncher.Requests).AbsoluteUri);
+        Assert.Equal("Launching FiveM...", vm.StatusText);
         Assert.False(vm.IsBusy);
     }
 

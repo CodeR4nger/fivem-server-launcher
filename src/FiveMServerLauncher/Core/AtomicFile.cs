@@ -6,6 +6,16 @@ public static class AtomicFile
 {
     public static void WriteAllText(string path, string content)
     {
+        Write(path, temp => File.WriteAllText(temp, content));
+    }
+
+    public static void WriteAllBytes(string path, byte[] content)
+    {
+        Write(path, temp => File.WriteAllBytes(temp, content));
+    }
+
+    private static void Write(string path, Action<string> writeTemp)
+    {
         var directory = Path.GetDirectoryName(path);
 
         if (!string.IsNullOrEmpty(directory))
@@ -14,7 +24,7 @@ public static class AtomicFile
         }
 
         var temp = $"{path}.tmp-{Guid.NewGuid():N}";
-        File.WriteAllText(temp, content);
+        writeTemp(temp);
 
         if (File.Exists(path))
         {

@@ -330,6 +330,54 @@ public class ServerResolverTests
     }
 
     [Fact]
+    public async Task Resolve_SameServerByIdAndByIpPort_ShouldYieldIdenticalRequirements()
+    {
+        // Given — one server publishing every priming var, reachable through /single/ (id)
+        // and through the catalog (IP:port). Priming must not depend on the address form.
+        const string address = "149.56.120.52:30320";
+        var vars = new Dictionary<string, string>
+        {
+            ["gamename"] = "gta5",
+            ["sv_enforceGameBuild"] = "3095",
+            ["sv_pureLevel"] = "1",
+            ["sv_defaultGameBuild"] = "2944",
+            ["sv_replaceExeToSwitchBuilds"] = "false",
+            ["sv_poolSizesIncrease"] = "{\"TxdStore\":5000}",
+            ["sv_enforceSteamAuth"] = "true"
+        };
+        var json = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            EndPoint = "y4lg95",
+            Data = new { sv_projectName = "Parity", requestSteamTicket = "on", vars }
+        });
+        var protoServer = new Master.Server
+        {
+            EndPoint = "y4lg95",
+            Data = new Master.ServerData { ConnectEndPoints = { address } }
+        };
+        foreach (var (key, value) in vars)
+        {
+            protoServer.Data.Vars[key] = value;
+        }
+        protoServer.Data.Vars["requestSteamTicket"] = "on";
+
+        var resolver = CreateResolver(
+            new CfxService(new HttpClient(new FakeHttpMessageHandler(System.Net.HttpStatusCode.OK, json))),
+            new HttpClient(new FakeHttpMessageHandler(
+                System.Net.HttpStatusCode.OK, TestProtobufFrames.BuildFrameStream(protoServer))));
+
+        // When
+        var byId = await resolver.ResolveAsync("y4lg95");
+        var byIpPort = await resolver.ResolveAsync(address);
+
+        // Then
+        Assert.Equal(byId.Requirements, byIpPort.Requirements);
+        Assert.Equal("{\"TxdStore\":5000}", byIpPort.Requirements.PoolSizesIncrease);
+        Assert.Equal(2944, byIpPort.Requirements.DefaultBuild);
+        Assert.False(byIpPort.Requirements.ReplaceExecutable);
+    }
+
+    [Fact]
     public async Task Resolve_WhenIpPortNotInCatalog_ShouldReturnUnvalidatedProfile()
     {
         // Given
@@ -916,19 +964,6 @@ public class ServerResolverTests
     }
 
     [Fact]
-    public async Task Resolve_WhenCfxServiceOutageAndNoSavedDirectAddress_ShouldThrowInvalidAddress()
-    {
-        // Given
-        const string address = "y4lg95";
-        var resolver = CreateResolver(
-            cfxService: new CfxService(new HttpClient(new FakeHttpMessageHandler(true))));
-
-        // When / Then
-        await Assert.ThrowsAsync<InvalidAddressException>(
-            () => resolver.ResolveAsync(address));
-    }
-
-    [Fact]
     public async Task Resolve_WhenLoopbackWithResolvableManualCfxId_ShouldTakeRequirementsFromThatServerAndConnectDirect()
     {
         // Given — the manual id links the loopback address to one specific listed server;
@@ -1085,7 +1120,91 @@ public class ServerResolverTests
         Assert.Null(result.GameClient);
     }
 
-    private static ServerResolver CreateResolver(
+    [Theory]
+    [InlineData("y4lg95")]
+    [InlineData("cfx.re/join/y4lg95")]
+    [InlineData("https://cfx.re/join/y4lg95")]
+    public async Task Resolve_WhenCfxServiceTransportOutageAndNoSavedDirectAddress_ShouldReturnUnvalidatedJoinForm(string address)
+    {
+        // Given — CFX unreachable: FiveM can still resolve the id itself.
+        var resolver = CreateResolver(
+            cfxService: new CfxService(new HttpClient(new FakeHttpMessageHandler(true))));
+
+        // When
+        var result = await resolver.ResolveAsync(address);
+
+        // Then
+        Assert.False(result.IsCfxValidated);
+        Assert.Equal("cfx.re/join/y4lg95", result.Address);
+        Assert.Equal(string.Empty, result.CfxId);
+        Assert.Null(result.GameClient);
+        Assert.Equal(new ServerRequirements(), result.Requirements);
+        Assert.Equal(
+            "fivem://connect/cfx.re/join/y4lg95",
+            FiveMLaunchOptions.FromServerProfile(result).ToUri()?.ToString());
+    }
+
+    [Fact]
+    public async Task Resolve_WhenCfxServiceReturns5xx_ShouldReturnUnvalidatedJoinForm()
+    {
+        // Given
+        var resolver = CreateResolver(new CfxService(new HttpClient(
+            new FakeHttpMessageHandler(System.Net.HttpStatusCode.ServiceUnavailable, "down"))));
+
+        // When
+        var result = await resolver.ResolveAsync("y4lg95");
+
+        // Then
+        Assert.False(result.IsCfxValidated);
+        Assert.Equal("cfx.re/join/y4lg95", result.Address);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenCfxServiceOutageWithSavedRequirements_ShouldApplyManualFlagsToJoinForm()
+    {
+        // Given — the saved row is stored by id, so no direct address wins over the join form.
+        const string address = "cfx.re/join/y4lg95";
+        var savedServer = SavedServer.Create("By Id", address, requiresSteam: true);
+        var resolver = CreateResolver(
+            cfxService: new CfxService(new HttpClient(new FakeHttpMessageHandler(true))));
+
+        // When
+        var result = await resolver.ResolveAsync(address, savedServer);
+
+        // Then
+        Assert.Equal(address, result.Address);
+        Assert.True(result.Requirements.SteamRequired);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenCfxServiceTimesOut_ShouldReturnUnvalidatedJoinForm()
+    {
+        // Given — HttpClient surfaces its Timeout as TaskCanceledException.
+        using var httpClient = new HttpClient(new DelayedHttpMessageHandler())
+        {
+            Timeout = TimeSpan.FromMilliseconds(50)
+        };
+        var resolver = CreateResolver(new CfxService(httpClient));
+
+        // When
+        var result = await resolver.ResolveAsync("y4lg95");
+
+        // Then
+        Assert.False(result.IsCfxValidated);
+        Assert.Equal("cfx.re/join/y4lg95", result.Address);
+    }
+
+    private sealed class DelayedHttpMessageHandler : HttpMessageHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            await Task.Delay(Timeout.Infinite, cancellationToken);
+            throw new InvalidOperationException("unreachable");
+        }
+    }
+
+        private static ServerResolver CreateResolver(
         CfxService? cfxService = null,
         HttpClient? catalogHttpClient = null,
         FakeDnsResolver? dnsResolver = null)

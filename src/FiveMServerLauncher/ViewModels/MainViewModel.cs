@@ -1405,11 +1405,15 @@ public class MainViewModel : INotifyPropertyChanged
         IsBusy = true;
         StatusText = _localizer.Get("StatusResolving");
 
+        // A pasted address often carries a trailing space or newline; every connect path
+        // (typed, forwarded, startup) funnels through here, so trim once at this boundary.
+        var address = ServerAddress.Trim();
+
         try
         {
-            var savedServer = _serverRepository.FindByAddress(ServerAddress)
-                ?? FindSavedServerById(ServerAddress);
-            var profile = await _resolver.ResolveAsync(ServerAddress, savedServer);
+            var savedServer = _serverRepository.FindByAddress(address)
+                ?? FindSavedServerById(address);
+            var profile = await _resolver.ResolveAsync(address, savedServer);
 
             foreach (var app in RequiredApps(profile.Requirements))
             {
@@ -1431,7 +1435,7 @@ public class MainViewModel : INotifyPropertyChanged
                 // The launch already happened: a failed save of the reopen memory is
                 // reverted silently so the launch status stays on screen.
                 var previous = _settings.LastServerAddress;
-                _settings.LastServerAddress = ServerAddress.Trim();
+                _settings.LastServerAddress = address;
 
                 if (!TryPersist(() => _settingsRepository.Save(_settings)))
                 {

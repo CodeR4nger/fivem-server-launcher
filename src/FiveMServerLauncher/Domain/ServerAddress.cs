@@ -89,13 +89,35 @@ public static class ServerAddress
 
     private static bool IsCfxJoinUrlWithValidId(string address)
     {
-        var index = address.IndexOf(Prefix, StringComparison.OrdinalIgnoreCase);
-        if (index < 0)
+        return TryGetJoinId(address, out var id) && IsValidCfxId(id);
+    }
+
+    /// <summary>
+    /// The anchored join form: <c>[http://|https://][www.]cfx.re/join/&lt;rest&gt;</c>,
+    /// case-insensitive. Nothing else may precede the prefix, so arbitrary text (for
+    /// example shortcut argument injection) can never ride a join-form classification.
+    /// </summary>
+    private static bool TryGetJoinId(string address, out string id)
+    {
+        var rest = TrimStart(address, "https://", "http://");
+        rest = TrimStart(rest, "www.");
+
+        var matched = rest.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase);
+        id = matched ? rest[Prefix.Length..] : string.Empty;
+        return matched;
+    }
+
+    private static string TrimStart(string text, params string[] alternatives)
+    {
+        foreach (var prefix in alternatives)
         {
-            return false;
+            if (text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return text[prefix.Length..];
+            }
         }
 
-        return IsValidCfxId(address[(index + Prefix.Length)..]);
+        return text;
     }
 
     public static bool IsValidCfxId(string id)
@@ -173,11 +195,7 @@ public static class ServerAddress
 
     public static string ExtractCfxId(string address)
     {
-        var index = address.IndexOf(Prefix, StringComparison.OrdinalIgnoreCase);
-
-        return index >= 0
-            ? address[(index + Prefix.Length)..]
-            : address;
+        return TryGetJoinId(address, out var id) ? id : address;
     }
 
     public static bool HasServerFormWithNonEmptyId(string address)

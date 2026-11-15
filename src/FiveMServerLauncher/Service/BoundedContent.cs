@@ -1,4 +1,5 @@
 using System.IO;
+using System.Net;
 using System.Net.Http;
 
 namespace FiveMServerLauncher.Service;
@@ -12,11 +13,12 @@ namespace FiveMServerLauncher.Service;
 /// </summary>
 /// <summary>
 /// A bounded download's outcome: the body, or why there is none — a non-success
-/// status (possibly transient) versus a body over the cap (a verdict on the content).
+/// status (possibly transient, carried in <see cref="Status"/> so a caller can tell an
+/// authoritative 404 apart) versus a body over the cap (a verdict on the content).
 /// </summary>
-internal readonly record struct BoundedBody(byte[]? Bytes, bool TooLarge)
+internal readonly record struct BoundedBody(byte[]? Bytes, bool TooLarge, HttpStatusCode Status = HttpStatusCode.OK)
 {
-    public static BoundedBody Unsuccessful { get; } = new(null, TooLarge: false);
+    public static BoundedBody Unsuccessful(HttpStatusCode status) => new(null, TooLarge: false, status);
 
     public static BoundedBody OverCap { get; } = new(null, TooLarge: true);
 }
@@ -40,7 +42,7 @@ internal static class BoundedContent
 
         if (!response.IsSuccessStatusCode)
         {
-            return BoundedBody.Unsuccessful;
+            return BoundedBody.Unsuccessful(response.StatusCode);
         }
 
         var bytes = await ReadAsByteArrayAsync(response.Content, maxBytes, timeout.Token).ConfigureAwait(false);

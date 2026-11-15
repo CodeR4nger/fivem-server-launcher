@@ -4,6 +4,33 @@ namespace FiveMServerLauncher.Service;
 
 internal static class CfxVars
 {
+    /// <summary>
+    /// The single CFX-vars → <see cref="CfxServerInfo"/> mapping shared by the
+    /// <c>/single/</c> route and the catalog route, so priming never depends on the
+    /// address form used to reach a server. <paramref name="requestSteamTicket"/> keeps
+    /// its per-route source (a top-level field in <c>/single/</c>, a var in the catalog).
+    /// </summary>
+    public static CfxServerInfo ToServerInfo(
+        string cfxId,
+        string? projectName,
+        IDictionary<string, string>? variables,
+        string? requestSteamTicket)
+    {
+        return new CfxServerInfo
+        {
+            CfxId = cfxId,
+            ProjectName = projectName ?? string.Empty,
+            EnforceGameBuild = TryGetInt(variables, "sv_enforceGameBuild"),
+            GameClient = TryGetGameClient(variables),
+            PureLevel = TryGetInt(variables, "sv_pureLevel"),
+            RequestSteamTicket = MapSteamTicket(requestSteamTicket),
+            DefaultGameBuild = TryGetInt(variables, "sv_defaultGameBuild"),
+            ReplaceExecutableToSwitchBuilds = TryGetBool(variables, "sv_replaceExeToSwitchBuilds"),
+            PoolSizesIncrease = TryGetString(variables, "sv_poolSizesIncrease"),
+            SteamEnforced = TryGetBool(variables, "sv_enforceSteamAuth")
+        };
+    }
+
     public static string? TryGetIconUrl(IDictionary<string, string>? variables)
     {
         // CFX's icon source since the 2026-10 change: the server-published
