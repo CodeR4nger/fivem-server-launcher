@@ -1,5 +1,5 @@
 # citizenfx-ini-encoding
 
-Status: in-progress
+Status: done
 
 See ../spec.md section 5.
