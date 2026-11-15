@@ -5,14 +5,14 @@ namespace FiveMServerLauncher.Service;
 
 public sealed class ConnectRequestForwarder(string? pipeName = null)
 {
-    private string PipeName { get; } = pipeName ?? ConnectRequestListener.DefaultPipeName;
+    public string PipeName { get; } = pipeName ?? ConnectPipeName.ForCurrentSession();
 
     public bool TryForward(string address, int timeoutMs = 2000)
     {
         try
         {
             using var client = new NamedPipeClientStream(
-                ".", PipeName, PipeDirection.Out);
+                ".", PipeName, PipeDirection.Out, PipeOptions.CurrentUserOnly);
             client.Connect(timeoutMs);
 
             var bytes = Encoding.UTF8.GetBytes(address + "\n");

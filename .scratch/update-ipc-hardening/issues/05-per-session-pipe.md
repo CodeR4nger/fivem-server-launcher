@@ -4,4 +4,8 @@
 
 **Blocked by:** none
 
-**Status:** open
+**Status:** resolved
+
+## Answer
+
+New `Service/ConnectPipeName` (`For(sid, sessionId)` / `ForCurrentSession()`) is the single name source for both ends; `Local\` prefix and `DefaultPipeName` const removed; both ends pass `PipeOptions.CurrentUserOnly`. UNVERIFIED: an ACL-reading test of the server end failed (cause not investigated) and was dropped; CurrentUserOnly is therefore unpinned by tests.

@@ -1,15 +1,12 @@
 using System.IO;
 using System.IO.Pipes;
 using System.Text;
-using FiveMServerLauncher.Core;
 
 namespace FiveMServerLauncher.Service;
 
 public sealed class ConnectRequestListener(string? pipeName = null) : IDisposable
 {
-    public const string DefaultPipeName = $"Local\\{AppInfo.ProductName}.connect";
-
-    public string PipeName { get; } = pipeName ?? DefaultPipeName;
+    public string PipeName { get; } = pipeName ?? ConnectPipeName.ForCurrentSession();
 
     private CancellationTokenSource? _linked;
 
@@ -35,7 +32,7 @@ public sealed class ConnectRequestListener(string? pipeName = null) : IDisposabl
                     PipeDirection.In,
                     maxNumberOfServerInstances: 1,
                     PipeTransmissionMode.Byte,
-                    PipeOptions.Asynchronous);
+                    PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
 
                 await server.WaitForConnectionAsync(token);
 
