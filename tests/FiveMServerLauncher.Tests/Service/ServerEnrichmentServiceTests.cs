@@ -411,6 +411,10 @@ public class ServerEnrichmentServiceTests
             "cfx-server-metadata.cfx-services.net/images/7665c31f",
             "https://user:pass@cfx-server-metadata.cfx-services.net/images/7665c31f",
             "not a url",
+            "https://example.com/icon.webp",
+            "https://cfx-server-metadata.cfx-services.net.evil.example/images/7665c31f",
+            "https://evilcfx-server-metadata.cfx-services.net/images/7665c31f",
+            "https://images.cfx-server-metadata.cfx-services.net/images/7665c31f",
             "",
             "   "
         ];

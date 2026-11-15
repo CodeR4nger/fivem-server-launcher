@@ -1,6 +1,6 @@
 # 04 — Icon host allowlist
 
-Status: open
+Status: done
 
 ## What
 

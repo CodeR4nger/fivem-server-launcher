@@ -251,12 +251,16 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
         return null;
     }
 
+    // Measured 2026-11-15: 25,171 of 25,171 published icon_url vars use this host
+    // (see .scratch/icon-pipeline-hardening/spec.md), so nothing else is fetched.
+    private const string AllowedIconHost = "cfx-server-metadata.cfx-services.net";
+
     private static bool IsSafeIconUrl(string? iconUrl)
     {
         return !string.IsNullOrWhiteSpace(iconUrl)
             && Uri.TryCreate(iconUrl, UriKind.Absolute, out var uri)
             && uri.Scheme == Uri.UriSchemeHttps
-            && !string.IsNullOrEmpty(uri.Host)
+            && string.Equals(uri.Host, AllowedIconHost, StringComparison.OrdinalIgnoreCase)
             && string.IsNullOrEmpty(uri.UserInfo);
     }
 
