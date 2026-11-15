@@ -291,6 +291,30 @@ public class GitHubReleaseFeedTests
         Assert.Null(update);
     }
 
+    [Theory]
+    [InlineData("http://github.com/CodeR4nger/fivem-server-launcher/releases/download/v9.0.0/CFXLauncher.exe")]
+    [InlineData("https://github.com.evil.example/CodeR4nger/fivem-server-launcher/releases/download/v9.0.0/CFXLauncher.exe")]
+    [InlineData("https://evil.example/github.com/CFXLauncher.exe")]
+    [InlineData("https://github.com@evil.example/CFXLauncher.exe")]
+    [InlineData("https://user:pass@github.com/CodeR4nger/fivem-server-launcher/releases/download/v9.0.0/CFXLauncher.exe")]
+    [InlineData("https://github.com:8443/CodeR4nger/fivem-server-launcher/releases/download/v9.0.0/CFXLauncher.exe")]
+    [InlineData("file:///C:/Windows/System32/calc.exe")]
+    [InlineData("/CodeR4nger/fivem-server-launcher/releases/download/v9.0.0/CFXLauncher.exe")]
+    [InlineData("not a url")]
+    public async Task CheckForUpdateAsync_WhenDownloadUrlIsNotHttpsGitHub_ShouldReturnNull(string downloadUrl)
+    {
+        // Given: the asset points anywhere but an absolute https URL on github.com
+        var tag = NewerTag();
+        var feed = CreateFeed(
+            out _, HttpStatusCode.OK, ReleaseJson(tag, AssetJson(tag, downloadUrl: downloadUrl)));
+
+        // When
+        var update = await feed.CheckForUpdateAsync();
+
+        // Then
+        Assert.Null(update);
+    }
+
     private sealed class ThrowingHandler(Exception exception) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(

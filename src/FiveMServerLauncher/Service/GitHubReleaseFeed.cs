@@ -17,6 +17,8 @@ public sealed class GitHubReleaseFeed : IReleaseFeed
 
     private const string AssetName = "CFXLauncher.exe";
 
+    private const string DownloadHost = "github.com";
+
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         PropertyNameCaseInsensitive = true
@@ -49,7 +51,7 @@ public sealed class GitHubReleaseFeed : IReleaseFeed
 
             var asset = (release.Assets ?? []).FirstOrDefault(a => a.Name == AssetName);
 
-            if (asset?.BrowserDownloadUrl is not { } downloadUrl)
+            if (asset?.BrowserDownloadUrl is not { } downloadUrl || !IsTrustedDownloadUrl(downloadUrl))
             {
                 return null;
             }
@@ -77,6 +79,18 @@ public sealed class GitHubReleaseFeed : IReleaseFeed
         {
             return null;
         }
+    }
+
+    // Release assets are published at https://github.com/<owner>/<repo>/releases/download/…;
+    // anything that is not an absolute https URL on exactly that host is no update. The
+    // CDN host GitHub redirects to is not pinned — the digest vouches for the bytes.
+    private static bool IsTrustedDownloadUrl(string downloadUrl)
+    {
+        return Uri.TryCreate(downloadUrl, UriKind.Absolute, out var uri)
+            && uri.Scheme == Uri.UriSchemeHttps
+            && uri.IsDefaultPort
+            && uri.UserInfo.Length == 0
+            && string.Equals(uri.Host, DownloadHost, StringComparison.OrdinalIgnoreCase);
     }
 
     // GitHub publishes asset digests as "sha256:<64 hex>".
