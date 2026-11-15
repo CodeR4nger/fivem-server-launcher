@@ -96,5 +96,13 @@
   "TrayShow": "Показать",
   "TrayExit": "Выход",
   "TrayAllServers": "Все серверы...",
-  "TrayNoServers": "Нет сохранённых серверов"
+  "TrayNoServers": "Нет сохранённых серверов",
+  "NavServers": "Серверы",
+  "NavBrowse": "Обзор",
+  "NavSettings": "Настройки",
+  "WindowMinimize": "Свернуть",
+  "WindowMaximize": "Развернуть",
+  "WindowRestore": "Восстановить",
+  "WindowClose": "Закрыть",
+  "DismissUpdate": "Скрыть"
 }

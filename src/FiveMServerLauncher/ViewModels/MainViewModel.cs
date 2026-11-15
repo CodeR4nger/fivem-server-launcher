@@ -45,7 +45,6 @@ public class MainViewModel : INotifyPropertyChanged
     private string _serverAddress = string.Empty;
     private string _statusText = string.Empty;
     private bool _isBusy;
-    private bool _isSettingsOpen;
     private SavedServerItem? _selectedServer;
     private InstalledClientOption? _selectedOpenClient;
     private InstalledClientOption? _preferredClientOption;
@@ -112,8 +111,8 @@ public class MainViewModel : INotifyPropertyChanged
         MoveServerDownCommand = new RelayCommand(p => MoveServerBy(p as SavedServerItem, 1), () => IsReorderAvailable);
         OpenClientCommand = new AsyncRelayCommand(OpenClientAsync, CanOpenClient, OnCommandFailed);
         SelectOpenClientCommand = new RelayCommand(SelectOpenClient);
-        SettingsCommand = new RelayCommand(ToggleSettings);
-        ToggleDevModeCommand = new RelayCommand(ToggleDevMode);
+        NavigateCommand = new AsyncRelayCommand(
+            p => p is AppPage page ? NavigateAsync(page) : Task.CompletedTask, onError: OnCommandFailed);
         OpenAddServerDialogCommand = new RelayCommand(OpenAddServerDialog);
         OpenEditServerDialogCommand = new RelayCommand(OpenEditServerDialog);
         SaveServerDialogCommand = new AsyncRelayCommand(SaveServerDialogAsync, onError: OnCommandFailed);
@@ -121,8 +120,6 @@ public class MainViewModel : INotifyPropertyChanged
         ConfirmCommand = new RelayCommand(ConfirmPendingAction);
         CancelConfirmCommand = new RelayCommand(CloseConfirm);
         RefreshServersCommand = new AsyncRelayCommand(RefreshServersAsync, () => !IsRefreshingServers, OnCommandFailed);
-        OpenServerBrowserCommand = new AsyncRelayCommand(OpenServerBrowserAsync, onError: OnCommandFailed);
-        CloseServerBrowserCommand = new RelayCommand(_ => IsServerBrowserOpen = false);
         ConnectBrowserServerCommand = new AsyncRelayCommand(p => ConnectFromBrowserAsync((ServerBrowserItem)p!), onError: OnCommandFailed);
         SaveBrowserServerCommand = new RelayCommand(p =>
         {
@@ -168,8 +165,6 @@ public class MainViewModel : INotifyPropertyChanged
 
     public ICommand SelectOpenClientCommand { get; }
 
-    public ICommand SettingsCommand { get; }
-
     public ICommand OpenAddServerDialogCommand { get; }
 
     public ICommand OpenEditServerDialogCommand { get; }
@@ -186,10 +181,6 @@ public class MainViewModel : INotifyPropertyChanged
 
     public ServerBrowserViewModel Browser { get; }
 
-    public ICommand OpenServerBrowserCommand { get; }
-
-    public ICommand CloseServerBrowserCommand { get; }
-
     public ICommand ConnectBrowserServerCommand { get; }
 
     public ICommand SaveBrowserServerCommand { get; }
@@ -198,26 +189,48 @@ public class MainViewModel : INotifyPropertyChanged
 
     public ICommand DismissUpdateCommand { get; }
 
-    private bool _isServerBrowserOpen;
+    private AppPage _currentPage = AppPage.Servers;
 
-    public bool IsServerBrowserOpen
+    /// <summary>
+    /// The whole navigation state: the shell shows exactly this page. The browser view
+    /// model is never rebuilt, so its filters, sort, search and rows survive a switch.
+    /// </summary>
+    public AppPage CurrentPage
     {
-        get => _isServerBrowserOpen;
-        private set => SetProperty(ref _isServerBrowserOpen, value);
+        get => _currentPage;
+        private set
+        {
+            if (SetProperty(ref _currentPage, value))
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsServersPage)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsBrowsePage)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSettingsPage)));
+            }
+        }
     }
 
-    private async Task OpenServerBrowserAsync()
+    public bool IsServersPage => CurrentPage == AppPage.Servers;
+
+    public bool IsBrowsePage => CurrentPage == AppPage.Browse;
+
+    public bool IsSettingsPage => CurrentPage == AppPage.Settings;
+
+    /// <summary>Parameter: the <see cref="AppPage"/> to show.</summary>
+    public ICommand NavigateCommand { get; }
+
+    public async Task NavigateAsync(AppPage page)
     {
-        IsSettingsOpen = false;
-        IsDevMode = false;
-        CloseServerDialog();
-        IsServerBrowserOpen = true;
-        await Browser.LoadAsync();
+        CurrentPage = page;
+
+        if (page == AppPage.Browse)
+        {
+            await Browser.EnsureLoadedAsync();
+        }
     }
 
     public async Task ConnectFromBrowserAsync(ServerBrowserItem item)
     {
-        IsServerBrowserOpen = false;
+        CurrentPage = AppPage.Servers;
         ServerAddress = Domain.ServerAddress.FromCfxId(item.CfxId);
         await ConnectAsync();
     }
@@ -442,23 +455,8 @@ public class MainViewModel : INotifyPropertyChanged
         set => SetProperty(ref _dialogRequiresDiscord, value);
     }
 
-    public bool IsSettingsOpen
-    {
-        get => _isSettingsOpen;
-        set => SetProperty(ref _isSettingsOpen, value);
-    }
-
-    private bool _isDevMode;
     private GameClient _devClient = GameClient.FiveM;
     private GameBuildData? _gameBuildData;
-
-    public bool IsDevMode
-    {
-        get => _isDevMode;
-        private set => SetProperty(ref _isDevMode, value);
-    }
-
-    public ICommand ToggleDevModeCommand { get; }
 
     public GameClient DevClient
     {
@@ -707,6 +705,16 @@ public class MainViewModel : INotifyPropertyChanged
     public bool IsMotionEnabled =>
         _settings.InterfaceAnimations == InterfaceAnimations.Default
         && (_systemAnimations?.IsEnabled ?? true);
+
+    /// <summary>
+    /// The remembered window size, position and maximized state. The window sets it on
+    /// close and when its state changes; a failed save reverts it like any other setting.
+    /// </summary>
+    public WindowPlacement? WindowPlacement
+    {
+        get => _settings.Window;
+        set => SetPersisted(_settings.Window, value, v => _settings.Window = v);
+    }
 
     // Read by the tray window controller on every minimize; Settings checkbox.
     public bool MinimizeToTray
@@ -1708,26 +1716,6 @@ public class MainViewModel : INotifyPropertyChanged
         if (option is InstalledClientOption installed)
         {
             SelectedOpenClient = installed;
-        }
-    }
-
-    private void ToggleSettings()
-    {
-        IsSettingsOpen = !IsSettingsOpen;
-
-        if (IsSettingsOpen)
-        {
-            IsDevMode = false;
-        }
-    }
-
-    private void ToggleDevMode()
-    {
-        IsDevMode = !IsDevMode;
-
-        if (IsDevMode)
-        {
-            IsSettingsOpen = false;
         }
     }
 

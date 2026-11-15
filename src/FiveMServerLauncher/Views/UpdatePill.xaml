@@ -1,0 +1,115 @@
+<!-- The title-bar update notice: one pill for the three mutually exclusive states
+     (available / in progress / failed), with the same commands, texts and dismiss rules the
+     old bottom banner had. DataContext is inherited (MainViewModel). Hit-testable in the
+     WindowChrome caption (inherited by its buttons), so clicks reach it instead of dragging
+     the window. -->
+<UserControl x:Class="FiveMServerLauncher.Views.UpdatePill"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+             xmlns:loc="clr-namespace:FiveMServerLauncher.Views"
+             xmlns:views="clr-namespace:FiveMServerLauncher.Views"
+             shell:WindowChrome.IsHitTestVisibleInChrome="True">
+
+    <UserControl.Resources>
+        <views:ThemeResources/>
+    </UserControl.Resources>
+
+    <views:RoundedBorder x:Name="Pill"
+                         Height="30"
+                         VerticalAlignment="Center"
+                         Padding="14,0,4,0"
+                         Background="{StaticResource SurfaceRaisedBrush}"
+                         BorderBrush="{StaticResource BorderStrongBrush}"
+                         BorderThickness="1"
+                         CornerRadius="{StaticResource RadiusPill}">
+
+        <views:RoundedBorder.Visibility>
+            <MultiBinding Converter="{StaticResource AnyTrueToVisibility}"
+                          Mode="OneWay">
+                <Binding Path="IsUpdateAvailable"/>
+                <Binding Path="IsUpdateInProgress"/>
+                <Binding Path="IsUpdateFailed"/>
+            </MultiBinding>
+        </views:RoundedBorder.Visibility>
+
+        <StackPanel Orientation="Horizontal">
+
+            <!-- Message: one of three mutually exclusive texts -->
+
+            <Grid VerticalAlignment="Center" Margin="0,0,10,0">
+
+                <TextBlock Text="{Binding UpdateBannerText}"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           FontSize="{StaticResource FontSizeCaption}"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           Visibility="{Binding IsUpdateAvailable,
+                                                Converter={StaticResource BoolToVisibility},
+                                                FallbackValue=Collapsed}"/>
+
+                <TextBlock Text="{loc:Loc UpdateInProgressText}"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           FontSize="{StaticResource FontSizeCaption}"
+                           VerticalAlignment="Center"
+                           Visibility="{Binding IsUpdateInProgress,
+                                                Converter={StaticResource BoolToVisibility},
+                                                FallbackValue=Collapsed}"/>
+
+                <TextBlock Text="{loc:Loc UpdateFailedText}"
+                           Foreground="{StaticResource DangerTextBrush}"
+                           FontSize="{StaticResource FontSizeCaption}"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           Visibility="{Binding IsUpdateFailed,
+                                                Converter={StaticResource BoolToVisibility},
+                                                FallbackValue=Collapsed}"/>
+
+            </Grid>
+
+            <!-- UPDATE: the call to action, accent by convention -->
+
+            <Button Content="{loc:Loc UpdateButton}"
+                    Height="22"
+                    Padding="12,0"
+                    FontSize="{StaticResource FontSizeCaption}"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    Command="{Binding UpdateCommand}"
+                    Visibility="{Binding IsUpdateAvailable,
+                                         Converter={StaticResource BoolToVisibility},
+                                         FallbackValue=Collapsed}"/>
+
+            <!-- Dismiss: available or failed only — the VM refuses it mid-flight -->
+
+            <Button Content="✕"
+                    Width="24"
+                    Height="24"
+                    Padding="0"
+                    Margin="2,0,0,0"
+                    FontSize="11"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="{loc:Loc DismissUpdate}"
+                    Style="{StaticResource IconButtonStyle}"
+                    Command="{Binding DismissUpdateCommand}">
+                <Button.Visibility>
+                    <MultiBinding Converter="{StaticResource AnyTrueToVisibility}"
+                                  Mode="OneWay">
+                        <Binding Path="IsUpdateAvailable"/>
+                        <Binding Path="IsUpdateFailed"/>
+                    </MultiBinding>
+                </Button.Visibility>
+            </Button>
+
+            <!-- In progress shows no button: keep the right padding even -->
+
+            <FrameworkElement Width="6"
+                              Visibility="{Binding IsUpdateInProgress,
+                                                   Converter={StaticResource BoolToVisibility},
+                                                   FallbackValue=Collapsed}"/>
+
+        </StackPanel>
+
+    </views:RoundedBorder>
+
+</UserControl>

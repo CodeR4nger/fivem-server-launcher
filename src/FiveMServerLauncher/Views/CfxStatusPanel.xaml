@@ -1,75 +1,60 @@
-<!-- CFX service status rows. DataContext is inherited (MainViewModel). -->
+<!-- CFX service status (FiveM, FiveM Enhanced, RedM), compact for the bottom bar's left
+     slot. DataContext is inherited (MainViewModel). -->
 <UserControl x:Class="FiveMServerLauncher.Views.CfxStatusPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="clr-namespace:FiveMServerLauncher.Views"
-             xmlns:views="clr-namespace:FiveMServerLauncher.Views">
+             xmlns:views="clr-namespace:FiveMServerLauncher.Views"
+             AutomationProperties.Name="{loc:Loc CfxStatusHeader}">
 
     <UserControl.Resources>
         <views:ThemeResources/>
     </UserControl.Resources>
 
-    <StackPanel VerticalAlignment="Center"
-                HorizontalAlignment="Center"
-                Margin="30,12"
-                views:Motion.Shown="{Binding IsDevMode, Converter={StaticResource InverseBoolean}}">
+    <ItemsControl ItemsSource="{Binding CfxStatuses}"
+                  Focusable="False"
+                  Grid.IsSharedSizeScope="True">
 
-        <StackPanel.Visibility>
-            <MultiBinding Converter="{StaticResource PanelVisibilityStateConverter}"
-                          ConverterParameter="invert"
-                          Mode="OneWay">
-                <Binding Path="IsDevMode"/>
-                <Binding Path="Opacity"
-                         RelativeSource="{RelativeSource Self}"/>
-            </MultiBinding>
-        </StackPanel.Visibility>
+        <ItemsControl.ItemTemplate>
 
-        <StackPanel.Style>
-            <StaticResource ResourceKey="FadeSurfaceStyle"/>
-        </StackPanel.Style>
+            <DataTemplate>
 
-        <TextBlock Text="{loc:Loc CfxStatusHeader}"
-                   Style="{StaticResource SectionHeaderStyle}"
-                   HorizontalAlignment="Center"
-                   Margin="0,0,0,10"/>
+                <Grid Margin="0,1">
 
-        <ItemsControl ItemsSource="{Binding CfxStatuses}" Width="250">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="CfxStatusName"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
 
-            <ItemsControl.ItemTemplate>
+                    <Ellipse Grid.Column="0"
+                             Width="8"
+                             Height="8"
+                             Fill="{Binding Status,
+                                           Converter={StaticResource CfxStatusToBrushConverter}}"
+                             VerticalAlignment="Center"
+                             Margin="0,0,8,0"/>
 
-                <DataTemplate>
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding DisplayName}"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               FontSize="{StaticResource FontSizeCaption}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,10,0"/>
 
-                    <DockPanel Margin="0,3" LastChildFill="False">
+                    <TextBlock Grid.Column="2"
+                               Text="{Binding StatusLabel}"
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               FontSize="{StaticResource FontSizeCaption}"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"/>
 
-                        <Ellipse DockPanel.Dock="Left"
-                                 Width="8"
-                                 Height="8"
-                                 Fill="{Binding Status,
-                                               Converter={StaticResource CfxStatusToBrushConverter}}"
-                                 VerticalAlignment="Center"
-                                 Margin="0,0,8,0"/>
+                </Grid>
 
-                        <TextBlock DockPanel.Dock="Right"
-                                   Text="{Binding StatusLabel}"
-                                   Foreground="{StaticResource TextPrimaryBrush}"
-                                   FontSize="{StaticResource FontSizeCaption}"
-                                   FontWeight="SemiBold"
-                                   VerticalAlignment="Center"/>
+            </DataTemplate>
 
-                        <TextBlock DockPanel.Dock="Left"
-                                   Text="{Binding DisplayName}"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
-                                   FontSize="{StaticResource FontSizeCaption}"
-                                   VerticalAlignment="Center"/>
+        </ItemsControl.ItemTemplate>
 
-                    </DockPanel>
-
-                </DataTemplate>
-
-            </ItemsControl.ItemTemplate>
-
-        </ItemsControl>
-
-    </StackPanel>
+    </ItemsControl>
 
 </UserControl>

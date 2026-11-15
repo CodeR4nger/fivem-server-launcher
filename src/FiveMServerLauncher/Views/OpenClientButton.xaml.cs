@@ -34,12 +34,12 @@ namespace FiveMServerLauncher.Views
             ArrowText.Text = "▼";
         }
 
-        // The client menu lives in the layout (not a popup), so opening and
-        // closing it grow and shrink its grid slot: both motions animate the
-        // menu's Height with the content clipped to the sweeping border — it
-        // unrolls up out of the button seam on open and collapses back into
-        // it on close, the lower area gliding along instead of jumping. Pure
-        // visual glue: only visibility and height are touched.
+        // The client menu is not a popup: it sits in a zero-height Canvas above
+        // the buttons, bottom-anchored, so it grows upward over the content panel.
+        // Both motions animate the menu's Height with the content clipped to the
+        // sweeping border — it unrolls up out of the button seam on open and
+        // collapses back into it on close. Pure visual glue: only visibility and
+        // height are touched.
         private void OpenDropdown()
         {
             _dropdownClosing = false;

@@ -182,6 +182,7 @@ public partial class MainViewModelTests
         nameof(MainViewModel.WebLinks),
         nameof(MainViewModel.MinimizeToTray),
         nameof(MainViewModel.InterfaceAnimations),
+        nameof(MainViewModel.WindowPlacement),
         nameof(MainViewModel.DevGameBuild),
         nameof(MainViewModel.DevPureMode),
         nameof(MainViewModel.PreferredClientOption),
@@ -208,6 +209,7 @@ public partial class MainViewModelTests
         nameof(MainViewModel.WebLinks) => vm.WebLinks,
         nameof(MainViewModel.MinimizeToTray) => vm.MinimizeToTray,
         nameof(MainViewModel.InterfaceAnimations) => vm.InterfaceAnimations,
+        nameof(MainViewModel.WindowPlacement) => vm.WindowPlacement,
         nameof(MainViewModel.DevGameBuild) => vm.DevGameBuild,
         nameof(MainViewModel.DevPureMode) => vm.DevPureMode,
         nameof(MainViewModel.PreferredClientOption) => vm.PreferredClientOption,
@@ -229,6 +231,9 @@ public partial class MainViewModelTests
                 break;
             case nameof(MainViewModel.InterfaceAnimations):
                 vm.InterfaceAnimations = InterfaceAnimations.Minimal;
+                break;
+            case nameof(MainViewModel.WindowPlacement):
+                vm.WindowPlacement = new WindowPlacement(10, 20, 1100, 700, true);
                 break;
             case nameof(MainViewModel.DevGameBuild):
                 vm.DevGameBuild = 3095;

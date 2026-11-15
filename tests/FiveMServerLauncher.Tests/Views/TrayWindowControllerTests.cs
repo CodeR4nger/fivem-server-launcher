@@ -196,4 +196,21 @@ public class TrayWindowControllerTests
         // Then
         Assert.True(controller.IsAttended);
     }
+
+    [Theory]
+    [InlineData(WindowState.Normal)]
+    [InlineData(WindowState.Maximized)]
+    public void RestoreState_WhenMinimized_ShouldBeTheStateBeforeTheMinimize(WindowState before)
+    {
+        // Given
+        var (window, controller) = Create(minimizeToTray: false);
+        window.UserSetsState(before);
+        controller.OnStateChanged();
+
+        // When
+        Minimize(window, controller);
+
+        // Then — what the window placement saves as "maximized" for a minimized window
+        Assert.Equal(before, controller.RestoreState);
+    }
 }

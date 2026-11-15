@@ -11,21 +11,15 @@
         <views:ThemeResources/>
     </UserControl.Resources>
 
-    <StackPanel VerticalAlignment="Top"
-                views:Motion.Shown="{Binding IsDevMode}">
+    <!-- Dev Mode on the Settings page: a settings group beside the general settings. -->
+    <Border VerticalAlignment="Top"
+            Padding="0,14,0,0"
+            Background="{StaticResource SettingsGroupBrush}"
+            BorderBrush="{StaticResource BorderStrongBrush}"
+            BorderThickness="1"
+            CornerRadius="{StaticResource RadiusGroup}">
 
-        <StackPanel.Visibility>
-            <MultiBinding Converter="{StaticResource PanelVisibilityStateConverter}"
-                          Mode="OneWay">
-                <Binding Path="IsDevMode"/>
-                <Binding Path="Opacity"
-                         RelativeSource="{RelativeSource Self}"/>
-            </MultiBinding>
-        </StackPanel.Visibility>
-
-        <StackPanel.Style>
-            <StaticResource ResourceKey="FadeSurfaceStyle"/>
-        </StackPanel.Style>
+    <StackPanel>
 
         <ScrollViewer VerticalScrollBarVisibility="Auto">
 
@@ -103,5 +97,7 @@
         </StackPanel>
 
     </StackPanel>
+
+    </Border>
 
 </UserControl>

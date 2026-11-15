@@ -96,5 +96,13 @@
   "TrayShow": "표시",
   "TrayExit": "종료",
   "TrayAllServers": "모든 서버...",
-  "TrayNoServers": "저장된 서버 없음"
+  "TrayNoServers": "저장된 서버 없음",
+  "NavServers": "서버",
+  "NavBrowse": "찾아보기",
+  "NavSettings": "설정",
+  "WindowMinimize": "최소화",
+  "WindowMaximize": "최대화",
+  "WindowRestore": "이전 크기로 복원",
+  "WindowClose": "닫기",
+  "DismissUpdate": "닫기"
 }

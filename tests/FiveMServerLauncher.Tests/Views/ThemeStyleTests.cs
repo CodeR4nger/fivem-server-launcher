@@ -35,6 +35,8 @@ public class ThemeStyleTests
         { "GameTagStyle", typeof(Border) },
         { "FadeSurfaceStyle", typeof(StackPanel) },
         { "SlideSurfaceStyle", typeof(Border) },
+        { "PageSurfaceStyle", typeof(UserControl) },
+        { "NavTabStyle", typeof(Button) },
         { "PageTitleStyle", typeof(TextBlock) },
         { "SectionHeaderStyle", typeof(TextBlock) },
         { "RowTitleStyle", typeof(TextBlock) },
@@ -265,6 +267,103 @@ public class ThemeStyleTests
         Assert.Equal(0.16, animated.Opacity, 3);
     }
 
+    [Fact]
+    public void PageSurface_WithMotionOff_ShouldSnapShownAndHiddenWithoutAnimating()
+    {
+        // Given a page with motion off
+        var (hiddenAtStart, shown, opacity, hidden, animated) = StaThread.Run(() =>
+        {
+            var page = PageSurface(motion: false);
+            var startHidden = page.Visibility == Visibility.Collapsed;
+
+            // When it is shown, then hidden
+            Motion.SetShown(page, true);
+            var visible = page.Visibility == Visibility.Visible;
+            var shownOpacity = page.Opacity;
+            var animatedWhileShown = page.HasAnimatedProperties;
+            Motion.SetShown(page, false);
+
+            return (startHidden, visible, shownOpacity, page.Visibility == Visibility.Collapsed,
+                animatedWhileShown || page.HasAnimatedProperties);
+        });
+
+        // Then it snaps between collapsed and fully visible and never animates
+        Assert.True(hiddenAtStart);
+        Assert.True(shown);
+        Assert.Equal(1, opacity);
+        Assert.True(hidden);
+        Assert.False(animated);
+    }
+
+    [Fact]
+    public void PageSurface_WithMotionOn_ShouldFadeAndSlideIn()
+    {
+        // Given a page with motion on
+        var (animated, rising) = StaThread.Run(() =>
+        {
+            var page = PageSurface(motion: true);
+
+            // When it is shown
+            Motion.SetShown(page, true);
+
+            var offset = (TranslateTransform)page.RenderTransform;
+            return (page.HasAnimatedProperties, offset.HasAnimatedProperties);
+        });
+
+        // Then storyboards drive its opacity and its rise
+        Assert.True(animated);
+        Assert.True(rising);
+    }
+
+    [Fact]
+    public void PageSurface_WhenShownAgainWithMotion_ShouldEndFullyVisibleInPlace()
+    {
+        // Given a rendering page shown, hidden and shown again (a return visit)
+        var (opacity, offset) = StaThread.Run(() =>
+        {
+            var page = PageSurface(motion: true);
+            using var host = new OffscreenHost(page);
+            StaThread.Pump();
+            Motion.SetShown(page, true);
+            StaThread.Pump(400);
+            Motion.SetShown(page, false);
+            StaThread.Pump();
+
+            // When it is shown again and the motion completes
+            Motion.SetShown(page, true);
+            StaThread.Pump(400);
+
+            return (page.Opacity, ((TranslateTransform)page.RenderTransform).Y);
+        });
+
+        // Then it rests fully visible at its place
+        Assert.Equal(1, opacity);
+        Assert.Equal(0, offset);
+    }
+
+    [Fact]
+    public void PageSurface_WhenMotionTurnsOffWhileShown_ShouldDropTheAnimation()
+    {
+        // Given a page shown with motion
+        var (opacity, animated) = StaThread.Run(() =>
+        {
+            var page = PageSurface(motion: true);
+            using var host = new OffscreenHost(page);
+            Motion.SetShown(page, true);
+            StaThread.Pump();
+
+            // When motion is switched off
+            Motion.SetIsEnabled(page, false);
+            StaThread.Pump(300);
+
+            return (page.Opacity, page.HasAnimatedProperties);
+        });
+
+        // Then it is fully visible with no held animation
+        Assert.Equal(1, opacity);
+        Assert.False(animated);
+    }
+
     // Clock control operations (RemoveStoryboard) are applied by the ticking clock of an
     // element that renders, so the motion-switch tests host it in an offscreen window.
     private sealed class OffscreenHost : IDisposable
@@ -305,5 +404,12 @@ public class ThemeStyleTests
         var surface = new Border { Style = (Style)new ThemeResources()["FadeSurfaceStyle"] };
         Motion.SetIsEnabled(surface, motion);
         return surface;
+    }
+
+    private static UserControl PageSurface(bool motion)
+    {
+        var page = new UserControl { Style = (Style)new ThemeResources()["PageSurfaceStyle"] };
+        Motion.SetIsEnabled(page, motion);
+        return page;
     }
 }

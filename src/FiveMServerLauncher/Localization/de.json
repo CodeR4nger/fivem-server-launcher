@@ -96,5 +96,13 @@
   "TrayShow": "Anzeigen",
   "TrayExit": "Beenden",
   "TrayAllServers": "Alle Server...",
-  "TrayNoServers": "Keine gespeicherten Server"
+  "TrayNoServers": "Keine gespeicherten Server",
+  "NavServers": "Server",
+  "NavBrowse": "Durchsuchen",
+  "NavSettings": "Einstellungen",
+  "WindowMinimize": "Minimieren",
+  "WindowMaximize": "Maximieren",
+  "WindowRestore": "Wiederherstellen",
+  "WindowClose": "Schließen",
+  "DismissUpdate": "Ausblenden"
 }

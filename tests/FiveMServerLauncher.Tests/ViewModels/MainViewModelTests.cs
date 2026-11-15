@@ -2254,38 +2254,6 @@ public partial class MainViewModelTests
     }
 
     [Fact]
-    public async Task ToggleDevModeCommand_WhenSettingsOpen_ShouldCloseSettings()
-    {
-        // Given
-        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
-        await vm.InitializeAsync();
-        vm.SettingsCommand.Execute(null);
-
-        // When
-        vm.ToggleDevModeCommand.Execute(null);
-
-        // Then
-        Assert.True(vm.IsDevMode);
-        Assert.False(vm.IsSettingsOpen);
-    }
-
-    [Fact]
-    public async Task SettingsCommand_WhenDevModeOpen_ShouldCloseDevMode()
-    {
-        // Given
-        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
-        await vm.InitializeAsync();
-        vm.ToggleDevModeCommand.Execute(null);
-
-        // When
-        vm.SettingsCommand.Execute(null);
-
-        // Then
-        Assert.False(vm.IsDevMode);
-        Assert.True(vm.IsSettingsOpen);
-    }
-
-    [Fact]
     public async Task OpenAddServerDialogCommand_ShouldOpenEmptyDialog()
     {
         // Given
@@ -2879,21 +2847,6 @@ public partial class MainViewModelTests
     }
 
     [Fact]
-    public async Task SettingsCommand_ShouldToggleSettingsPanelOpen()
-    {
-        // Given
-        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
-        await vm.InitializeAsync();
-
-        // When / Then
-        Assert.False(vm.IsSettingsOpen);
-        vm.SettingsCommand.Execute(null);
-        Assert.True(vm.IsSettingsOpen);
-        vm.SettingsCommand.Execute(null);
-        Assert.False(vm.IsSettingsOpen);
-    }
-
-    [Fact]
     public async Task ConnectAsync_OnClientNotInstalled_ShouldNotPersistLastServerAddress()
     {
         // Given
@@ -2913,21 +2866,6 @@ public partial class MainViewModelTests
         // Then
         Assert.Equal("FiveM Enhanced is not installed", vm.StatusText);
         Assert.Equal("cfx.re/join/known", new ConfigurationRepository(storage).Load().LastServerAddress);
-    }
-
-    [Fact]
-    public async Task ToggleDevModeCommand_ShouldFlipIsDevMode()
-    {
-        // Given
-        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
-        await vm.InitializeAsync();
-
-        // When / Then
-        Assert.False(vm.IsDevMode);
-        vm.ToggleDevModeCommand.Execute(null);
-        Assert.True(vm.IsDevMode);
-        vm.ToggleDevModeCommand.Execute(null);
-        Assert.False(vm.IsDevMode);
     }
 
     [Fact]
@@ -3747,7 +3685,7 @@ public partial class MainViewModelTests
     }
 
     [Fact]
-    public async Task ConnectFromBrowserAsync_ShouldConnectByCfxIdCloseBrowserAndPersist()
+    public async Task ConnectFromBrowserAsync_ShouldConnectByCfxIdReturnToServersAndPersist()
     {
         // Given
         const string address = "cfx.re/join/y4lg95";
@@ -3756,9 +3694,7 @@ public partial class MainViewModelTests
         var vm = CreateViewModel(
             launcher, CfxJson("gta5"), settings: new ConfigurationRepository(storage));
         await vm.InitializeAsync();
-        vm.OpenServerBrowserCommand.Execute(null);
-        await Task.Delay(100);
-        Assert.True(vm.IsServerBrowserOpen);
+        await vm.NavigateAsync(AppPage.Browse);
         var item = ServerBrowserItem.FromServer(new Master.Server
         {
             EndPoint = "y4lg95",
@@ -3769,7 +3705,7 @@ public partial class MainViewModelTests
         await vm.ConnectFromBrowserAsync(item);
 
         // Then
-        Assert.False(vm.IsServerBrowserOpen);
+        Assert.Equal(AppPage.Servers, vm.CurrentPage);
         Assert.Equal(address, vm.ServerAddress);
         Assert.Single(launcher.Requests);
         Assert.Equal(

@@ -36,6 +36,9 @@ public sealed class TrayWindowController
         _restoreState = RestorableOrNormal(window.WindowState);
     }
 
+    /// <summary>The state a minimized window comes back to (Normal or Maximized).</summary>
+    public WindowState RestoreState => _restoreState;
+
     // A hidden (tray) window is away even when WPF still reports it active: the
     // enrichment loop parks until the window is back in front.
     public bool IsAttended => _window.IsVisible

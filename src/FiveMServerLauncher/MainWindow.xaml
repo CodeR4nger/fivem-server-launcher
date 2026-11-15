@@ -5,14 +5,18 @@
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:views="clr-namespace:FiveMServerLauncher.Views"
         xmlns:core="clr-namespace:FiveMServerLauncher.Core"
+        xmlns:loc="clr-namespace:FiveMServerLauncher.Views"
         Title="{x:Static core:AppInfo.Title}"
         Icon="Assets/launcher.ico"
-        Height="520"
-        Width="860"
+        Width="{x:Static views:WindowPlacementRules.DefaultWidth}"
+        Height="{x:Static views:WindowPlacementRules.DefaultHeight}"
+        MinWidth="{x:Static views:WindowPlacementRules.MinimumWidth}"
+        MinHeight="{x:Static views:WindowPlacementRules.MinimumHeight}"
+        WindowStartupLocation="CenterScreen"
         Background="{DynamicResource GroundBrush}"
         views:Motion.IsEnabled="{Binding IsMotionEnabled, FallbackValue=False}"
         WindowStyle="SingleBorderWindow"
-        ResizeMode="NoResize">
+        ResizeMode="CanResize">
 
     <!-- The window root: the theme is merged here too (title bar, footer, and the root
          FontFamily/motion switch above resolve from it). FontFamily and Motion.IsEnabled
@@ -40,6 +44,8 @@
                     Value="Hand"/>
             <Setter Property="shell:WindowChrome.IsHitTestVisibleInChrome"
                     Value="True"/>
+            <Setter Property="FocusVisualStyle"
+                    Value="{StaticResource PillFocusVisual}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type Button}">
@@ -59,19 +65,27 @@
         </ResourceDictionary>
     </Window.Resources>
 
+    <!-- ResizeBorderThickness must be non-zero (and ResizeMode CanResize) for edge
+         resizing. Everything in the caption strip that is not marked
+         IsHitTestVisibleInChrome is the native caption: drag, double-click maximize/restore,
+         Aero snap and the system menu all come from Windows. -->
     <shell:WindowChrome.WindowChrome>
 
         <shell:WindowChrome
             CaptionHeight="{StaticResource CaptionHeight}"
             ResizeBorderThickness="6"
             GlassFrameThickness="0"
+            CornerRadius="0"
             UseAeroCaptionButtons="False"/>
 
     </shell:WindowChrome.WindowChrome>
 
     <!-- Root: the UI font is set once here (inherits everywhere below; Segoe UI fallback).
-         The motion switch is bound on the Window itself above. -->
-    <Grid Background="{StaticResource GroundBrush}"
+         The motion switch is bound on the Window itself above. Its Margin is the maximized
+         inset (code-behind): a maximized WindowChrome window overhangs the work area by
+         its frame, which would cut the edges and reach under the taskbar. -->
+    <Grid x:Name="RootGrid"
+          Background="{StaticResource GroundBrush}"
           TextElement.FontFamily="{StaticResource UiFontFamily}">
 
         <Grid.RowDefinitions>
@@ -80,54 +94,67 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- BARRA SUPERIOR -->
+        <!-- TITLE BAR: title (caption: drags), update pill, window buttons -->
 
-        <Grid Grid.Row="0"
+        <Grid x:Name="TitleBar"
+              Grid.Row="0"
               Background="{StaticResource TitleBarBrush}"
               Panel.ZIndex="10">
 
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
 
-            <!-- ================================================= -->
-            <!-- ZONA PARA MOVER LA VENTANA -->
-            <!-- ================================================= -->
+            <TextBlock Grid.Column="0"
+                       Text="{x:Static core:AppInfo.Title}"
+                       Foreground="{StaticResource TextPrimaryBrush}"
+                       FontSize="13"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center"
+                       Margin="15,0,0,0"
+                       IsHitTestVisible="False"/>
 
-            <Border Background="Transparent"
-                    Margin="0,0,100,0"
-                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
-                    WindowChrome.IsHitTestVisibleInChrome="True">
+            <views:UpdatePill x:Name="UpdatePill"
+                              Grid.Column="2"
+                              Margin="12,0"/>
 
-                <TextBlock Text="{x:Static core:AppInfo.Title}"
-                           Foreground="{StaticResource TextPrimaryBrush}"
-                           FontSize="13"
-                           FontWeight="SemiBold"
-                           VerticalAlignment="Center"
-                           Margin="15,0,0,0"
-                           IsHitTestVisible="False"/>
-
-            </Border>
-
-
-            <!-- ================================================= -->
-            <!-- BOTONES DE VENTANA -->
-            <!-- ================================================= -->
-
-            <StackPanel Orientation="Horizontal"
-                        HorizontalAlignment="Right"
+            <StackPanel Grid.Column="3"
+                        Orientation="Horizontal"
                         VerticalAlignment="Top">
 
-
-                <!-- MINIMIZAR -->
-
-                <Button Content="—"
+                <Button x:Name="MinimizeButton"
+                        Content="—"
                         FontSize="16"
+                        AutomationProperties.Name="{loc:Loc WindowMinimize}"
                         Style="{StaticResource WindowButtonStyle}"
                         Click="MinimizeButton_Click"/>
 
-
-                <!-- CERRAR -->
-
-                <Button Content="✕"
+                <!-- Glyph and accessible name follow the window state -->
+                <Button x:Name="MaximizeButton"
                         FontSize="14"
+                        Click="MaximizeButton_Click">
+                    <Button.Style>
+                        <Style TargetType="{x:Type Button}" BasedOn="{StaticResource WindowButtonStyle}">
+                            <Setter Property="Content" Value="☐"/>
+                            <Setter Property="AutomationProperties.Name" Value="{loc:Loc WindowMaximize}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}"
+                                             Value="Maximized">
+                                    <Setter Property="Content" Value="❐"/>
+                                    <Setter Property="AutomationProperties.Name" Value="{loc:Loc WindowRestore}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
+                <Button x:Name="CloseButton"
+                        Content="✕"
+                        FontSize="14"
+                        AutomationProperties.Name="{loc:Loc WindowClose}"
                         Style="{StaticResource WindowButtonStyle}"
                         Click="CloseButton_Click"/>
 
@@ -135,17 +162,15 @@
 
         </Grid>
 
-        <!-- CONTENIDO -->
-        
-        <Grid Grid.Row="1">
+        <!-- CONTENT (pages, bottom bar and the modal overlays: they cover only this row) -->
 
-            <views:MainView/>
+        <views:MainView x:Name="ShellContent"
+                        Grid.Row="1"/>
 
-        </Grid>
+        <!-- FOOTER: outside the overlays' row, so it stays visible above every dialog -->
 
-        <!-- PIE DE PANTALLA -->
-
-        <Border Grid.Row="2"
+        <Border x:Name="Footer"
+                Grid.Row="2"
                 Background="{StaticResource FooterBrush}"
                 Panel.ZIndex="10">
 

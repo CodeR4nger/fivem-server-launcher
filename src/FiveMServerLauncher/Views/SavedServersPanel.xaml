@@ -3,14 +3,17 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="clr-namespace:FiveMServerLauncher.Views"
+             xmlns:viewModels="clr-namespace:FiveMServerLauncher.ViewModels"
              xmlns:views="clr-namespace:FiveMServerLauncher.Views">
 
     <UserControl.Resources>
         <views:ThemeResources/>
     </UserControl.Resources>
 
-    <Border Style="{StaticResource ContentPanelStyle}"
-            Margin="10,24,20,24">
+    <!-- The Servers page, re-homed unchanged from the old right-hand panel (ticket 06
+         redesigns it into list + detail): kept at that panel's width, centred. -->
+    <Border MaxWidth="560"
+            Margin="0,8">
 
         <Grid>
 
@@ -316,7 +319,8 @@
                             Padding="12,4"
                             Margin="0,0,8,0"
                             Style="{StaticResource SecondaryButtonStyle}"
-                            Command="{Binding OpenServerBrowserCommand}"/>
+                            Command="{Binding NavigateCommand}"
+                            CommandParameter="{x:Static viewModels:AppPage.Browse}"/>
 
                 </DockPanel>
 

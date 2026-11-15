@@ -22,57 +22,6 @@ public partial class MainViewModelTests
         return data;
     }
 
-    [Theory]
-    [MemberData(nameof(ShippedLanguageTags))]
-    public void SettingsPanel_ShouldShowEveryCheckboxUnclipped(string languageTag)
-    {
-        // Given the real window at its fixed size, in the given language, with the
-        // settings panel open
-        var problems = RunOnSta(() =>
-        {
-            var localizer = Localizer.FromEmbeddedResources();
-            LocalizationSource.Instance.Attach(localizer);
-            var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), localizer: localizer);
-
-            // After the view model: it applies the saved language (none = system) on
-            // construction, which would otherwise override the language under test.
-            localizer.SetLanguage(languageTag);
-            var window = new MainWindow
-            {
-                DataContext = vm,
-                ShowInTaskbar = false,
-                ShowActivated = false,
-                Left = -10000,
-                Top = -10000
-            };
-
-            try
-            {
-                window.Show();
-                var checkBoxes = FindSettingsCheckBoxes(window);
-                var panel = FindSettingsPanel(checkBoxes[0]);
-
-                // The fade-in storyboard drives these when the user opens the panel;
-                // local values stand in for the end state of that animation.
-                panel.Visibility = Visibility.Visible;
-                panel.Opacity = 1;
-                window.UpdateLayout();
-
-                // When each checkbox is measured against the panel and the window
-                return checkBoxes
-                    .SelectMany(checkBox => ClippingProblems(window, panel, checkBox))
-                    .ToList();
-            }
-            finally
-            {
-                window.Close();
-            }
-        });
-
-        // Then every checkbox and its whole label are visible
-        Assert.Empty(problems);
-    }
-
     private static List<CheckBox> FindSettingsCheckBoxes(DependencyObject root)
     {
         string[] settingsPaths = ["AutoLaunch", "WebLinks", "MinimizeToTray"];
