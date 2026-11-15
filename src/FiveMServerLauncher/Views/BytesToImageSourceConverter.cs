@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.IO;
 using System.Windows.Data;
 using System.Windows.Media.Imaging;
 using FiveMServerLauncher.Core;
@@ -17,16 +16,20 @@ public sealed class BytesToImageSourceConverter : IValueConverter
     // The cache is bounded (LRU) — scrolled-away decodes are evicted, so a long
     // browsing session never accumulates unbounded image memory. byte[] keys compare
     // by reference, matching the enrichment service's per-icon byte instances.
-    private readonly LruCache<byte[], BitmapImage> _decoded;
+    // A failed decode is cached too (as null): the same undecodable byte[] is
+    // never re-decoded per realization, and never throws out of a binding.
+    private readonly LruCache<byte[], BitmapImage?> _decoded;
+    private readonly Func<byte[], BitmapImage?> _decode;
 
     public BytesToImageSourceConverter()
         : this(DefaultMaxCachedDecodes)
     {
     }
 
-    public BytesToImageSourceConverter(int maxCachedDecodes)
+    public BytesToImageSourceConverter(int maxCachedDecodes, Func<byte[], BitmapImage?>? decode = null)
     {
-        _decoded = new LruCache<byte[], BitmapImage>(Math.Max(1, maxCachedDecodes));
+        _decoded = new LruCache<byte[], BitmapImage?>(Math.Max(1, maxCachedDecodes));
+        _decode = decode ?? BoundedIconDecode.TryDecode;
     }
 
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
@@ -36,33 +39,7 @@ public sealed class BytesToImageSourceConverter : IValueConverter
             return null!;
         }
 
-        return _decoded.GetOrAdd(bytes, Decode);
-    }
-
-    private static BitmapImage Decode(byte[] bytes)
-    {
-        var image = new BitmapImage();
-        image.BeginInit();
-        image.CacheOption = BitmapCacheOption.OnLoad;
-
-        // Server-published icons decode at a bounded pixel size (decompression-bomb
-        // protection); small PNGs keep their natural pixels.
-        var bounds = BoundedIconDecode.GetDecodeBounds(bytes);
-
-        if (bounds.Width is int width)
-        {
-            image.DecodePixelWidth = width;
-        }
-
-        if (bounds.Height is int height)
-        {
-            image.DecodePixelHeight = height;
-        }
-
-        image.StreamSource = new MemoryStream(bytes);
-        image.EndInit();
-        image.Freeze();
-        return image;
+        return _decoded.GetOrAdd(bytes, _decode)!;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

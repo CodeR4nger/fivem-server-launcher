@@ -61,17 +61,33 @@ public class IconImageNormalizerTests
     }
 
     [Fact]
-    public void Normalize_WhenBytesAreNotWebP_ShouldPassThroughUnchangedWithoutDecoding()
+    public void Normalize_WhenBytesAreDecodableNonWebp_ShouldPassThroughSameInstanceWithoutWebpDecoding()
     {
-        // Given — WPF-native formats keep the existing render path untouched.
+        // Given — WPF-native formats that really decode keep the existing render
+        // path untouched and never reach the WebP decoder.
         var normalizer = new IconImageNormalizer(new ThrowingWebpDecoder());
-        var bytes = new byte[] { 1, 2, 3 };
+        var png = TestIcons.Png(7);
 
         // When
-        var result = normalizer.Normalize(bytes);
+        var result = normalizer.Normalize(png);
 
-        // Then — the same instance, zero decode work.
-        Assert.Same(bytes, result);
+        // Then — the same instance.
+        Assert.Same(png, result);
+    }
+
+    [Fact]
+    public void Normalize_WhenNonWebpBytesAreNotAnImage_ShouldReturnNull()
+    {
+        // Given — a server can publish an icon_url that answers with anything: an
+        // HTML error page, random bytes, a truncated PNG. Handing those to WPF
+        // throws out of the Image.Source binding, so they must die here, at the
+        // download boundary, as "no icon".
+        var normalizer = new IconImageNormalizer(new ThrowingWebpDecoder());
+
+        // When / Then
+        Assert.Null(normalizer.Normalize(TestIcons.Html));
+        Assert.Null(normalizer.Normalize(TestIcons.Garbage));
+        Assert.Null(normalizer.Normalize(TestIcons.CorruptPng));
     }
 
     [Fact]
