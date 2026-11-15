@@ -264,11 +264,15 @@ public class ConnectRequestListenerTests : IDisposable
     }
 
     [Fact]
-    public async Task Start_ShouldGrantThePipeToTheCurrentUserOnly()
+    public async Task Start_ShouldGrantThePipeOnlyToTheProcessTokenOwner()
     {
-        // Given: a listening first instance
+        // Given: a listening first instance. PipeOptions.CurrentUserOnly grants the
+        // token's default OWNER: the user SID for a normal token, but the
+        // BUILTIN\Administrators group for an elevated administrator (CI runners run
+        // elevated), so the user SID is not the identity to expect.
         _listener.Start(_ => { }, _cts.Token);
-        var currentUser = WindowsIdentity.GetCurrent().User!;
+        using var identity = WindowsIdentity.GetCurrent();
+        var tokenOwner = identity.Owner!;
 
         // When: a client opens the inbound pipe for writing plus reading its security
         // descriptor (asking for read data on an inbound pipe is refused)
@@ -285,8 +289,8 @@ public class ConnectRequestListenerTests : IDisposable
             .Cast<PipeAccessRule>()
             .ToList();
 
-        // Then: only the current user is granted anything (no Everyone/Anonymous/other users)
+        // Then: only the token owner is granted anything (no Everyone/Anonymous/other users)
         Assert.NotEmpty(rules);
-        Assert.All(rules, rule => Assert.Equal(currentUser, rule.IdentityReference));
+        Assert.All(rules, rule => Assert.Equal(tokenOwner, rule.IdentityReference));
     }
 }
