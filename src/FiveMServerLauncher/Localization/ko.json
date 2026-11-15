@@ -6,6 +6,7 @@
   "PreferredOpenClientHeader": "기본 클라이언트",
   "AutoLaunchCheckbox": "시작 시 마지막 서버에 자동 연결",
   "WebLinksCheckbox": "cfxlauncher:// 웹 링크를 이 런처에서 열기",
+  "MinimizeToTrayCheckbox": "알림 영역으로 최소화",
   "CfxStatusHeader": "CFX 상태",
   "GameBuildHeader": "게임 빌드",
   "PureModeHeader": "퓨어 모드",
@@ -86,5 +87,9 @@
   "UpdateBannerText": "새 버전: {0}",
   "UpdateButton": "업데이트",
   "UpdateInProgressText": "업데이트 중...",
-  "UpdateFailedText": "업데이트 실패"
+  "UpdateFailedText": "업데이트 실패",
+  "TrayShow": "표시",
+  "TrayExit": "종료",
+  "TrayAllServers": "모든 서버...",
+  "TrayNoServers": "저장된 서버 없음"
 }

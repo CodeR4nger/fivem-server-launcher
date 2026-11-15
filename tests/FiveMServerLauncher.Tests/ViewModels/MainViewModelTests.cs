@@ -1915,6 +1915,25 @@ public partial class MainViewModelTests
     }
 
     [Fact]
+    public async Task SetMinimizeToTray_ShouldPersistImmediately()
+    {
+        // Given
+        var storage = new InMemorySettingsStorage();
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            settings: new ConfigurationRepository(storage));
+        await vm.InitializeAsync();
+
+        // When
+        vm.MinimizeToTray = true;
+
+        // Then
+        Assert.True(vm.MinimizeToTray);
+        Assert.True(new ConfigurationRepository(storage).Load().MinimizeToTray);
+    }
+
+    [Fact]
     public async Task SetPreferredClientOption_ShouldPreserveOtherSettingsFields()
     {
         // Given
