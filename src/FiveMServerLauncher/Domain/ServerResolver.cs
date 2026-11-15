@@ -1,7 +1,5 @@
-using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Domain.Exceptions;
 using FiveMServerLauncher.Service;
-using System.Net.Http;
 
 namespace FiveMServerLauncher.Domain;
 
@@ -207,30 +205,23 @@ public class ServerResolver(
         };
     }
 
-    private static ServerProfile BuildValidatedProfile(Master.Server server)
+    private ServerProfile BuildValidatedProfile(Master.Server server)
     {
         var vars = server.Data.Vars;
+        var info = CfxVars.ToServerInfo(
+            server.EndPoint,
+            vars.TryGetValue("sv_projectName", out var projectName) ? projectName : server.Data.Hostname,
+            vars,
+            CfxVars.TryGetString(vars, "requestSteamTicket"));
 
         return new ServerProfile
         {
-            CfxId = server.EndPoint,
+            CfxId = info.CfxId,
             Address = server.Data.ConnectEndPoints.FirstOrDefault(),
-            ProjectName = vars.TryGetValue("sv_projectName", out var projectName) ? projectName : server.Data.Hostname,
-            GameClient = CfxVars.TryGetGameClient(vars),
-            Requirements = BuildRequirements(vars),
+            ProjectName = info.ProjectName,
+            GameClient = info.GameClient,
+            Requirements = requirementsResolver.Resolve(info),
             IsCfxValidated = true
-        };
-    }
-
-    private static ServerRequirements BuildRequirements(IDictionary<string, string> vars)
-    {
-        return new ServerRequirements
-        {
-            GameBuild = CfxVars.TryGetInt(vars, "sv_enforceGameBuild"),
-            PureMode = CfxVars.TryGetInt(vars, "sv_pureLevel"),
-            RequestSteamTicket = CfxVars.MapSteamTicket(
-                vars.TryGetValue("requestSteamTicket", out var steam) ? steam : null),
-            SteamRequired = CfxVars.TryGetBool(vars, "sv_enforceSteamAuth")
         };
     }
 }

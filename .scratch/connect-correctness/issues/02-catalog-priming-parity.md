@@ -1,5 +1,5 @@
 # catalog-priming-parity
 
-Status: in-progress
+Status: done
 
 See ../spec.md section 2.

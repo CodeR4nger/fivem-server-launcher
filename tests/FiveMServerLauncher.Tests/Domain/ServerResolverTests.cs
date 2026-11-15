@@ -330,6 +330,54 @@ public class ServerResolverTests
     }
 
     [Fact]
+    public async Task Resolve_SameServerByIdAndByIpPort_ShouldYieldIdenticalRequirements()
+    {
+        // Given — one server publishing every priming var, reachable through /single/ (id)
+        // and through the catalog (IP:port). Priming must not depend on the address form.
+        const string address = "149.56.120.52:30320";
+        var vars = new Dictionary<string, string>
+        {
+            ["gamename"] = "gta5",
+            ["sv_enforceGameBuild"] = "3095",
+            ["sv_pureLevel"] = "1",
+            ["sv_defaultGameBuild"] = "2944",
+            ["sv_replaceExeToSwitchBuilds"] = "false",
+            ["sv_poolSizesIncrease"] = "{\"TxdStore\":5000}",
+            ["sv_enforceSteamAuth"] = "true"
+        };
+        var json = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            EndPoint = "y4lg95",
+            Data = new { sv_projectName = "Parity", requestSteamTicket = "on", vars }
+        });
+        var protoServer = new Master.Server
+        {
+            EndPoint = "y4lg95",
+            Data = new Master.ServerData { ConnectEndPoints = { address } }
+        };
+        foreach (var (key, value) in vars)
+        {
+            protoServer.Data.Vars[key] = value;
+        }
+        protoServer.Data.Vars["requestSteamTicket"] = "on";
+
+        var resolver = CreateResolver(
+            new CfxService(new HttpClient(new FakeHttpMessageHandler(System.Net.HttpStatusCode.OK, json))),
+            new HttpClient(new FakeHttpMessageHandler(
+                System.Net.HttpStatusCode.OK, TestProtobufFrames.BuildFrameStream(protoServer))));
+
+        // When
+        var byId = await resolver.ResolveAsync("y4lg95");
+        var byIpPort = await resolver.ResolveAsync(address);
+
+        // Then
+        Assert.Equal(byId.Requirements, byIpPort.Requirements);
+        Assert.Equal("{\"TxdStore\":5000}", byIpPort.Requirements.PoolSizesIncrease);
+        Assert.Equal(2944, byIpPort.Requirements.DefaultBuild);
+        Assert.False(byIpPort.Requirements.ReplaceExecutable);
+    }
+
+    [Fact]
     public async Task Resolve_WhenIpPortNotInCatalog_ShouldReturnUnvalidatedProfile()
     {
         // Given
