@@ -15,11 +15,18 @@ internal sealed class FakeClientInstallLocator : IClientInstallLocator
 
     public bool ThrowOnIsInstalled { get; set; }
 
+    public Exception? IsInstalledFailure { get; set; }
+
     public Task<bool> IsInstalledAsync(GameClient client)
     {
         if (ThrowOnIsInstalled)
         {
             throw new IOException("Simulated locator failure");
+        }
+
+        if (IsInstalledFailure is { } failure)
+        {
+            throw failure;
         }
 
         return Task.FromResult(Executables.ContainsKey(client));

@@ -474,8 +474,9 @@ public class MainViewModel : INotifyPropertyChanged
                 return;
             }
 
+            var previous = _settings.DevGameBuild;
             _settings.DevGameBuild = value;
-            SaveSettings();
+            TrySaveSettings(() => _settings.DevGameBuild = previous);
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevGameBuild)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevGameBuildOptions)));
         }
@@ -501,8 +502,9 @@ public class MainViewModel : INotifyPropertyChanged
                 return;
             }
 
+            var previous = _settings.DevPureMode;
             _settings.DevPureMode = value;
-            SaveSettings();
+            TrySaveSettings(() => _settings.DevPureMode = previous);
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevPureMode)));
         }
     }
@@ -599,14 +601,26 @@ public class MainViewModel : INotifyPropertyChanged
         get => _selectedLanguageOption;
         set
         {
-            if (value is null || !SetProperty(ref _selectedLanguageOption, value))
+            if (value is null || ReferenceEquals(_selectedLanguageOption, value))
             {
                 return;
             }
 
+            var previousOption = _selectedLanguageOption;
+            var previousTag = _settings.Language;
+            _selectedLanguageOption = value;
             _settings.Language = value.Tag;
-            SaveSettings();
-            _localizer.SetLanguage(value.Tag);
+            var saved = TrySaveSettings(() =>
+            {
+                _selectedLanguageOption = previousOption;
+                _settings.Language = previousTag;
+            });
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedLanguageOption)));
+
+            if (saved)
+            {
+                _localizer.SetLanguage(value.Tag);
+            }
         }
     }
 
@@ -644,8 +658,9 @@ public class MainViewModel : INotifyPropertyChanged
                 return;
             }
 
+            var previous = _settings.AutoLaunch;
             _settings.AutoLaunch = value;
-            SaveSettings();
+            TrySaveSettings(() => _settings.AutoLaunch = previous);
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AutoLaunch)));
         }
     }
@@ -660,9 +675,15 @@ public class MainViewModel : INotifyPropertyChanged
                 return;
             }
 
+            var previousOption = _preferredClientOption;
+            var previousClient = _settings.PreferredClient;
             _preferredClientOption = value;
             _settings.PreferredClient = value.Client;
-            SaveSettings();
+            TrySaveSettings(() =>
+            {
+                _preferredClientOption = previousOption;
+                _settings.PreferredClient = previousClient;
+            });
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PreferredClientOption)));
         }
     }
@@ -739,17 +760,24 @@ public class MainViewModel : INotifyPropertyChanged
             return;
         }
 
-        AddSavedServerRow(savedServer);
-        item.SetSaved(true);
+        if (AddSavedServerRow(savedServer))
+        {
+            item.SetSaved(true);
+        }
     }
 
-    private void AddSavedServerRow(SavedServer savedServer)
+    private bool AddSavedServerRow(SavedServer savedServer)
     {
-        _serverRepository.Add(savedServer);
+        if (!PersistOrReport(() => _serverRepository.Add(savedServer)))
+        {
+            return false;
+        }
+
         var row = ToItem(savedServer);
         SavedServers.Add(row);
         UpdateRowMoveStates();
         TryCaptureCfxId(row);
+        return true;
     }
 
     private void OpenEditServerDialog(object? row)
@@ -831,7 +859,11 @@ public class MainViewModel : INotifyPropertyChanged
                 return;
             }
 
-            AddSavedServerRow(savedServer);
+            if (!AddSavedServerRow(savedServer))
+            {
+                DialogError = _localizer.Get("StatusSaveFailed");
+                return;
+            }
         }
         else
         {
@@ -845,15 +877,18 @@ public class MainViewModel : INotifyPropertyChanged
             var oldRow = SavedServers.FirstOrDefault(s =>
                 string.Equals(s.Address, EditingServer.Address, StringComparison.OrdinalIgnoreCase));
 
-            if (string.Equals(EditingServer.Address, savedServer.Address, StringComparison.OrdinalIgnoreCase))
+            var editedAddress = EditingServer.Address;
+
+            // An edit that changes the address is still an edit, not a remove+add:
+            // the server keeps its slot in the list and the store.
+            var persisted = string.Equals(editedAddress, savedServer.Address, StringComparison.OrdinalIgnoreCase)
+                ? PersistOrReport(() => _serverRepository.Update(savedServer))
+                : PersistOrReport(() => _serverRepository.Replace(editedAddress, savedServer));
+
+            if (!persisted)
             {
-                _serverRepository.Update(savedServer);
-            }
-            else
-            {
-                // An edit that changes the address is still an edit, not a
-                // remove+add: the server keeps its slot in the list and the store.
-                _serverRepository.Replace(EditingServer.Address, savedServer);
+                DialogError = _localizer.Get("StatusSaveFailed");
+                return;
             }
 
             if (oldRow is not null)
@@ -927,8 +962,9 @@ public class MainViewModel : INotifyPropertyChanged
             _serverRepository.Update(updated);
             item.SetCfxId(cfxId);
         }
-        catch (IOException)
+        catch (Exception ex) when (IsStoreFault(ex))
         {
+            // A background capture has no one to tell; the id is simply captured next save.
         }
     }
 
@@ -1154,6 +1190,13 @@ public class MainViewModel : INotifyPropertyChanged
         private set => SetProperty(ref _statusText, value);
     }
 
+    // The last-resort entry point for the composition root's unhandled-exception hooks:
+    // the app stays up and says so in one generic line (no log file by design).
+    public void ReportUnexpectedError()
+    {
+        StatusText = _localizer.Get("StatusUnexpectedError");
+    }
+
     public bool IsBusy
     {
         get => _isBusy;
@@ -1187,9 +1230,9 @@ public class MainViewModel : INotifyPropertyChanged
 
     private void PersistServer(SavedServerItem item)
     {
-        _serverRepository.Update(SavedServer.Create(
+        PersistOrReport(() => _serverRepository.Update(SavedServer.Create(
             item.Name, item.Address, item.RequiresSteam, item.RequiresDiscord, item.CfxId,
-            item.GameBuild, item.PureMode, item.GameClient));
+            item.GameBuild, item.PureMode, item.GameClient)));
     }
 
     private void DeleteServer(object? parameter)
@@ -1208,7 +1251,11 @@ public class MainViewModel : INotifyPropertyChanged
 
     private void RemoveServer(SavedServerItem server)
     {
-        _serverRepository.Remove(server.Address);
+        if (!PersistOrReport(() => _serverRepository.Remove(server.Address)))
+        {
+            return;
+        }
+
         SavedServers.Remove(server);
 
         if (ReferenceEquals(SelectedServer, server))
@@ -1326,7 +1373,11 @@ public class MainViewModel : INotifyPropertyChanged
 
         // Persist before the visible move: a rejected write then leaves the list
         // untouched rather than showing an order the store does not have.
-        _serverRepository.Move(row.Address, newIndex);
+        if (!PersistOrReport(() => _serverRepository.Move(row.Address, newIndex)))
+        {
+            return;
+        }
+
         SavedServers.Move(currentIndex, newIndex);
         UpdateRowMoveStates();
         CommandManager.InvalidateRequerySuggested();
@@ -1377,8 +1428,15 @@ public class MainViewModel : INotifyPropertyChanged
 
             if (result is LaunchResult.Connect or LaunchResult.OpenClient)
             {
+                // The launch already happened: a failed save of the reopen memory is
+                // reverted silently so the launch status stays on screen.
+                var previous = _settings.LastServerAddress;
                 _settings.LastServerAddress = ServerAddress.Trim();
-                SaveSettings();
+
+                if (!TryPersist(() => _settingsRepository.Save(_settings)))
+                {
+                    _settings.LastServerAddress = previous;
+                }
             }
         }
         catch (InvalidAddressException)
@@ -1456,7 +1514,7 @@ public class MainViewModel : INotifyPropertyChanged
                 await ConnectAsync();
             }
         }
-        catch (IOException)
+        catch (Exception ex) when (IsStoreFault(ex))
         {
             StatusText = _localizer.Get("StatusStartupFailed");
         }
@@ -1521,9 +1579,45 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    private void SaveSettings()
+    // A locked, read-only or unreadable store surfaces as one of these two; anything else
+    // is a bug and stays loud.
+    private static bool IsStoreFault(Exception ex) => ex is IOException or UnauthorizedAccessException;
+
+    private static bool TryPersist(Action write)
     {
-        _settingsRepository.Save(_settings);
+        try
+        {
+            write();
+            return true;
+        }
+        catch (Exception ex) when (IsStoreFault(ex))
+        {
+            return false;
+        }
+    }
+
+    // Every user-initiated store write goes through here: a failure shows one status line
+    // and the caller skips its UI change, so the UI never shows what the store does not hold.
+    private bool PersistOrReport(Action write)
+    {
+        if (TryPersist(write))
+        {
+            return true;
+        }
+
+        StatusText = _localizer.Get("StatusSaveFailed");
+        return false;
+    }
+
+    private bool TrySaveSettings(Action revert)
+    {
+        if (PersistOrReport(() => _settingsRepository.Save(_settings)))
+        {
+            return true;
+        }
+
+        revert();
+        return false;
     }
 
     private string Describe(LaunchResult result)

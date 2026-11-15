@@ -179,7 +179,7 @@ public class FileServerRepositoryTests
     }
 
     [Fact]
-    public void GetAll_WhenFileContainsInvalidEntries_ShouldDropThem()
+    public void GetAll_WhenFileContainsInvalidEntries_ShouldHideThem()
     {
         // Given
         using var tempDir = new TempSettingsDirectory();

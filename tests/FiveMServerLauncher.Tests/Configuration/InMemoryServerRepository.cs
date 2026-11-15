@@ -3,80 +3,101 @@ using FiveMServerLauncher.Domain;
 
 namespace FiveMServerLauncher.Tests.Configuration;
 
+// Mirrors the FileServerRepository contract: snapshot reads, duplicate Add rejected, and a
+// mutator that fails to persist throws without changing the store (set WriteFailure to make
+// every mutator throw it, as a locked or read-only file would).
 public class InMemoryServerRepository : IServerRepository
 {
-    private readonly List<SavedServer> _servers = new();
+    private readonly object _gate = new();
+    private List<SavedServer> _servers = new();
+
+    public Exception? WriteFailure { get; set; }
 
     public IReadOnlyList<SavedServer> GetAll()
     {
-        return _servers;
+        lock (_gate)
+        {
+            return _servers.ToArray();
+        }
     }
 
     public SavedServer? FindByAddress(string address)
     {
-        return _servers.FirstOrDefault(s => s.MatchesAddress(address));
+        return GetAll().FirstOrDefault(s => s.MatchesAddress(address));
     }
 
     public SavedServer? FindByCfxId(string cfxId)
     {
-        return _servers.FirstOrDefault(s => s.MatchesCfxId(cfxId));
+        return GetAll().FirstOrDefault(s => s.MatchesCfxId(cfxId));
     }
 
     public void Add(SavedServer savedServer)
     {
-        _servers.Add(savedServer);
+        Mutate(servers =>
+        {
+            if (servers.Any(s => s.MatchesAddress(savedServer.Address)))
+            {
+                throw new ArgumentException($"A server with address '{savedServer.Address}' is already saved.");
+            }
+
+            servers.Add(savedServer);
+        });
     }
 
     public void Update(SavedServer savedServer)
     {
-        var index = _servers.FindIndex(s => s.MatchesAddress(savedServer.Address));
-
-        if (index < 0)
-        {
-            throw new ArgumentException($"No saved server with address '{savedServer.Address}'.");
-        }
-
-        _servers[index] = savedServer;
+        Mutate(servers => servers[IndexOf(servers, savedServer.Address)] = savedServer);
     }
 
     public void Replace(string address, SavedServer replacement)
     {
-        var index = _servers.FindIndex(s => s.MatchesAddress(address));
-
-        if (index < 0)
-        {
-            throw new ArgumentException($"No saved server with address '{address}'.");
-        }
-
-        _servers[index] = replacement;
+        Mutate(servers => servers[IndexOf(servers, address)] = replacement);
     }
 
     public void Remove(string address)
     {
-        _servers.RemoveAll(s => s.MatchesAddress(address));
+        Mutate(servers => servers.RemoveAll(s => s.MatchesAddress(address)));
     }
 
     public void Move(string address, int newIndex)
     {
-        var index = _servers.FindIndex(s => s.MatchesAddress(address));
-
-        if (index < 0)
+        Mutate(servers =>
         {
-            throw new ArgumentException($"No saved server with address '{address}'.");
-        }
+            var index = IndexOf(servers, address);
 
-        if (newIndex < 0 || newIndex >= _servers.Count)
+            if (newIndex < 0 || newIndex >= servers.Count)
+            {
+                throw new ArgumentOutOfRangeException(nameof(newIndex));
+            }
+
+            var moved = servers[index];
+            servers.RemoveAt(index);
+            servers.Insert(newIndex, moved);
+        });
+    }
+
+    private static int IndexOf(List<SavedServer> servers, string address)
+    {
+        var index = servers.FindIndex(s => s.MatchesAddress(address));
+
+        return index >= 0
+            ? index
+            : throw new ArgumentException($"No saved server with address '{address}'.");
+    }
+
+    private void Mutate(Action<List<SavedServer>> edit)
+    {
+        lock (_gate)
         {
-            throw new ArgumentOutOfRangeException(nameof(newIndex));
-        }
+            var next = new List<SavedServer>(_servers);
+            edit(next);
 
-        if (index == newIndex)
-        {
-            return;
-        }
+            if (WriteFailure is { } failure)
+            {
+                throw failure;
+            }
 
-        var moved = _servers[index];
-        _servers.RemoveAt(index);
-        _servers.Insert(newIndex, moved);
+            _servers = next;
+        }
     }
 }

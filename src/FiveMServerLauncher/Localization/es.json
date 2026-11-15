@@ -51,6 +51,8 @@
   "StatusLaunchFailed": "Fallo al iniciar",
   "StatusInvalidAddress": "Dirección inválida",
   "StatusServerSaved": "Servidor guardado",
+  "StatusSaveFailed": "No se pudieron guardar los cambios",
+  "StatusUnexpectedError": "Algo salió mal",
   "DialogNewServer": "NUEVO SERVIDOR",
   "DialogEditServer": "EDITAR SERVIDOR",
   "DialogInvalidNameOrAddress": "Nombre o dirección inválidos",

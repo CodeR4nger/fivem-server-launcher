@@ -51,6 +51,8 @@
   "StatusLaunchFailed": "Échec du lancement",
   "StatusInvalidAddress": "Adresse invalide",
   "StatusServerSaved": "Serveur enregistré",
+  "StatusSaveFailed": "Impossible d'enregistrer les modifications",
+  "StatusUnexpectedError": "Une erreur s'est produite",
   "DialogNewServer": "NOUVEAU SERVEUR",
   "DialogEditServer": "MODIFIER LE SERVEUR",
   "DialogInvalidNameOrAddress": "Nom ou adresse invalide",

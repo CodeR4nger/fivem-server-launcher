@@ -50,6 +50,8 @@
   "StatusLaunchFailed": "Launch failed",
   "StatusInvalidAddress": "Invalid address",
   "StatusServerSaved": "Server saved",
+  "StatusSaveFailed": "Could not save changes",
+  "StatusUnexpectedError": "Something went wrong",
   "DialogNewServer": "NEW SERVER",
   "DialogEditServer": "EDIT SERVER",
   "DialogInvalidNameOrAddress": "Invalid name or address",

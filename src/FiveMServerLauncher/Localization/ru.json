@@ -51,6 +51,8 @@
   "StatusLaunchFailed": "Не удалось запустить",
   "StatusInvalidAddress": "Недействительный адрес",
   "StatusServerSaved": "Сервер сохранён",
+  "StatusSaveFailed": "Не удалось сохранить изменения",
+  "StatusUnexpectedError": "Что-то пошло не так",
   "DialogNewServer": "НОВЫЙ СЕРВЕР",
   "DialogEditServer": "ИЗМЕНИТЬ СЕРВЕР",
   "DialogInvalidNameOrAddress": "Недействительное имя или адрес",
