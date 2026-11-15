@@ -1,0 +1,29 @@
+<!-- Settings and Dev Mode toggles above the left panel. DataContext is inherited (MainViewModel). -->
+<UserControl x:Class="FiveMServerLauncher.Views.SettingsBar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:FiveMServerLauncher.Views"
+             xmlns:views="clr-namespace:FiveMServerLauncher.Views">
+
+    <UserControl.Resources>
+        <views:ThemeResources/>
+    </UserControl.Resources>
+
+    <DockPanel Margin="14,14,14,0">
+
+        <Button Content="{loc:Loc SettingsButton}"
+                MinHeight="34"
+                Padding="14,8"
+                Style="{StaticResource SecondaryButtonStyle}"
+                Command="{Binding SettingsCommand}"/>
+
+        <Button Content="{loc:Loc DevModeButton}"
+                MinHeight="34"
+                Padding="14,8"
+                Margin="8,0,0,0"
+                Style="{StaticResource SecondaryButtonStyle}"
+                Command="{Binding ToggleDevModeCommand}"/>
+
+    </DockPanel>
+
+</UserControl>

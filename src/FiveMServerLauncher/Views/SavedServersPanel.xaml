@@ -1,0 +1,418 @@
+<!-- Saved servers list, search, reorder, connect address and ENTER SERVER. DataContext is inherited (MainViewModel). -->
+<UserControl x:Class="FiveMServerLauncher.Views.SavedServersPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:FiveMServerLauncher.Views"
+             xmlns:views="clr-namespace:FiveMServerLauncher.Views">
+
+    <UserControl.Resources>
+        <views:ThemeResources/>
+    </UserControl.Resources>
+
+    <Border Background="{StaticResource PanelBrush}"
+            BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="1"
+            Margin="10,24,20,24">
+
+        <Grid>
+
+            <Grid.RowDefinitions>
+
+                <RowDefinition Height="*"/>
+
+                <RowDefinition Height="Auto"/>
+
+            </Grid.RowDefinitions>
+
+
+            <!-- FORMULARIO -->
+
+            <ScrollViewer Grid.Row="0"
+                          VerticalScrollBarVisibility="Disabled"
+                          HorizontalScrollBarVisibility="Disabled">
+
+                <!-- Left margin lives on the siblings, not this StackPanel: the one
+                     full-width child below is the list's grid, whose first 20 px column
+                     is the arrows gutter (a negative-margin overlay child got clipped
+                     by the ScrollViewer — that area is not renderable overflow here). -->
+                <StackPanel Margin="0,20,20,20">
+
+                <DockPanel Margin="20,0,0,7">
+
+                    <TextBlock Text="{loc:Loc SavedServersHeader}"
+                               Style="{StaticResource SectionHeaderStyle}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,10,0"/>
+
+                    <Button DockPanel.Dock="Right"
+                            Command="{Binding RefreshServersCommand}"
+                            ToolTip="{loc:Loc RefreshTooltip}"
+                            Padding="4,0"
+                            Margin="6,0,0,0"
+                            VerticalAlignment="Center"
+                            Style="{StaticResource IconButtonStyle}">
+
+                        <TextBlock Text="↻"/>
+
+                    </Button>
+
+                    <Grid VerticalAlignment="Center">
+
+                        <TextBox x:Name="ServerSearchBox"
+                                 Text="{Binding ServerSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                 Background="{StaticResource PanelLightBrush}"
+                                 Foreground="{StaticResource TextBrush}"
+                                 BorderBrush="{StaticResource BorderBrush}"
+                                 BorderThickness="1"
+                                 Padding="8,2"
+                                 FontSize="11"
+                                 VerticalContentAlignment="Center"
+                                 MinHeight="24"/>
+
+                        <TextBlock Text="{loc:Loc SearchServersPlaceholder}"
+                                   Foreground="{StaticResource SecondaryTextBrush}"
+                                   FontSize="11"
+                                   IsHitTestVisible="False"
+                                   VerticalAlignment="Center"
+                                   Margin="9,0,0,0"
+                                   Visibility="{Binding Text,
+                                                        ElementName=ServerSearchBox,
+                                                        Converter={StaticResource EmptyStringToVisibility}}"/>
+
+                    </Grid>
+
+                </DockPanel>
+
+                <!-- One cell holding the full-size list and two overlays. The list box
+                     keeps its original width: the move arrows live in the grid's first
+                     20 px column — the space that was the list's left margin; the drop
+                     indicator overlays the list itself. -->
+                <Grid>
+
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="20"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="1"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1"
+                            Background="{StaticResource PanelLightBrush}">
+
+                    <ListBox x:Name="SavedServersList"
+                             ItemsSource="{Binding SavedServersView}"
+                             SelectedItem="{Binding SelectedServer}"
+                             Background="{StaticResource PanelLightBrush}"
+                             BorderThickness="0"
+                             HorizontalContentAlignment="Stretch"
+                             Padding="0,4,0,4"
+                             Height="163"
+                             PreviewMouseLeftButtonDown="SavedServersList_PreviewMouseLeftButtonDown"
+                             PreviewMouseRightButtonDown="SavedServersList_PreviewMouseRightButtonDown"
+                             MouseMove="SavedServersList_MouseMove"
+                             PreviewMouseLeftButtonUp="SavedServersList_PreviewMouseLeftButtonUp"
+                             ScrollViewer.ScrollChanged="SavedServersList_ScrollChanged"
+                             SelectionChanged="SavedServersList_SelectionChanged">
+
+                        <ListBox.ItemContainerStyle>
+
+                            <Style TargetType="{x:Type ListBoxItem}">
+
+                                <Setter Property="HorizontalContentAlignment"
+                                        Value="Stretch"/>
+
+                                <EventSetter Event="ListBoxItem.MouseEnter"
+                                             Handler="SavedServerRow_MouseEnter"/>
+
+                                <EventSetter Event="ListBoxItem.MouseLeave"
+                                             Handler="SavedServerRow_MouseLeave"/>
+
+                            </Style>
+
+                        </ListBox.ItemContainerStyle>
+
+                        <ListBox.ItemTemplate>
+
+                            <DataTemplate>
+
+                                <Grid Margin="6"
+                                      Background="Transparent"
+                                      Tag="{Binding DataContext,
+                                                    RelativeSource={RelativeSource AncestorType=UserControl}}">
+
+                                    <Grid.ContextMenu>
+
+                                        <ContextMenu Loaded="RowMenu_Loaded">
+
+                                            <ContextMenu.Resources>
+
+                                                <Style TargetType="ContextMenu">
+                                                    <Setter Property="OverridesDefaultStyle" Value="True"/>
+                                                    <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+                                                    <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+                                                    <Setter Property="SnapsToDevicePixels" Value="True"/>
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="ContextMenu">
+                                                                <Border Background="{TemplateBinding Background}"
+                                                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                                                        BorderThickness="1"
+                                                                        Padding="4">
+                                                                    <ItemsPresenter/>
+                                                                </Border>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Style>
+
+                                                <Style TargetType="MenuItem">
+                                                    <Setter Property="OverridesDefaultStyle" Value="True"/>
+                                                    <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                                                    <Setter Property="FontSize" Value="12"/>
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="MenuItem">
+                                                                <Border x:Name="ItemBorder"
+                                                                        Background="Transparent"
+                                                                        Padding="24,7">
+                                                                    <ContentPresenter ContentSource="Header"
+                                                                                      RecognizesAccessKey="True"
+                                                                                      VerticalAlignment="Center"/>
+                                                                </Border>
+                                                                <ControlTemplate.Triggers>
+                                                                    <Trigger Property="IsHighlighted" Value="True">
+                                                                        <Setter TargetName="ItemBorder" Property="Background"
+                                                                                Value="{StaticResource PanelLightBrush}"/>
+                                                                    </Trigger>
+                                                                    <Trigger Property="IsEnabled" Value="False">
+                                                                        <Setter TargetName="ItemBorder" Property="Opacity" Value="0.35"/>
+                                                                    </Trigger>
+                                                                </ControlTemplate.Triggers>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Style>
+
+                                            </ContextMenu.Resources>
+
+                                            <MenuItem Header="{loc:Loc MenuEditServer}"
+                                                      Command="{Binding PlacementTarget.Tag.OpenEditServerDialogCommand,
+                                                                        RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext,
+                                                                                 RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+
+                                            <MenuItem Header="{loc:Loc MenuCreateShortcut}"
+                                                      Command="{Binding PlacementTarget.Tag.CreateDesktopShortcutCommand,
+                                                                        RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext,
+                                                                                 RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+
+                                            <MenuItem Header="{loc:Loc MenuDeleteServer}"
+                                                      Command="{Binding PlacementTarget.Tag.DeleteServerCommand,
+                                                                        RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext,
+                                                                                 RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+
+                                        </ContextMenu>
+
+                                    </Grid.ContextMenu>
+
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="30"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Image Grid.Column="0"
+                                           Source="{Binding Icon, Converter={StaticResource BytesToImageSourceConverter}}"
+                                           Width="22"
+                                           Height="22"
+                                           HorizontalAlignment="Left"
+                                           VerticalAlignment="Center"/>
+
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding TrimmedName}"
+                                               Foreground="{StaticResource TextBrush}"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Left"
+                                               TextTrimming="CharacterEllipsis"/>
+
+                                    <Border Grid.Column="2"
+                                            Background="{Binding Game, Converter={StaticResource GameClientToBrushConverter}}"
+                                            CornerRadius="3"
+                                            Padding="5,1"
+                                            Margin="8,0,0,0"
+                                            VerticalAlignment="Center"
+                                            Visibility="{Binding HasGame, Converter={StaticResource BoolToVisibility}}">
+
+                                        <TextBlock Text="{Binding GameTagLabel}"
+                                                   Foreground="{StaticResource BackgroundBrush}"
+                                                   FontSize="9"
+                                                   FontWeight="Bold"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+
+                                    <TextBlock Grid.Column="3"
+                                               Text="{Binding StatusLabel}"
+                                               Foreground="{StaticResource SecondaryTextBrush}"
+                                               VerticalAlignment="Center"
+                                               Margin="8,0"/>
+
+                                    <Button Grid.Column="4"
+                                            Click="RowMenuButton_Click"
+                                            Tag="{Binding DataContext,
+                                                          RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            Padding="6,2"
+                                            VerticalAlignment="Center"
+                                            Style="{StaticResource IconButtonStyle}">
+
+                                        <Button.Visibility>
+
+                                            <MultiBinding Converter="{StaticResource SelectionEqualityToVisibility}">
+
+                                                <Binding Path="DataContext"
+                                                         RelativeSource="{RelativeSource AncestorType=ListBoxItem}"/>
+
+                                                <Binding Path="SelectedItem"
+                                                         RelativeSource="{RelativeSource AncestorType=ListBox}"/>
+
+                                            </MultiBinding>
+
+                                        </Button.Visibility>
+
+                                        <TextBlock Text="⋮"/>
+
+                                    </Button>
+
+                                </Grid>
+
+                            </DataTemplate>
+
+                        </ListBox.ItemTemplate>
+
+                    </ListBox>
+
+                    </Border>
+
+                    <!-- Drop indicator: an accent line snapped to the insertion slot,
+                         following the pointer while a row is being dragged. Never hit
+                         (the list keeps every click). -->
+                    <Canvas Grid.Column="1"
+                            x:Name="DropIndicatorCanvas"
+                            IsHitTestVisible="False">
+
+                        <Border x:Name="DropIndicator"
+                                Height="2"
+                                Width="{Binding ActualWidth, ElementName=DropIndicatorCanvas}"
+                                Background="{StaticResource AccentBrush}"
+                                CornerRadius="1"
+                                Visibility="Collapsed"/>
+
+                    </Canvas>
+
+                    <!-- Move arrows overlay: a trackable pair in the gutter column (the
+                         20 px that used to be the list's left margin), positioned from
+                         code-behind on hover, selection and scroll. Transparent background
+                         so the strip itself is hit-testable — the arrows stay alive while
+                         the pointer crosses from the row onto them. -->
+                    <Canvas x:Name="MoveArrowsCanvas"
+                            Margin="0,1,0,1"
+                            Background="Transparent"
+                            MouseEnter="MoveArrowsCanvas_MouseEnter"
+                            MouseLeave="MoveArrowsCanvas_MouseLeave">
+
+                        <StackPanel x:Name="MoveArrowsOverlay"
+                                    Visibility="Collapsed">
+
+                            <Button Command="{Binding DataContext.MoveServerUpCommand,
+                                                      RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding}"
+                                    IsEnabled="{Binding CanMoveUp}"
+                                    Width="20"
+                                    Padding="0"
+                                    Style="{StaticResource IconButtonStyle}">
+
+                                <TextBlock Text="▲" FontSize="9"/>
+
+                            </Button>
+
+                            <Button Command="{Binding DataContext.MoveServerDownCommand,
+                                                      RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding}"
+                                    IsEnabled="{Binding CanMoveDown}"
+                                    Width="20"
+                                    Padding="0"
+                                    Style="{StaticResource IconButtonStyle}">
+
+                                <TextBlock Text="▼" FontSize="9"/>
+
+                            </Button>
+
+                        </StackPanel>
+
+                    </Canvas>
+
+                </Grid>
+
+                <DockPanel Margin="20,8,0,0">
+
+                    <Button Content="{loc:Loc NewServerButton}"
+                            MinHeight="26"
+                            Padding="12,4"
+                            DockPanel.Dock="Right"
+                            Style="{StaticResource MainButtonStyle}"
+                            Command="{Binding OpenAddServerDialogCommand}"/>
+
+                    <Button Content="{loc:Loc BrowseButton}"
+                            MinHeight="26"
+                            Padding="12,4"
+                            Margin="0,0,8,0"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Command="{Binding OpenServerBrowserCommand}"/>
+
+                </DockPanel>
+
+                <TextBlock Text="{loc:Loc ConnectAddressHeader}"
+                           Style="{StaticResource SectionHeaderStyle}"
+                           Margin="20,14,0,0"/>
+
+                <TextBox x:Name="ServerAddressBox"
+                         Text="{Binding ServerAddress,
+                                        UpdateSourceTrigger=PropertyChanged}"
+                         Background="{StaticResource PanelLightBrush}"
+                         Foreground="{StaticResource TextBrush}"
+                         BorderBrush="{StaticResource BorderBrush}"
+                         BorderThickness="1"
+                         Padding="5,1"
+                         FontSize="12"
+                         VerticalContentAlignment="Center"
+                         MinHeight="10"
+                         Margin="20,5,0,0"/>
+
+                <TextBlock Text="{Binding StatusText}"
+                           Foreground="{StaticResource SecondaryTextBrush}"
+                           FontSize="11"
+                           HorizontalAlignment="Center"
+                           Margin="20,2,0,0"/>
+
+                </StackPanel>
+
+            </ScrollViewer>
+
+            <!-- BOTON ENTRAR -->
+
+            <Button Grid.Row="1"
+                    Content="{loc:Loc EnterServerButton}"
+                    Height="48"
+                    Margin="20,0,20,16"
+                    Style="{StaticResource MainButtonStyle}"
+                    Command="{Binding ConnectCommand}"/>
+
+        </Grid>
+
+    </Border>
+
+</UserControl>
