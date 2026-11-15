@@ -314,8 +314,7 @@ public class ServerBrowserViewModelTests
         await vm.LoadAsync();
 
         // When
-        vm.RefreshCommand.Execute(null);
-        await Task.Delay(50);
+        await ExecuteRefreshAndWaitAsync(vm);
 
         // Then
         Assert.Equal(1, enrichment.ForcedRefreshCalls);
@@ -336,12 +335,13 @@ public class ServerBrowserViewModelTests
         await vm.LoadAsync();
 
         // When
+        var finished = WaitForRefreshEndAsync(vm);
         vm.RefreshCommand.Execute(null);
 
         // Then
         Assert.False(vm.RefreshCommand.CanExecute(null));
         gate.SetResult();
-        await Task.Delay(50);
+        await finished;
         Assert.True(vm.RefreshCommand.CanExecute(null));
     }
 
@@ -356,12 +356,15 @@ public class ServerBrowserViewModelTests
         await vm.LoadAsync();
 
         // When
+        var finished = WaitForRefreshEndAsync(vm);
+        var started = System.Diagnostics.Stopwatch.StartNew();
         vm.RefreshCommand.Execute(null);
         await Task.Delay(150);
 
-        // Then
+        // Then — still disabled inside the cooldown; re-enabled only once it has elapsed
         Assert.False(vm.RefreshCommand.CanExecute(null));
-        await Task.Delay(400);
+        await finished;
+        Assert.True(started.Elapsed >= TimeSpan.FromMilliseconds(380));
         Assert.True(vm.RefreshCommand.CanExecute(null));
     }
 
@@ -376,8 +379,7 @@ public class ServerBrowserViewModelTests
         await vm.LoadAsync();
 
         // When
-        vm.RefreshCommand.Execute(null);
-        await Task.Delay(50);
+        await ExecuteRefreshAndWaitAsync(vm);
 
         // Then
         Assert.Single(vm.Servers);
@@ -560,6 +562,29 @@ public class ServerBrowserViewModelTests
                 Content = new ByteArrayContent(_response)
             };
         }
+    }
+
+    // Waits for the refresh to really end (IsRefreshing back to false) instead of a fixed
+    // delay; the generous timeout is the only failure path.
+    private static Task WaitForRefreshEndAsync(ServerBrowserViewModel vm)
+    {
+        var ended = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ServerBrowserViewModel.IsRefreshing) && !vm.IsRefreshing)
+            {
+                ended.TrySetResult();
+            }
+        };
+
+        return ended.Task.WaitAsync(TimeSpan.FromSeconds(30));
+    }
+
+    private static async Task ExecuteRefreshAndWaitAsync(ServerBrowserViewModel vm)
+    {
+        var finished = WaitForRefreshEndAsync(vm);
+        vm.RefreshCommand.Execute(null);
+        await finished;
     }
 
     private static byte[] CatalogBytes(params Master.Server[] servers)
