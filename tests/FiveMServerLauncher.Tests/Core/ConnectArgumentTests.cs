@@ -62,4 +62,39 @@ public class ConnectArgumentTests
         // Then
         Assert.Null(address);
     }
+
+    public static TheoryData<string[], string> UriIntentCases => new()
+    {
+        // Windows hands the registered "%1" over as the only argument
+        { new[] { "cfxlauncher://connect/cfx.re/join/y4lg95/" }, "cfx.re/join/y4lg95" },
+        // the last connect intent wins across both forms
+        { new[] { "--connect", "127.0.0.1:30120", "cfxlauncher://connect/abc" }, "abc" },
+        { new[] { "cfxlauncher://connect/abc", "--connect", "127.0.0.1:30120" }, "127.0.0.1:30120" },
+        // a rejected URI is ignored like any unknown argument
+        { new[] { "--connect", "127.0.0.1:30120", "cfxlauncher://open/abc" }, "127.0.0.1:30120" },
+    };
+
+    [Theory]
+    [MemberData(nameof(UriIntentCases))]
+    public void TryParse_WithLauncherUri_ShouldReturnLastConnectIntent(string[] args, string expected)
+    {
+        // Given / When
+        var address = ConnectArgument.TryParse(args);
+
+        // Then
+        Assert.Equal(expected, address);
+    }
+
+    [Fact]
+    public void TryParse_WithOnlyRejectedLauncherUri_ShouldReturnNull()
+    {
+        // Given — not a connect/ URI: no connect, no crash
+        var args = new[] { "cfxlauncher://settings" };
+
+        // When
+        var address = ConnectArgument.TryParse(args);
+
+        // Then
+        Assert.Null(address);
+    }
 }

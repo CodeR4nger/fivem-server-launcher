@@ -1,5 +1,5 @@
 # uri-parser
 
-Status: open
+Status: done
 
 See ../spec.md. LauncherUri parse + ConnectArgument last-intent integration; every case in the spec pinned.
