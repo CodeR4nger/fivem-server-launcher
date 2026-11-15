@@ -41,13 +41,22 @@ public partial class MainViewModelTests
         var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), enrichment: enrichment);
         vm.SetWindowAttended(false);
         using var cts = new CancellationTokenSource();
-        var cycles = new LoopCycleSignal(target: 1);
-        var loop = vm.RunEnrichmentLoopAsync(cts.Token, TimeSpan.FromMinutes(1), cycles.DelayAsync);
+        var firstWait = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        // The cadence wait is a real minute: it only reports that the cycle finished and
+        // never returns, so the count below is exactly the restore cycle.
+        async Task CadenceWait(TimeSpan duration, CancellationToken token)
+        {
+            firstWait.TrySetResult();
+            await Task.Delay(Timeout.Infinite, token);
+        }
+
+        var loop = vm.RunEnrichmentLoopAsync(cts.Token, TimeSpan.FromMinutes(1), CadenceWait);
         await Task.Delay(ParkedProbe);
 
         // When — the window is restored/activated
         vm.SetWindowAttended(true);
-        await cycles.ReachedAsync();
+        await firstWait.Task.WaitAsync(TimeSpan.FromSeconds(30));
 
         // Then — the refresh-on-restore ran without waiting for a cadence tick
         Assert.Equal(1, enrichment.RefreshCalls);
