@@ -377,4 +377,34 @@ public class ServerAddressTests
         // Then
         Assert.False(result);
     }
+
+    [Theory]
+    [InlineData("cfx.re/join/abc123")]
+    [InlineData("http://cfx.re/join/abc123")]
+    [InlineData("https://cfx.re/join/abc123")]
+    [InlineData("HTTPS://CFX.RE/JOIN/abc123")]
+    [InlineData("www.cfx.re/join/abc123")]
+    [InlineData("https://www.cfx.re/join/abc123")]
+    public void Classify_WhenJoinPrefixIsAnchored_ShouldReturnCfxJoinUrlAndExtractId(string address)
+    {
+        // Given / When / Then — only an optional http(s) scheme and www. precede the prefix.
+        Assert.Equal(ServerAddressKind.CfxJoinUrl, ServerAddress.Classify(address));
+        Assert.Equal("abc123", ServerAddress.ExtractCfxId(address));
+    }
+
+    [Theory]
+    [InlineData("x\" --foo cfx.re/join/abc")]
+    [InlineData("--foo cfx.re/join/abc")]
+    [InlineData("fivem://connect/cfx.re/join/abc")]
+    [InlineData("ftp://cfx.re/join/abc")]
+    [InlineData("https://evil.example/cfx.re/join/abc")]
+    [InlineData("xcfx.re/join/abc")]
+    [InlineData("https://https://cfx.re/join/abc")]
+    [InlineData("www.www.cfx.re/join/abc")]
+    public void Classify_WhenTextPrecedesJoinPrefix_ShouldReturnUnknown(string address)
+    {
+        // Given / When / Then — an unanchored prefix let arbitrary text (e.g. shortcut
+        // argument injection) ride a join-form classification.
+        Assert.Equal(ServerAddressKind.Unknown, ServerAddress.Classify(address));
+    }
 }

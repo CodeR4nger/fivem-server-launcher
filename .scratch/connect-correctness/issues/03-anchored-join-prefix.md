@@ -1,5 +1,5 @@
 # anchored-join-prefix
 
-Status: in-progress
+Status: done
 
 See ../spec.md section 3.

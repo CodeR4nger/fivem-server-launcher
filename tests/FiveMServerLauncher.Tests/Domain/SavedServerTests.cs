@@ -271,4 +271,14 @@ public class SavedServerTests
         // Then
         Assert.Equal("abc123", result.CfxId);
     }
+
+    [Fact]
+    public void Create_WhenAddressSmugglesArgumentsBeforeJoinPrefix_ShouldThrow()
+    {
+        // Given — this address would be written verbatim into a shortcut's --connect "<address>".
+        const string address = "x\" --foo cfx.re/join/abc";
+
+        // When / Then
+        Assert.Throws<ArgumentException>(() => SavedServer.Create("Evil", address));
+    }
 }
