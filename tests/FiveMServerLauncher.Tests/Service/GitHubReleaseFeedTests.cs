@@ -9,12 +9,13 @@ public class GitHubReleaseFeedTests
 {
     private const string LatestReleaseUrl = "https://api.github.com/repos/CodeR4nger/fivem-server-launcher/releases/latest";
 
-    private static string AssetJson(string tag) =>
+    private static string AssetJson(string tag, string? digest = null, string? downloadUrl = null) =>
         $$"""
         {
           "name": "CFXLauncher.exe",
           "size": 62000000,
-          "browser_download_url": "https://github.com/CodeR4nger/fivem-server-launcher/releases/download/{{tag}}/CFXLauncher.exe"
+          {{(digest is null ? string.Empty : $"\"digest\": \"{digest}\",")}}
+          "browser_download_url": "{{downloadUrl ?? $"https://github.com/CodeR4nger/fivem-server-launcher/releases/download/{tag}/CFXLauncher.exe"}}"
         }
         """;
 
@@ -237,6 +238,139 @@ public class GitHubReleaseFeedTests
 
         // Then
         Assert.Null(update);
+    }
+
+    [Fact]
+    public async Task CheckForUpdateAsync_WhenAssetPublishesSha256Digest_ShouldCarryItAsLowercaseHex()
+    {
+        // Given: the asset publishes GitHub's digest field (sha256:<64 hex>)
+        var tag = NewerTag();
+        var hex = new string('A', 62) + "0f";
+        var feed = CreateFeed(out _, HttpStatusCode.OK, ReleaseJson(tag, AssetJson(tag, $"sha256:{hex}")));
+
+        // When
+        var update = await feed.CheckForUpdateAsync();
+
+        // Then
+        Assert.NotNull(update);
+        Assert.Equal(hex.ToLowerInvariant(), update.Sha256);
+    }
+
+    [Fact]
+    public async Task CheckForUpdateAsync_WhenAssetPublishesNoDigest_ShouldReturnUpdateWithoutSha256()
+    {
+        // Given: a release without the digest field (the size check is the fallback)
+        var tag = NewerTag();
+        var feed = CreateFeed(out _, HttpStatusCode.OK, ReleaseJson(tag));
+
+        // When
+        var update = await feed.CheckForUpdateAsync();
+
+        // Then
+        Assert.NotNull(update);
+        Assert.Null(update.Sha256);
+    }
+
+    [Theory]
+    [InlineData("sha512:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")]
+    [InlineData("sha256:abc123")]
+    [InlineData("sha256:zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz")]
+    [InlineData("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")]
+    [InlineData("")]
+    public async Task CheckForUpdateAsync_WhenPublishedDigestIsUnusable_ShouldReturnNull(string digest)
+    {
+        // Given: a digest is published but cannot be verified against — it is never
+        // silently downgraded to the size-only check
+        var tag = NewerTag();
+        var feed = CreateFeed(out _, HttpStatusCode.OK, ReleaseJson(tag, AssetJson(tag, digest)));
+
+        // When
+        var update = await feed.CheckForUpdateAsync();
+
+        // Then
+        Assert.Null(update);
+    }
+
+    [Theory]
+    [InlineData("http://github.com/CodeR4nger/fivem-server-launcher/releases/download/v9.0.0/CFXLauncher.exe")]
+    [InlineData("https://github.com.evil.example/CodeR4nger/fivem-server-launcher/releases/download/v9.0.0/CFXLauncher.exe")]
+    [InlineData("https://evil.example/github.com/CFXLauncher.exe")]
+    [InlineData("https://github.com@evil.example/CFXLauncher.exe")]
+    [InlineData("https://user:pass@github.com/CodeR4nger/fivem-server-launcher/releases/download/v9.0.0/CFXLauncher.exe")]
+    [InlineData("https://github.com:8443/CodeR4nger/fivem-server-launcher/releases/download/v9.0.0/CFXLauncher.exe")]
+    [InlineData("file:///C:/Windows/System32/calc.exe")]
+    [InlineData("/CodeR4nger/fivem-server-launcher/releases/download/v9.0.0/CFXLauncher.exe")]
+    [InlineData("not a url")]
+    public async Task CheckForUpdateAsync_WhenDownloadUrlIsNotHttpsGitHub_ShouldReturnNull(string downloadUrl)
+    {
+        // Given: the asset points anywhere but an absolute https URL on github.com
+        var tag = NewerTag();
+        var feed = CreateFeed(
+            out _, HttpStatusCode.OK, ReleaseJson(tag, AssetJson(tag, downloadUrl: downloadUrl)));
+
+        // When
+        var update = await feed.CheckForUpdateAsync();
+
+        // Then
+        Assert.Null(update);
+    }
+
+    [Fact]
+    public async Task CheckForUpdateAsync_WhenBodyExceedsCap_ShouldReturnNull()
+    {
+        // Given: an otherwise valid newer release whose body is far beyond any real one
+        // (the real latest-release body is about 5 KB)
+        var tag = NewerTag();
+        var padding = new string('x', 2 * 1024 * 1024);
+        var json = $$"""
+            {
+              "tag_name": "{{tag}}",
+              "body": "{{padding}}",
+              "assets": [{{AssetJson(tag)}}]
+            }
+            """;
+        var feed = CreateFeed(out _, HttpStatusCode.OK, json);
+
+        // When
+        var update = await feed.CheckForUpdateAsync();
+
+        // Then
+        Assert.Null(update);
+    }
+
+    [Fact]
+    public async Task CheckForUpdateAsync_WhenBodyStreamFailsMidway_ShouldReturnNull()
+    {
+        // Given: the headers arrive, then the connection drops while the body streams
+        var feed = new GitHubReleaseFeed(new HttpClient(new BrokenBodyHandler()));
+
+        // When
+        var update = await feed.CheckForUpdateAsync();
+
+        // Then
+        Assert.Null(update);
+    }
+
+    private sealed class BrokenBodyHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StreamContent(new BrokenStream())
+            });
+        }
+    }
+
+    private sealed class BrokenStream : MemoryStream
+    {
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
+            throw new HttpIOException(HttpRequestError.ResponseEnded, "Simulated dropped connection");
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            throw new HttpIOException(HttpRequestError.ResponseEnded, "Simulated dropped connection");
     }
 
     private sealed class ThrowingHandler(Exception exception) : HttpMessageHandler

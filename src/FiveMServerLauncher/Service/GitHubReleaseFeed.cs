@@ -1,3 +1,4 @@
+using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -17,6 +18,11 @@ public sealed class GitHubReleaseFeed : IReleaseFeed
 
     private const string AssetName = "CFXLauncher.exe";
 
+    private const string DownloadHost = "github.com";
+
+    // The real latest-release body is about 5 KB, release notes included.
+    private const long MaxBodyBytes = 1024 * 1024;
+
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         PropertyNameCaseInsensitive = true
@@ -35,8 +41,13 @@ public sealed class GitHubReleaseFeed : IReleaseFeed
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, LatestReleaseUrl);
             request.Headers.UserAgent.ParseAdd($"{AppInfo.ProductName}/{AppInfo.Version}");
-            using var response = await _httpClient.SendAsync(request);
-            var json = await response.Content.ReadAsStringAsync();
+            using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+
+            if (await BoundedContent.ReadAsByteArrayAsync(response.Content, MaxBodyBytes) is not { } json)
+            {
+                return null;
+            }
+
             var release = JsonSerializer.Deserialize<GitHubRelease>(json, SerializerOptions);
 
             if (release?.TagName is not { } tagName
@@ -49,12 +60,21 @@ public sealed class GitHubReleaseFeed : IReleaseFeed
 
             var asset = (release.Assets ?? []).FirstOrDefault(a => a.Name == AssetName);
 
-            if (asset?.BrowserDownloadUrl is not { } downloadUrl)
+            if (asset?.BrowserDownloadUrl is not { } downloadUrl || !IsTrustedDownloadUrl(downloadUrl))
             {
                 return null;
             }
 
-            return new LauncherUpdate(tagName, AssetName, asset.Size, downloadUrl);
+            // An absent digest falls back to the applier's size check; a published one that
+            // cannot be verified against is no update at all, never a silent downgrade.
+            string? sha256 = null;
+
+            if (asset.Digest is { } digest && !TryParseSha256Digest(digest, out sha256))
+            {
+                return null;
+            }
+
+            return new LauncherUpdate(tagName, AssetName, asset.Size, downloadUrl, sha256);
         }
         catch (HttpRequestException)
         {
@@ -64,10 +84,51 @@ public sealed class GitHubReleaseFeed : IReleaseFeed
         {
             return null;
         }
+        catch (IOException)
+        {
+            // The body streams after the headers: a dropped connection surfaces here
+            // (HttpIOException), not as HttpRequestException.
+            return null;
+        }
         catch (JsonException)
         {
             return null;
         }
+    }
+
+    // Release assets are published at https://github.com/<owner>/<repo>/releases/download/…;
+    // anything that is not an absolute https URL on exactly that host is no update. The
+    // CDN host GitHub redirects to is not pinned — the digest vouches for the bytes.
+    private static bool IsTrustedDownloadUrl(string downloadUrl)
+    {
+        return Uri.TryCreate(downloadUrl, UriKind.Absolute, out var uri)
+            && uri.Scheme == Uri.UriSchemeHttps
+            && uri.IsDefaultPort
+            && uri.UserInfo.Length == 0
+            && string.Equals(uri.Host, DownloadHost, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // GitHub publishes asset digests as "sha256:<64 hex>".
+    private static bool TryParseSha256Digest(string digest, out string? sha256)
+    {
+        const string prefix = "sha256:";
+        const int hexLength = 64;
+        sha256 = null;
+
+        if (!digest.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var hex = digest[prefix.Length..];
+
+        if (hex.Length != hexLength || !hex.All(char.IsAsciiHexDigit))
+        {
+            return false;
+        }
+
+        sha256 = hex.ToLowerInvariant();
+        return true;
     }
 
     private sealed class GitHubRelease
@@ -83,6 +144,8 @@ public sealed class GitHubReleaseFeed : IReleaseFeed
         public string? Name { get; set; }
 
         public long Size { get; set; }
+
+        public string? Digest { get; set; }
 
         [JsonPropertyName("browser_download_url")]
         public string? BrowserDownloadUrl { get; set; }

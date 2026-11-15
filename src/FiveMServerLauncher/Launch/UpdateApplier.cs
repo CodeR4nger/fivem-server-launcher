@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
+using System.Security.Cryptography;
 using FiveMServerLauncher.Service;
 
 namespace FiveMServerLauncher.Launch;
@@ -43,18 +44,7 @@ public sealed class UpdateApplier(
 
         try
         {
-            // Best-effort housekeeping: backups from previous updates are swept away. A
-            // locked stale backup (its old process still running) never blocks the update.
-            foreach (var stale in Directory.GetFiles(directory, $"{executableName}.old-*"))
-            {
-                try
-                {
-                    File.Delete(stale);
-                }
-                catch (Exception)
-                {
-                }
-            }
+            SweepStaleFiles(directory, executableName);
 
             // The asset downloads straight into the staged file (streamed, never fully in
             // memory).
@@ -64,15 +54,12 @@ public sealed class UpdateApplier(
                 await content.CopyToAsync(staged);
             }
 
-            // Sanity: the staged file must be non-empty and match the published size (a
-            // truncated or zero-size download is never installed).
-            var stagedLength = new FileInfo(stagedPath).Length;
-
-            if (stagedLength == 0 || stagedLength != update.AssetSize)
+            if (!await IsStagedAssetIntactAsync(stagedPath, update))
             {
                 Rollback(executablePath, backupPath, stagedPath);
                 return false;
             }
+
             // Swapping a running exe is allowed on Windows: rename it out of the way, then
             // move the staged download into its place.
             File.Move(executablePath, backupPath);
@@ -98,6 +85,50 @@ public sealed class UpdateApplier(
         exitApplication();
 
         return true;
+    }
+
+    // Best-effort housekeeping before this update stages anything of its own: backups from
+    // previous updates and staged downloads a crashed update left behind are swept away
+    // (single-instance, so no live applier owns them). A locked stale file (an old process
+    // still running from a backup) never blocks the update.
+    private static void SweepStaleFiles(string directory, string executableName)
+    {
+        foreach (var pattern in new[] { $"{executableName}.old-*", $"{executableName}.new-*" })
+        {
+            foreach (var stale in Directory.GetFiles(directory, pattern))
+            {
+                try
+                {
+                    File.Delete(stale);
+                }
+                catch (Exception)
+                {
+                }
+            }
+        }
+    }
+
+    // The staged file must be non-empty and match the published size (a truncated or
+    // zero-size download is never installed) and, whenever the release publishes a digest,
+    // hash to it (a tampered or corrupted download is never installed either).
+    private static async Task<bool> IsStagedAssetIntactAsync(string stagedPath, LauncherUpdate update)
+    {
+        var stagedLength = new FileInfo(stagedPath).Length;
+
+        if (stagedLength == 0 || stagedLength != update.AssetSize)
+        {
+            return false;
+        }
+
+        if (update.Sha256 is null)
+        {
+            return true;
+        }
+
+        await using var staged = File.OpenRead(stagedPath);
+        var hash = Convert.ToHexString(await SHA256.HashDataAsync(staged));
+
+        return string.Equals(hash, update.Sha256, StringComparison.OrdinalIgnoreCase);
     }
 
     private static void Rollback(string executablePath, string backupPath, string stagedPath)
