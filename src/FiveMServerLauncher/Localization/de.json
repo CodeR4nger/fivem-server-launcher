@@ -6,6 +6,7 @@
   "PreferredOpenClientHeader": "BEVORZUGTER CLIENT",
   "AutoLaunchCheckbox": "Letzten Server beim Start automatisch verbinden",
   "WebLinksCheckbox": "cfxlauncher://-Weblinks in diesem Launcher öffnen",
+  "MinimizeToTrayCheckbox": "In den Infobereich minimieren",
   "CfxStatusHeader": "CFX-STATUS",
   "GameBuildHeader": "SPIEL-BUILD",
   "PureModeHeader": "PURE-MODUS",
@@ -86,5 +87,9 @@
   "UpdateBannerText": "Neue Version: {0}",
   "UpdateButton": "AKTUALISIEREN",
   "UpdateInProgressText": "Update wird installiert...",
-  "UpdateFailedText": "Update fehlgeschlagen"
+  "UpdateFailedText": "Update fehlgeschlagen",
+  "TrayShow": "Anzeigen",
+  "TrayExit": "Beenden",
+  "TrayAllServers": "Alle Server...",
+  "TrayNoServers": "Keine gespeicherten Server"
 }

@@ -6,6 +6,7 @@
   "PreferredOpenClientHeader": "優先クライアント",
   "AutoLaunchCheckbox": "起動時に最後のサーバーへ自動接続",
   "WebLinksCheckbox": "cfxlauncher:// のウェブリンクをこのランチャーで開く",
+  "MinimizeToTrayCheckbox": "通知領域に最小化する",
   "CfxStatusHeader": "CFXステータス",
   "GameBuildHeader": "ゲームビルド",
   "PureModeHeader": "ピュアモード",
@@ -86,5 +87,9 @@
   "UpdateBannerText": "新しいバージョン: {0}",
   "UpdateButton": "アップデート",
   "UpdateInProgressText": "アップデート中...",
-  "UpdateFailedText": "アップデートに失敗しました"
+  "UpdateFailedText": "アップデートに失敗しました",
+  "TrayShow": "表示",
+  "TrayExit": "終了",
+  "TrayAllServers": "すべてのサーバー...",
+  "TrayNoServers": "保存されたサーバーはありません"
 }

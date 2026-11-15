@@ -6,6 +6,7 @@
   "PreferredOpenClientHeader": "首选客户端",
   "AutoLaunchCheckbox": "启动时自动连接上次的服务器",
   "WebLinksCheckbox": "在此启动器中打开 cfxlauncher:// 网页链接",
+  "MinimizeToTrayCheckbox": "最小化到通知区域",
   "CfxStatusHeader": "CFX 状态",
   "GameBuildHeader": "游戏版本",
   "PureModeHeader": "纯净模式",
@@ -86,5 +87,9 @@
   "UpdateBannerText": "新版本：{0}",
   "UpdateButton": "更新",
   "UpdateInProgressText": "正在更新...",
-  "UpdateFailedText": "更新失败"
+  "UpdateFailedText": "更新失败",
+  "TrayShow": "显示",
+  "TrayExit": "退出",
+  "TrayAllServers": "所有服务器...",
+  "TrayNoServers": "没有已保存的服务器"
 }

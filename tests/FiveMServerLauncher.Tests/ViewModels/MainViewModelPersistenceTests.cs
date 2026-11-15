@@ -180,6 +180,7 @@ public partial class MainViewModelTests
     {
         nameof(MainViewModel.AutoLaunch),
         nameof(MainViewModel.WebLinks),
+        nameof(MainViewModel.MinimizeToTray),
         nameof(MainViewModel.DevGameBuild),
         nameof(MainViewModel.DevPureMode),
         nameof(MainViewModel.PreferredClientOption),
@@ -204,6 +205,7 @@ public partial class MainViewModelTests
     {
         nameof(MainViewModel.AutoLaunch) => vm.AutoLaunch,
         nameof(MainViewModel.WebLinks) => vm.WebLinks,
+        nameof(MainViewModel.MinimizeToTray) => vm.MinimizeToTray,
         nameof(MainViewModel.DevGameBuild) => vm.DevGameBuild,
         nameof(MainViewModel.DevPureMode) => vm.DevPureMode,
         nameof(MainViewModel.PreferredClientOption) => vm.PreferredClientOption,
@@ -219,6 +221,9 @@ public partial class MainViewModelTests
                 break;
             case nameof(MainViewModel.WebLinks):
                 vm.WebLinks = !vm.WebLinks;
+                break;
+            case nameof(MainViewModel.MinimizeToTray):
+                vm.MinimizeToTray = !vm.MinimizeToTray;
                 break;
             case nameof(MainViewModel.DevGameBuild):
                 vm.DevGameBuild = 3095;

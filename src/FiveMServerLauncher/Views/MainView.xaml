@@ -1,4 +1,4 @@
-<UserControl x:Class="FiveMServerLauncher.Views.MainView"
+﻿<UserControl x:Class="FiveMServerLauncher.Views.MainView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:sys="clr-namespace:System;assembly=System.Runtime"
@@ -913,6 +913,12 @@
 
                         <CheckBox IsChecked="{Binding WebLinks}"
                                   Content="{loc:Loc WebLinksCheckbox}"
+                                  Foreground="{StaticResource TextBrush}"
+                                  FontSize="12"
+                                  Margin="0,6,0,0"/>
+
+                        <CheckBox IsChecked="{Binding MinimizeToTray}"
+                                  Content="{loc:Loc MinimizeToTrayCheckbox}"
                                   Foreground="{StaticResource TextBrush}"
                                   FontSize="12"
                                   Margin="0,6,0,0"/>

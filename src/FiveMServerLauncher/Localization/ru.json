@@ -6,6 +6,7 @@
   "PreferredOpenClientHeader": "ПРЕДПОЧТИТЕЛЬНЫЙ КЛИЕНТ",
   "AutoLaunchCheckbox": "Автоподключение к последнему серверу при запуске",
   "WebLinksCheckbox": "Открывать веб-ссылки cfxlauncher:// в этом лаунчере",
+  "MinimizeToTrayCheckbox": "Сворачивать в область уведомлений",
   "CfxStatusHeader": "СТАТУС CFX",
   "GameBuildHeader": "БИЛД ИГРЫ",
   "PureModeHeader": "РЕЖИМ PURE",
@@ -86,5 +87,9 @@
   "UpdateBannerText": "Новая версия: {0}",
   "UpdateButton": "ОБНОВИТЬ",
   "UpdateInProgressText": "Обновление...",
-  "UpdateFailedText": "Не удалось обновить"
+  "UpdateFailedText": "Не удалось обновить",
+  "TrayShow": "Показать",
+  "TrayExit": "Выход",
+  "TrayAllServers": "Все серверы...",
+  "TrayNoServers": "Нет сохранённых серверов"
 }

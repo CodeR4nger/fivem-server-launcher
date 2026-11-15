@@ -648,18 +648,29 @@ public class MainViewModel : INotifyPropertyChanged
     public bool AutoLaunch
     {
         get => _settings.AutoLaunch;
-        set
-        {
-            if (_settings.AutoLaunch == value)
-            {
-                return;
-            }
+        set => SetPersistedFlag(_settings.AutoLaunch, value, v => _settings.AutoLaunch = v);
+    }
 
-            var previous = _settings.AutoLaunch;
-            _settings.AutoLaunch = value;
-            TrySaveSettings(() => _settings.AutoLaunch = previous);
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AutoLaunch)));
+    // A plain persisted checkbox: apply, save, and on a failed save revert to the old value
+    // (TrySaveSettings reports the status); PropertyChanged fires either way so the
+    // checkbox shows what the settings really hold.
+    private void SetPersistedFlag(bool current, bool value, Action<bool> apply, [CallerMemberName] string? propertyName = null)
+    {
+        if (current == value)
+        {
+            return;
         }
+
+        apply(value);
+        TrySaveSettings(() => apply(current));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+    // Read by the tray window controller on every minimize; Settings checkbox.
+    public bool MinimizeToTray
+    {
+        get => _settings.MinimizeToTray;
+        set => SetPersistedFlag(_settings.MinimizeToTray, value, v => _settings.MinimizeToTray = v);
     }
 
     /// <summary>
