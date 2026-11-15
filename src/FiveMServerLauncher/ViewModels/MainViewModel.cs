@@ -213,6 +213,10 @@ public class MainViewModel : INotifyPropertyChanged
         await ConnectAsync();
     }
 
+    // Rebuilt every time the tray menu opens, from the full saved list (never the
+    // search-filtered view), so it follows adds, removes, reorders and renames for free.
+    public IReadOnlyList<TrayMenuEntry> BuildTrayMenu() => TrayMenu.Build(SavedServers, IsBusy, _localizer);
+
     public async Task HandleForwardedConnectAsync(string? address)
     {
         if (string.IsNullOrWhiteSpace(address) || IsBusy)
