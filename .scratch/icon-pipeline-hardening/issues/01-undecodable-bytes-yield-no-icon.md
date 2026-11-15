@@ -1,6 +1,6 @@
 # 01 — Undecodable bytes yield no icon, never an exception
 
-Status: open
+Status: done
 
 ## What
 

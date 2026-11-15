@@ -1,4 +1,6 @@
 using System.Buffers.Binary;
+using System.IO;
+using System.Windows.Media.Imaging;
 
 namespace FiveMServerLauncher.Core;
 
@@ -42,6 +44,45 @@ public static class BoundedIconDecode
         return new DecodeBounds(
             Math.Max(1, (int)((long)width * MaxPixelSize / largest)),
             Math.Max(1, (int)((long)height * MaxPixelSize / largest)));
+    }
+
+    /// <summary>
+    /// Decodes untrusted icon bytes into a frozen image at the bounded pixel size,
+    /// or null when WPF cannot decode them (an HTML error page, garbage, a
+    /// truncated file). Never throws: this is both the download-time decodability
+    /// proof and the row converter's decode, and neither may fault on hostile
+    /// input. Safe on any thread — the image is frozen before it is returned.
+    /// </summary>
+    public static BitmapImage? TryDecode(byte[] bytes)
+    {
+        try
+        {
+            var image = new BitmapImage();
+            image.BeginInit();
+            image.CacheOption = BitmapCacheOption.OnLoad;
+
+            // Small PNGs keep their natural pixels; everything else is bounded.
+            var bounds = GetDecodeBounds(bytes);
+
+            if (bounds.Width is int width)
+            {
+                image.DecodePixelWidth = width;
+            }
+
+            if (bounds.Height is int height)
+            {
+                image.DecodePixelHeight = height;
+            }
+
+            image.StreamSource = new MemoryStream(bytes);
+            image.EndInit();
+            image.Freeze();
+            return image;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
     }
 
     private static bool HasPngSignature(byte[] bytes)

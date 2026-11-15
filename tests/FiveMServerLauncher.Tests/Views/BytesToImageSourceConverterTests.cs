@@ -1,5 +1,8 @@
 using System.Globalization;
+using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Media.Imaging;
+using FiveMServerLauncher.Tests.Service;
 using FiveMServerLauncher.Views;
 
 namespace FiveMServerLauncher.Tests.Views;
@@ -137,6 +140,81 @@ public class BytesToImageSourceConverterTests
         // Then
         Assert.NotSame(first, second);
     }
+
+    [Fact]
+    public void Convert_WhenBytesAreNotAnImage_ShouldReturnNullWithoutThrowing()
+    {
+        // Given — defence in depth behind the download-time validation: whatever
+        // bytes reach the converter, a decode failure is "no icon", never an
+        // exception thrown out of a binding (the app has no global handler).
+        var converter = new BytesToImageSourceConverter();
+
+        // When / Then
+        Assert.Null(converter.Convert(TestIcons.Html, typeof(BitmapImage), null!, CultureInfo.InvariantCulture));
+        Assert.Null(converter.Convert(TestIcons.Garbage, typeof(BitmapImage), null!, CultureInfo.InvariantCulture));
+        Assert.Null(converter.Convert(TestIcons.CorruptPng, typeof(BitmapImage), null!, CultureInfo.InvariantCulture));
+    }
+
+    [Fact]
+    public void Convert_WhenSameUndecodableBytesRebound_ShouldNotDecodeAgain()
+    {
+        // Given — a re-realized row passes the same failing byte[] again; the
+        // failure is remembered like a successful decode is.
+        var decodes = 0;
+        var converter = new BytesToImageSourceConverter(maxCachedDecodes: 8, decode: _ =>
+        {
+            decodes++;
+            return null;
+        });
+
+        // When
+        var first = converter.Convert(TestIcons.Html, typeof(BitmapImage), null!, CultureInfo.InvariantCulture);
+        var second = converter.Convert(TestIcons.Html, typeof(BitmapImage), null!, CultureInfo.InvariantCulture);
+
+        // Then
+        Assert.Null(first);
+        Assert.Null(second);
+        Assert.Equal(1, decodes);
+    }
+
+    [Fact]
+    public void ImageSourceBinding_WhenBytesAreNotAnImage_ShouldLeaveSourceNullWithoutThrowing()
+    {
+        // Given — the reproduced crash: HTML bytes bound to Image.Source through
+        // the converter threw NotSupportedException out of SetBinding.
+        Exception? failure = null;
+        object? source = "unset";
+
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                var image = new Image();
+                var binding = new Binding(nameof(IconHolder.Icon))
+                {
+                    Source = new IconHolder(TestIcons.Html),
+                    Converter = new BytesToImageSourceConverter()
+                };
+
+                // When
+                image.SetBinding(Image.SourceProperty, binding);
+                source = image.Source;
+            }
+            catch (Exception exception)
+            {
+                failure = exception;
+            }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+
+        // Then
+        Assert.Null(failure);
+        Assert.Null(source);
+    }
+
+    private sealed record IconHolder(byte[] Icon);
 
     [Fact]
     public void ConvertBack_ShouldThrowNotSupported()

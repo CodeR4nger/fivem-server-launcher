@@ -11,8 +11,9 @@ namespace FiveMServerLauncher.Service;
 /// so WebP is decoded through <see cref="IWebpDecoder"/> after a canvas-dimension
 /// bomb gate, scaled to the render headroom, and re-encoded as PNG; every
 /// downstream consumer (row converter, <see cref="BoundedIconDecode"/>, shortcut
-/// ICO writer) stays byte-format-agnostic. WPF-native formats pass through
-/// untouched and keep their existing render path.
+/// ICO writer) stays byte-format-agnostic. WPF-native formats that really decode
+/// pass through untouched and keep their existing render path; bytes that are
+/// not an image at all become "no icon".
 /// </summary>
 public sealed class IconImageNormalizer(IWebpDecoder decoder)
 {
@@ -43,8 +44,9 @@ public sealed class IconImageNormalizer(IWebpDecoder decoder)
     }
 
     /// <summary>
-    /// Returns WPF-renderable PNG bytes, the input untouched when it is not WebP,
-    /// or null when the bytes are WebP but undecodable, oversized, or hostile.
+    /// Returns WPF-renderable PNG bytes for WebP, the input untouched when it is
+    /// another format WPF decodes, or null when the bytes are undecodable,
+    /// oversized, or hostile.
     /// Never throws.
     /// </summary>
     public byte[]? Normalize(byte[]? bytes)
@@ -56,7 +58,17 @@ public sealed class IconImageNormalizer(IWebpDecoder decoder)
                 return null;
             }
 
-            return IsWebp(bytes) ? NormalizeWebp(bytes) : bytes;
+            if (IsWebp(bytes))
+            {
+                return NormalizeWebp(bytes);
+            }
+
+            // Anything else must prove it is an image WPF can render before it
+            // is allowed downstream: an icon_url can answer with an HTML error
+            // page or garbage, and undecodable bytes throw out of the
+            // Image.Source binding. The proof is the same bounded decode the row
+            // converter performs, so validating never decodes a bomb at size.
+            return BoundedIconDecode.TryDecode(bytes) is null ? null : bytes;
         }
         catch
         {
