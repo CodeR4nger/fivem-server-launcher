@@ -54,7 +54,16 @@ public sealed class GitHubReleaseFeed : IReleaseFeed
                 return null;
             }
 
-            return new LauncherUpdate(tagName, AssetName, asset.Size, downloadUrl);
+            // An absent digest falls back to the applier's size check; a published one that
+            // cannot be verified against is no update at all, never a silent downgrade.
+            string? sha256 = null;
+
+            if (asset.Digest is { } digest && !TryParseSha256Digest(digest, out sha256))
+            {
+                return null;
+            }
+
+            return new LauncherUpdate(tagName, AssetName, asset.Size, downloadUrl, sha256);
         }
         catch (HttpRequestException)
         {
@@ -70,6 +79,29 @@ public sealed class GitHubReleaseFeed : IReleaseFeed
         }
     }
 
+    // GitHub publishes asset digests as "sha256:<64 hex>".
+    private static bool TryParseSha256Digest(string digest, out string? sha256)
+    {
+        const string prefix = "sha256:";
+        const int hexLength = 64;
+        sha256 = null;
+
+        if (!digest.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var hex = digest[prefix.Length..];
+
+        if (hex.Length != hexLength || !hex.All(char.IsAsciiHexDigit))
+        {
+            return false;
+        }
+
+        sha256 = hex.ToLowerInvariant();
+        return true;
+    }
+
     private sealed class GitHubRelease
     {
         [JsonPropertyName("tag_name")]
@@ -83,6 +115,8 @@ public sealed class GitHubReleaseFeed : IReleaseFeed
         public string? Name { get; set; }
 
         public long Size { get; set; }
+
+        public string? Digest { get; set; }
 
         [JsonPropertyName("browser_download_url")]
         public string? BrowserDownloadUrl { get; set; }

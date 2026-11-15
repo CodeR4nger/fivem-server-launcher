@@ -9,8 +9,11 @@ namespace FiveMServerLauncher.Tests.Launch;
 
 public class UpdateApplierTests
 {
-    private static LauncherUpdate Update(long assetSize) =>
-        new("v1.4.0", "CFXLauncher.exe", assetSize, "https://example.invalid/CFXLauncher.exe");
+    private static LauncherUpdate Update(long assetSize, string? sha256 = null) =>
+        new("v1.4.0", "CFXLauncher.exe", assetSize, "https://example.invalid/CFXLauncher.exe", sha256);
+
+    private static string Sha256Hex(byte[] bytes) =>
+        Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)).ToLowerInvariant();
 
     private static UpdateApplier CreateApplier(
         HttpMessageHandler handler,
@@ -277,5 +280,48 @@ public class UpdateApplierTests
         exeLock.Position = 0;
         Assert.Equal("old-launcher", reader.ReadToEnd());
         Assert.Empty(Directory.GetFiles(directory.DirectoryPath, "CFXLauncher.exe.*-*"));
+    }
+
+    [Fact]
+    public async Task ApplyAsync_WhenStagedBytesDoNotMatchPublishedDigest_ShouldLeaveExeUntouchedAndReportFailure()
+    {
+        // Given: a tampered download — same length as published, different content
+        using var directory = new TempLauncherDirectory();
+        var order = new List<string>();
+        byte[] published = [1, 2, 3, 4, 5];
+        byte[] tampered = [1, 2, 3, 4, 6];
+        var applier = CreateApplier(
+            new FakeHttpMessageHandler(HttpStatusCode.OK, tampered),
+            () => directory.ExePath,
+            order);
+
+        // When
+        var applied = await applier.ApplyAsync(Update(published.Length, Sha256Hex(published)));
+
+        // Then: never installed — the exe is untouched, nothing handed off or left behind
+        Assert.False(applied);
+        Assert.Equal("old-launcher", File.ReadAllText(directory.ExePath));
+        Assert.Empty(order);
+        Assert.Empty(Directory.GetFiles(directory.DirectoryPath, "CFXLauncher.exe.*-*"));
+    }
+
+    [Fact]
+    public async Task ApplyAsync_WhenStagedBytesMatchPublishedDigest_ShouldApply()
+    {
+        // Given: hex case is not significant
+        using var directory = new TempLauncherDirectory();
+        var order = new List<string>();
+        byte[] asset = [1, 2, 3, 4, 5];
+        var applier = CreateApplier(
+            new FakeHttpMessageHandler(HttpStatusCode.OK, asset),
+            () => directory.ExePath,
+            order);
+
+        // When
+        var applied = await applier.ApplyAsync(Update(asset.Length, Sha256Hex(asset).ToUpperInvariant()));
+
+        // Then
+        Assert.True(applied);
+        Assert.Equal(asset, File.ReadAllBytes(directory.ExePath));
     }
 }
