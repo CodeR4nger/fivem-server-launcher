@@ -27,6 +27,13 @@ Built with C#/.NET 10 + WPF (MVVM), developed strictly with TDD.
 - **Dev Mode** — open FiveM directly with a specific game build / pure mode, and launch a
   second client.
 - **Auto-launch** — optionally remembers your last server and connects automatically at startup.
+- **Web links** — opt in under Settings ("Open cfxlauncher:// web links in this launcher") and
+  links such as `cfxlauncher://connect/cfx.re/join/<id>` (any address form after `connect/`)
+  open the server in the launcher, through the same validated connect as ENTER SERVER — the
+  running launcher picks it up if it is already open. The registration is per user
+  (`HKCU\Software\Classes\cfxlauncher`, no admin), is re-pointed at startup if you moved the
+  exe, and unticking removes it. With several copies of the exe, the last one started with the
+  option on owns the links.
 - **Portable** — a single self-contained executable (~137 MB); settings are stored next to the exe.
 
 ## Usage

@@ -911,6 +911,12 @@
                                   Foreground="{StaticResource TextBrush}"
                                   FontSize="12"/>
 
+                        <CheckBox IsChecked="{Binding WebLinks}"
+                                  Content="{loc:Loc WebLinksCheckbox}"
+                                  Foreground="{StaticResource TextBrush}"
+                                  FontSize="12"
+                                  Margin="0,6,0,0"/>
+
                     </StackPanel>
 
                 </Border>

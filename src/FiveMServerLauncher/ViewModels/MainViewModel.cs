@@ -35,6 +35,7 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly IReleaseFeed? _releaseFeed;
     private readonly IUpdateApplier? _updateApplier;
     private readonly ShortcutDependencies? _shortcuts;
+    private readonly LauncherSchemeRegistrar? _webLinks;
     private LauncherUpdate? _latestUpdate;
     private bool _isUpdateAvailable;
     private bool _isUpdateInProgress;
@@ -63,7 +64,8 @@ public class MainViewModel : INotifyPropertyChanged
         CancellationToken? cancellationToken = null,
         IReleaseFeed? releaseFeed = null,
         IUpdateApplier? updateApplier = null,
-        ShortcutDependencies? shortcuts = null)
+        ShortcutDependencies? shortcuts = null,
+        LauncherSchemeRegistrar? webLinks = null)
     {
         _resolver = resolver;
         _launcher = launcher;
@@ -80,6 +82,7 @@ public class MainViewModel : INotifyPropertyChanged
         _releaseFeed = releaseFeed;
         _updateApplier = updateApplier;
         _shortcuts = shortcuts;
+        _webLinks = webLinks;
         _settings = settingsRepository.Load();
         LanguageOptions = BuildLanguageOptions();
         _selectedLanguageOption = LanguageOptions.FirstOrDefault(o => o.Tag == _settings.Language)
@@ -657,6 +660,44 @@ public class MainViewModel : INotifyPropertyChanged
             TrySaveSettings(() => _settings.AutoLaunch = previous);
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AutoLaunch)));
         }
+    }
+
+    /// <summary>
+    /// Opt-in cfxlauncher:// registration. The registry change runs first (a refusal or
+    /// fault reverts with its own status); a settings save failure then undoes it
+    /// best-effort, so registry and setting never disagree. Unwired registrar = persist only.
+    /// </summary>
+    public bool WebLinks
+    {
+        get => _settings.WebLinks;
+        set
+        {
+            if (_settings.WebLinks == value)
+            {
+                return;
+            }
+
+            if (!ApplyWebLinks(value))
+            {
+                StatusText = _localizer.Get("StatusWebLinksFailed");
+            }
+            else
+            {
+                _settings.WebLinks = value;
+                TrySaveSettings(() =>
+                {
+                    _settings.WebLinks = !value;
+                    ApplyWebLinks(!value);
+                });
+            }
+
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(WebLinks)));
+        }
+    }
+
+    private bool ApplyWebLinks(bool enabled)
+    {
+        return _webLinks is not { } registrar || (enabled ? registrar.TryEnable() : registrar.TryDisable());
     }
 
     public InstalledClientOption? PreferredClientOption
@@ -1556,6 +1597,13 @@ public class MainViewModel : INotifyPropertyChanged
                 SelectedOpenClient = preferred ?? AvailableOpenClients[0];
                 _preferredClientOption = SelectedOpenClient;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PreferredClientOption)));
+            }
+
+            // Startup refresh: a moved exe re-points its own registration. Silent — the
+            // setting stays on and the next start retries.
+            if (_settings.WebLinks)
+            {
+                ApplyWebLinks(true);
             }
 
             await RefreshCfxStatusAsync();

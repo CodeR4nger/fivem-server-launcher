@@ -6,6 +6,7 @@ public class LauncherSettings
 {
     public GameClient PreferredClient { get; set; } = GameClient.FiveM;
     public bool AutoLaunch { get; set; } = false;
+    public bool WebLinks { get; set; } = false;
     public string? LastServerAddress { get; set; }
     public string? Language { get; set; }
     public int? DevGameBuild { get; set; }
