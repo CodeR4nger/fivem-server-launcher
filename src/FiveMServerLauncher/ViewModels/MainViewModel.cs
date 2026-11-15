@@ -93,25 +93,25 @@ public class MainViewModel : INotifyPropertyChanged
         FiveMStatus = new CfxStatusItem(GameClient.FiveM, _localizer);
         FiveMEnhancedStatus = new CfxStatusItem(GameClient.FiveMEnhanced, _localizer);
         RedMStatus = new CfxStatusItem(GameClient.RedM, _localizer);
-        ConnectCommand = new AsyncRelayCommand(ConnectAsync, CanConnect);
+        ConnectCommand = new AsyncRelayCommand(ConnectAsync, CanConnect, OnCommandFailed);
         DeleteServerCommand = new RelayCommand(DeleteServer);
         CreateDesktopShortcutCommand = new RelayCommand(CreateDesktopShortcut);
         MoveServerUpCommand = new RelayCommand(p => MoveServerBy(p as SavedServerItem, -1), () => IsReorderAvailable);
         MoveServerDownCommand = new RelayCommand(p => MoveServerBy(p as SavedServerItem, 1), () => IsReorderAvailable);
-        OpenClientCommand = new AsyncRelayCommand(OpenClientAsync, CanOpenClient);
+        OpenClientCommand = new AsyncRelayCommand(OpenClientAsync, CanOpenClient, OnCommandFailed);
         SelectOpenClientCommand = new RelayCommand(SelectOpenClient);
         SettingsCommand = new RelayCommand(ToggleSettings);
         ToggleDevModeCommand = new RelayCommand(ToggleDevMode);
         OpenAddServerDialogCommand = new RelayCommand(OpenAddServerDialog);
         OpenEditServerDialogCommand = new RelayCommand(OpenEditServerDialog);
-        SaveServerDialogCommand = new AsyncRelayCommand(SaveServerDialogAsync);
+        SaveServerDialogCommand = new AsyncRelayCommand(SaveServerDialogAsync, onError: OnCommandFailed);
         CancelServerDialogCommand = new RelayCommand(CloseServerDialog);
         ConfirmCommand = new RelayCommand(ConfirmPendingAction);
         CancelConfirmCommand = new RelayCommand(CloseConfirm);
-        RefreshServersCommand = new AsyncRelayCommand(RefreshServersAsync, () => !IsRefreshingServers);
-        OpenServerBrowserCommand = new AsyncRelayCommand(OpenServerBrowserAsync);
+        RefreshServersCommand = new AsyncRelayCommand(RefreshServersAsync, () => !IsRefreshingServers, OnCommandFailed);
+        OpenServerBrowserCommand = new AsyncRelayCommand(OpenServerBrowserAsync, onError: OnCommandFailed);
         CloseServerBrowserCommand = new RelayCommand(_ => IsServerBrowserOpen = false);
-        ConnectBrowserServerCommand = new AsyncRelayCommand(p => ConnectFromBrowserAsync((ServerBrowserItem)p!));
+        ConnectBrowserServerCommand = new AsyncRelayCommand(p => ConnectFromBrowserAsync((ServerBrowserItem)p!), onError: OnCommandFailed);
         SaveBrowserServerCommand = new RelayCommand(p =>
         {
             if (p is ServerBrowserItem item)
@@ -121,8 +121,8 @@ public class MainViewModel : INotifyPropertyChanged
         });
         ToggleDevClientCommand = new RelayCommand(() =>
             DevClient = DevClient == GameClient.FiveM ? GameClient.RedM : GameClient.FiveM);
-        DevLaunchCommand = new AsyncRelayCommand((object? secondClient) => DevLaunchAsync(secondClient is true), () => !IsBusy);
-        UpdateCommand = new AsyncRelayCommand(ApplyUpdateAsync, CanApplyUpdate);
+        DevLaunchCommand = new AsyncRelayCommand((object? secondClient) => DevLaunchAsync(secondClient is true), () => !IsBusy, OnCommandFailed);
+        UpdateCommand = new AsyncRelayCommand(ApplyUpdateAsync, CanApplyUpdate, OnCommandFailed);
         DismissUpdateCommand = new RelayCommand(DismissUpdate, CanDismissUpdate);
 
         SavedServers = new ObservableCollection<SavedServerItem>(
@@ -510,11 +510,9 @@ public class MainViewModel : INotifyPropertyChanged
     }
 
     public ICommand DevLaunchCommand { get; }
-    public async Task DevLaunchAsync(bool secondClient)
+    public Task DevLaunchAsync(bool secondClient)
     {
-        IsBusy = true;
-
-        try
+        return RunBusyFlowAsync(async () =>
         {
             var options = FiveMLaunchOptions.Create(
                 address: null,
@@ -525,11 +523,7 @@ public class MainViewModel : INotifyPropertyChanged
 
             var result = await _launcher.OpenAsync(options);
             StatusText = Describe(result);
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        });
     }
 
     public ObservableCollection<SavedServerItem> SavedServers { get; }
@@ -1226,6 +1220,13 @@ public class MainViewModel : INotifyPropertyChanged
         StatusText = _localizer.Get("StatusUnexpectedError");
     }
 
+    // Every async command's swallowed fault lands here: the app stays up (AsyncRelayCommand
+    // never throws) and the status line says something went wrong.
+    private void OnCommandFailed(Exception exception)
+    {
+        ReportUnexpectedError();
+    }
+
     public bool IsBusy
     {
         get => _isBusy;
@@ -1429,9 +1430,13 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    public async Task ConnectAsync()
+    public Task ConnectAsync()
     {
-        IsBusy = true;
+        return RunBusyFlowAsync(ConnectCoreAsync);
+    }
+
+    private async Task ConnectCoreAsync()
+    {
         StatusText = _localizer.Get("StatusResolving");
 
         // A pasted address often carries a trailing space or newline; every connect path
@@ -1475,6 +1480,24 @@ public class MainViewModel : INotifyPropertyChanged
         catch (InvalidAddressException)
         {
             StatusText = _localizer.Get("StatusInvalidAddress");
+        }
+    }
+
+    // The busy flows (connect, open client, dev launch) share one shape: busy while they
+    // run, and an unexpected fault ends with the last-resort line instead of leaving an
+    // in-progress status ("Resolving...") on screen. The startup and forwarded connects
+    // call ConnectAsync directly, so this cannot live only in the command.
+    private async Task RunBusyFlowAsync(Func<Task> flow)
+    {
+        IsBusy = true;
+
+        try
+        {
+            await flow();
+        }
+        catch (Exception)
+        {
+            ReportUnexpectedError();
         }
         finally
         {
@@ -1566,17 +1589,11 @@ public class MainViewModel : INotifyPropertyChanged
             return;
         }
 
-        IsBusy = true;
-
-        try
+        await RunBusyFlowAsync(async () =>
         {
             var result = await _launcher.OpenAsync(option.Client);
             StatusText = Describe(result);
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        });
     }
 
     private bool CanOpenClient()
