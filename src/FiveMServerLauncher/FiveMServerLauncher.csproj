@@ -14,6 +14,10 @@
 
   <ItemGroup>
     <Resource Include="Assets\launcher.ico" />
+    <!-- Inter 4.1 static weights 400/500/600/700/800 (rsms/inter release; SIL OFL 1.1,
+         license text in Assets\Fonts\OFL.txt). Static, not InterVariable: WPF does not
+         resolve the variable font at all (no glyph typeface; it falls back). -->
+    <Resource Include="Assets\Fonts\*.ttf" />
   </ItemGroup>
 
   <ItemGroup>

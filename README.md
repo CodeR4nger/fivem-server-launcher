@@ -98,3 +98,10 @@ behind this exact command sequence.
 - `tests/` — xUnit suite (no mocking library; fakes and HTTP handlers).
 
 Design decisions and UX philosophy live in `DOC.md`.
+
+## Third-party font
+
+The UI font is [Inter](https://github.com/rsms/inter) 4.1 by The Inter Project Authors, bundled
+in `src/FiveMServerLauncher/Assets/Fonts/` (static weights Regular, Medium, SemiBold, Bold and
+ExtraBold). It is licensed under the SIL Open Font License 1.1; the license text ships beside
+the font files as `OFL.txt`.
