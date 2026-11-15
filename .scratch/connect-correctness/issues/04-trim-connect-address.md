@@ -1,5 +1,5 @@
 # trim-connect-address
 
-Status: in-progress
+Status: done
 
 See ../spec.md section 4.
