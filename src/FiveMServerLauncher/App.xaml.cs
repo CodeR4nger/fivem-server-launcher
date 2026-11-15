@@ -135,7 +135,8 @@ public partial class App : Application
                     "shortcut-icons"))),
             webLinks: new LauncherSchemeRegistrar(
                 new UriSchemeRegistration(),
-                () => Environment.ProcessPath));
+                () => Environment.ProcessPath),
+            systemAnimations: new SystemAnimationSetting());
         window.DataContext = viewModel;
         var trayWindow = new TrayWindowController(new WpfTrayWindow(window), () => viewModel.MinimizeToTray);
         window.Show();

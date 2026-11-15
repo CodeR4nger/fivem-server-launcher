@@ -10,9 +10,9 @@
         <views:ThemeResources/>
     </UserControl.Resources>
 
-    <Border Background="#66000000"
+    <Border Background="{StaticResource ScrimBrush}"
             Padding="40,60"
-            Opacity="0">
+            views:Motion.Shown="{Binding IsServerDialogOpen}">
 
         <Border.Visibility>
             <MultiBinding Converter="{StaticResource PanelVisibilityStateConverter}"
@@ -24,30 +24,15 @@
         </Border.Visibility>
 
         <Border.Style>
-            <Style TargetType="Border">
-                <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsServerDialogOpen}" Value="True">
-                        <DataTrigger.EnterActions>
-                            <BeginStoryboard Storyboard="{StaticResource PanelFadeIn}"/>
-                        </DataTrigger.EnterActions>
-                        <DataTrigger.ExitActions>
-                            <BeginStoryboard Storyboard="{StaticResource PanelFadeOut}"/>
-                        </DataTrigger.ExitActions>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding IsServerDialogOpen}" Value="False">
-                        <Setter Property="IsHitTestVisible" Value="False"/>
-                    </DataTrigger>
-                </Style.Triggers>
-            </Style>
+            <StaticResource ResourceKey="FadeSurfaceStyle"/>
         </Border.Style>
 
         <StackPanel Orientation="Horizontal"
                     VerticalAlignment="Center"
                     HorizontalAlignment="Center">
 
-        <Border Background="{StaticResource PanelBrush}"
-                BorderBrush="{StaticResource BorderBrush}"
-                BorderThickness="1"
+        <Border Style="{StaticResource ModalFrameStyle}"
+                views:Motion.Shown="{Binding IsServerDialogOpen}"
                 Padding="20"
                 MinWidth="320">
 
@@ -61,10 +46,7 @@
                            Style="{StaticResource SectionHeaderStyle}"/>
 
                 <TextBox Text="{Binding DialogServerName, UpdateSourceTrigger=PropertyChanged}"
-                         Background="{StaticResource PanelLightBrush}"
-                         Foreground="{StaticResource TextBrush}"
-                         BorderBrush="{StaticResource BorderBrush}"
-                         BorderThickness="1"
+                         Style="{StaticResource TextInputStyle}"
                          Padding="12,8"
                          FontSize="12"
                          MinHeight="38"
@@ -75,10 +57,7 @@
                            Margin="0,10,0,0"/>
 
                 <TextBox Text="{Binding DialogServerAddress, UpdateSourceTrigger=PropertyChanged}"
-                         Background="{StaticResource PanelLightBrush}"
-                         Foreground="{StaticResource TextBrush}"
-                         BorderBrush="{StaticResource BorderBrush}"
-                         BorderThickness="1"
+                         Style="{StaticResource TextInputStyle}"
                          Padding="12,8"
                          FontSize="12"
                          MinHeight="38"
@@ -88,19 +67,19 @@
 
                     <CheckBox IsChecked="{Binding DialogRequiresSteam}"
                               Content="{loc:Loc RequiresSteamCheckbox}"
-                              Foreground="{StaticResource SecondaryTextBrush}"
+                              Foreground="{StaticResource TextSecondaryBrush}"
                               FontSize="11"/>
 
                     <CheckBox IsChecked="{Binding DialogRequiresDiscord}"
                               Content="{loc:Loc RequiresDiscordCheckbox}"
-                              Foreground="{StaticResource SecondaryTextBrush}"
+                              Foreground="{StaticResource TextSecondaryBrush}"
                               FontSize="11"
                               Margin="16,0,0,0"/>
 
                 </StackPanel>
 
                 <TextBlock Text="{Binding DialogError}"
-                           Foreground="#E5533D"
+                           Style="{StaticResource DangerTextStyle}"
                            FontSize="11"
                            HorizontalAlignment="Center"
                            Margin="0,10,0,0"/>
@@ -115,7 +94,7 @@
 
                     <Button Content="{loc:Loc SaveButton}"
                             MinHeight="32"
-                            Style="{StaticResource MainButtonStyle}"
+                            Style="{StaticResource PrimaryButtonStyle}"
                             HorizontalAlignment="Right"
                             MinWidth="90"
                             Command="{Binding SaveServerDialogCommand}"/>
@@ -130,11 +109,13 @@
 
         <Border Margin="10,0,0,0"
                 Background="{StaticResource PanelBrush}"
-                BorderBrush="{StaticResource BorderBrush}"
+                BorderBrush="{StaticResource BorderStrongBrush}"
                 BorderThickness="1"
+                CornerRadius="{StaticResource RadiusModal}"
                 Padding="20"
                 MinWidth="220"
-                Opacity="0">
+                Style="{StaticResource SlideSurfaceStyle}"
+                views:Motion.Shown="{Binding IsDialogLocalhost}">
 
             <Border.Visibility>
                 <MultiBinding Converter="{StaticResource PanelVisibilityStateConverter}"
@@ -144,54 +125,6 @@
                              RelativeSource="{RelativeSource Self}"/>
                 </MultiBinding>
             </Border.Visibility>
-
-            <Border.RenderTransform>
-                <TranslateTransform X="60"/>
-            </Border.RenderTransform>
-
-            <Border.Style>
-                <Style TargetType="Border">
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsDialogLocalhost}" Value="True">
-                            <DataTrigger.EnterActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(TranslateTransform.X)"
-                                                         To="0"
-                                                         Duration="0:0:0.25">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut"/>
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                         To="1"
-                                                         Duration="0:0:0.25"/>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </DataTrigger.EnterActions>
-                            <DataTrigger.ExitActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(TranslateTransform.X)"
-                                                         To="60"
-                                                         Duration="0:0:0.25">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut"/>
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                         To="0"
-                                                         Duration="0:0:0.25"/>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </DataTrigger.ExitActions>
-                        </DataTrigger>
-                        <DataTrigger Binding="{Binding IsDialogLocalhost}" Value="False">
-                            <Setter Property="IsHitTestVisible" Value="False"/>
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </Border.Style>
 
             <StackPanel VerticalAlignment="Top">
 
@@ -204,10 +137,7 @@
                            Style="{StaticResource SectionHeaderStyle}"/>
 
                 <TextBox Text="{Binding DialogCfxId, UpdateSourceTrigger=PropertyChanged}"
-                         Background="{StaticResource PanelLightBrush}"
-                         Foreground="{StaticResource TextBrush}"
-                         BorderBrush="{StaticResource BorderBrush}"
-                         BorderThickness="1"
+                         Style="{StaticResource TextInputStyle}"
                          Padding="12,8"
                          FontSize="12"
                          MinHeight="38"

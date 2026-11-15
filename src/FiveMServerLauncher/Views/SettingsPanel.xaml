@@ -9,13 +9,16 @@
         <views:ThemeResources/>
     </UserControl.Resources>
 
+    <!-- Bottom padding 18 (was 14): with Inter's metrics the CFX status header it overlays
+         sits ~3 px lower, and a 14 px bottom left a sliver of it showing under the panel. -->
     <Border VerticalAlignment="Top"
             Margin="14,10,14,0"
-            Padding="14"
-            Background="{StaticResource PanelLightBrush}"
-            BorderBrush="{StaticResource BorderBrush}"
+            Padding="14,14,14,18"
+            Background="{StaticResource SettingsGroupBrush}"
+            BorderBrush="{StaticResource BorderStrongBrush}"
             BorderThickness="1"
-            Opacity="0">
+            CornerRadius="{StaticResource RadiusGroup}"
+            views:Motion.Shown="{Binding IsSettingsOpen}">
 
         <Border.Visibility>
             <MultiBinding Converter="{StaticResource PanelVisibilityStateConverter}"
@@ -27,21 +30,7 @@
         </Border.Visibility>
 
         <Border.Style>
-            <Style TargetType="Border">
-                <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsSettingsOpen}" Value="True">
-                    <DataTrigger.EnterActions>
-                        <BeginStoryboard Storyboard="{StaticResource PanelFadeIn}"/>
-                    </DataTrigger.EnterActions>
-                    <DataTrigger.ExitActions>
-                        <BeginStoryboard Storyboard="{StaticResource PanelFadeOut}"/>
-                    </DataTrigger.ExitActions>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding IsSettingsOpen}" Value="False">
-                        <Setter Property="IsHitTestVisible" Value="False"/>
-                    </DataTrigger>
-                </Style.Triggers>
-            </Style>
+            <StaticResource ResourceKey="FadeSurfaceStyle"/>
         </Border.Style>
 
         <StackPanel VerticalAlignment="Top">
@@ -68,18 +57,18 @@
 
             <CheckBox IsChecked="{Binding AutoLaunch}"
                       Content="{loc:Loc AutoLaunchCheckbox}"
-                      Foreground="{StaticResource TextBrush}"
+                      Foreground="{StaticResource TextPrimaryBrush}"
                       FontSize="12"/>
 
             <CheckBox IsChecked="{Binding WebLinks}"
                       Content="{loc:Loc WebLinksCheckbox}"
-                      Foreground="{StaticResource TextBrush}"
+                      Foreground="{StaticResource TextPrimaryBrush}"
                       FontSize="12"
                       Margin="0,6,0,0"/>
 
             <CheckBox IsChecked="{Binding MinimizeToTray}"
                       Content="{loc:Loc MinimizeToTrayCheckbox}"
-                      Foreground="{StaticResource TextBrush}"
+                      Foreground="{StaticResource TextPrimaryBrush}"
                       FontSize="12"
                       Margin="0,6,0,0"/>
 

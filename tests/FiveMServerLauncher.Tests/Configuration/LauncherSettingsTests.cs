@@ -20,5 +20,6 @@ public class LauncherSettingsTests
         Assert.Null(settings.LastServerAddress);
         Assert.Null(settings.DevGameBuild);
         Assert.Null(settings.DevPureMode);
+        Assert.Equal(InterfaceAnimations.Default, settings.InterfaceAnimations);
     }
 }

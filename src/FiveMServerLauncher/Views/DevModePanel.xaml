@@ -12,7 +12,7 @@
     </UserControl.Resources>
 
     <StackPanel VerticalAlignment="Top"
-                Opacity="0">
+                views:Motion.Shown="{Binding IsDevMode}">
 
         <StackPanel.Visibility>
             <MultiBinding Converter="{StaticResource PanelVisibilityStateConverter}"
@@ -24,21 +24,7 @@
         </StackPanel.Visibility>
 
         <StackPanel.Style>
-            <Style TargetType="StackPanel">
-                <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsDevMode}" Value="True">
-                    <DataTrigger.EnterActions>
-                        <BeginStoryboard Storyboard="{StaticResource PanelFadeIn}"/>
-                    </DataTrigger.EnterActions>
-                    <DataTrigger.ExitActions>
-                        <BeginStoryboard Storyboard="{StaticResource PanelFadeOut}"/>
-                    </DataTrigger.ExitActions>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding IsDevMode}" Value="False">
-                        <Setter Property="IsHitTestVisible" Value="False"/>
-                    </DataTrigger>
-                </Style.Triggers>
-            </Style>
+            <StaticResource ResourceKey="FadeSurfaceStyle"/>
         </StackPanel.Style>
 
         <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -59,7 +45,7 @@
                 Margin="0,0,0,10"/>
 
         <TextBlock Text="{loc:Loc GameBuildHeader}"
-                   Foreground="{StaticResource SecondaryTextBrush}"
+                   Foreground="{StaticResource TextSecondaryBrush}"
                    FontSize="10"
                    Margin="0,6,0,3"/>
 
@@ -71,7 +57,7 @@
                   VerticalContentAlignment="Center"/>
 
         <TextBlock Text="{loc:Loc PureModeHeader}"
-                   Foreground="{StaticResource SecondaryTextBrush}"
+                   Foreground="{StaticResource TextSecondaryBrush}"
                    FontSize="10"
                    Margin="0,10,0,3"/>
 
@@ -103,7 +89,7 @@
 
         <Button Content="{loc:Loc LaunchButton}"
                 MinHeight="50"
-                Style="{StaticResource MainButtonStyle}"
+                Style="{StaticResource PrimaryButtonStyle}"
                 Command="{Binding DevLaunchCommand}"
                 CommandParameter="{x:Null}"/>
 

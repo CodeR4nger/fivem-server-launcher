@@ -11,7 +11,8 @@
 
     <StackPanel VerticalAlignment="Center"
                 HorizontalAlignment="Center"
-                Margin="30,12">
+                Margin="30,12"
+                views:Motion.Shown="{Binding IsDevMode, Converter={StaticResource InverseBoolean}}">
 
         <StackPanel.Visibility>
             <MultiBinding Converter="{StaticResource PanelVisibilityStateConverter}"
@@ -24,21 +25,7 @@
         </StackPanel.Visibility>
 
         <StackPanel.Style>
-            <Style TargetType="StackPanel">
-                <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsDevMode}" Value="False">
-                    <DataTrigger.EnterActions>
-                        <BeginStoryboard Storyboard="{StaticResource PanelFadeIn}"/>
-                    </DataTrigger.EnterActions>
-                    <DataTrigger.ExitActions>
-                        <BeginStoryboard Storyboard="{StaticResource PanelFadeOut}"/>
-                    </DataTrigger.ExitActions>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding IsDevMode}" Value="True">
-                        <Setter Property="IsHitTestVisible" Value="False"/>
-                    </DataTrigger>
-                </Style.Triggers>
-            </Style>
+            <StaticResource ResourceKey="FadeSurfaceStyle"/>
         </StackPanel.Style>
 
         <TextBlock Text="{loc:Loc CfxStatusHeader}"
@@ -64,15 +51,15 @@
 
                         <TextBlock DockPanel.Dock="Right"
                                    Text="{Binding StatusLabel}"
-                                   Foreground="{StaticResource TextBrush}"
-                                   FontSize="12"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   FontSize="{StaticResource FontSizeCaption}"
                                    FontWeight="SemiBold"
                                    VerticalAlignment="Center"/>
 
                         <TextBlock DockPanel.Dock="Left"
                                    Text="{Binding DisplayName}"
-                                   Foreground="{StaticResource SecondaryTextBrush}"
-                                   FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   FontSize="{StaticResource FontSizeCaption}"
                                    VerticalAlignment="Center"/>
 
                     </DockPanel>

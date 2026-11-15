@@ -7,10 +7,10 @@ namespace FiveMServerLauncher.Views;
 
 public sealed class CfxStatusToBrushConverter : IValueConverter
 {
-    private static readonly SolidColorBrush OperationalBrush = Freeze(0xFF55C271);
-    private static readonly SolidColorBrush DegradedBrush = Freeze(0xFFF5A623);
+    private static readonly SolidColorBrush OperationalBrush = Freeze(0xFF3FB950);
+    private static readonly SolidColorBrush DegradedBrush = Freeze(0xFFD29922);
     private static readonly SolidColorBrush OutageBrush = Freeze(0xFFE05252);
-    private static readonly SolidColorBrush UnknownBrush = Freeze(0xFF3A3A3A);
+    private static readonly SolidColorBrush UnknownBrush = Freeze(0xFF7A7A7A);
 
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {

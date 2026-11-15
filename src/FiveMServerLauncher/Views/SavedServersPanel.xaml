@@ -9,9 +9,7 @@
         <views:ThemeResources/>
     </UserControl.Resources>
 
-    <Border Background="{StaticResource PanelBrush}"
-            BorderBrush="{StaticResource BorderBrush}"
-            BorderThickness="1"
+    <Border Style="{StaticResource ContentPanelStyle}"
             Margin="10,24,20,24">
 
         <Grid>
@@ -60,21 +58,16 @@
 
                         <TextBox x:Name="ServerSearchBox"
                                  Text="{Binding ServerSearchText, UpdateSourceTrigger=PropertyChanged}"
-                                 Background="{StaticResource PanelLightBrush}"
-                                 Foreground="{StaticResource TextBrush}"
-                                 BorderBrush="{StaticResource BorderBrush}"
-                                 BorderThickness="1"
+                                 Style="{StaticResource PillTextInputStyle}"
                                  Padding="8,2"
                                  FontSize="11"
                                  VerticalContentAlignment="Center"
                                  MinHeight="24"/>
 
                         <TextBlock Text="{loc:Loc SearchServersPlaceholder}"
-                                   Foreground="{StaticResource SecondaryTextBrush}"
+                                   Style="{StaticResource PlaceholderTextStyle}"
                                    FontSize="11"
-                                   IsHitTestVisible="False"
-                                   VerticalAlignment="Center"
-                                   Margin="9,0,0,0"
+                                   Margin="11,0,0,0"
                                    Visibility="{Binding Text,
                                                         ElementName=ServerSearchBox,
                                                         Converter={StaticResource EmptyStringToVisibility}}"/>
@@ -95,14 +88,13 @@
                     </Grid.ColumnDefinitions>
 
                     <Border Grid.Column="1"
-                            BorderBrush="{StaticResource BorderBrush}"
-                            BorderThickness="1"
-                            Background="{StaticResource PanelLightBrush}">
+                            Style="{StaticResource ListWellStyle}"
+                            Padding="4,0">
 
                     <ListBox x:Name="SavedServersList"
                              ItemsSource="{Binding SavedServersView}"
                              SelectedItem="{Binding SelectedServer}"
-                             Background="{StaticResource PanelLightBrush}"
+                             Background="Transparent"
                              BorderThickness="0"
                              HorizontalContentAlignment="Stretch"
                              Padding="0,4,0,4"
@@ -116,10 +108,8 @@
 
                         <ListBox.ItemContainerStyle>
 
-                            <Style TargetType="{x:Type ListBoxItem}">
-
-                                <Setter Property="HorizontalContentAlignment"
-                                        Value="Stretch"/>
+                            <Style TargetType="{x:Type ListBoxItem}"
+                                   BasedOn="{StaticResource ListRowStyle}">
 
                                 <EventSetter Event="ListBoxItem.MouseEnter"
                                              Handler="SavedServerRow_MouseEnter"/>
@@ -146,52 +136,11 @@
 
                                             <ContextMenu.Resources>
 
-                                                <Style TargetType="ContextMenu">
-                                                    <Setter Property="OverridesDefaultStyle" Value="True"/>
-                                                    <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
-                                                    <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
-                                                    <Setter Property="SnapsToDevicePixels" Value="True"/>
-                                                    <Setter Property="Template">
-                                                        <Setter.Value>
-                                                            <ControlTemplate TargetType="ContextMenu">
-                                                                <Border Background="{TemplateBinding Background}"
-                                                                        BorderBrush="{TemplateBinding BorderBrush}"
-                                                                        BorderThickness="1"
-                                                                        Padding="4">
-                                                                    <ItemsPresenter/>
-                                                                </Border>
-                                                            </ControlTemplate>
-                                                        </Setter.Value>
-                                                    </Setter>
-                                                </Style>
+                                                <Style TargetType="ContextMenu"
+                                                       BasedOn="{StaticResource PopupMenuStyle}"/>
 
-                                                <Style TargetType="MenuItem">
-                                                    <Setter Property="OverridesDefaultStyle" Value="True"/>
-                                                    <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-                                                    <Setter Property="FontSize" Value="12"/>
-                                                    <Setter Property="Template">
-                                                        <Setter.Value>
-                                                            <ControlTemplate TargetType="MenuItem">
-                                                                <Border x:Name="ItemBorder"
-                                                                        Background="Transparent"
-                                                                        Padding="24,7">
-                                                                    <ContentPresenter ContentSource="Header"
-                                                                                      RecognizesAccessKey="True"
-                                                                                      VerticalAlignment="Center"/>
-                                                                </Border>
-                                                                <ControlTemplate.Triggers>
-                                                                    <Trigger Property="IsHighlighted" Value="True">
-                                                                        <Setter TargetName="ItemBorder" Property="Background"
-                                                                                Value="{StaticResource PanelLightBrush}"/>
-                                                                    </Trigger>
-                                                                    <Trigger Property="IsEnabled" Value="False">
-                                                                        <Setter TargetName="ItemBorder" Property="Opacity" Value="0.35"/>
-                                                                    </Trigger>
-                                                                </ControlTemplate.Triggers>
-                                                            </ControlTemplate>
-                                                        </Setter.Value>
-                                                    </Setter>
-                                                </Style>
+                                                <Style TargetType="MenuItem"
+                                                       BasedOn="{StaticResource PopupMenuItemStyle}"/>
 
                                             </ContextMenu.Resources>
 
@@ -225,39 +174,35 @@
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
 
-                                    <Image Grid.Column="0"
-                                           Source="{Binding Icon, Converter={StaticResource BytesToImageSourceConverter}}"
-                                           Width="22"
-                                           Height="22"
-                                           HorizontalAlignment="Left"
-                                           VerticalAlignment="Center"/>
+                                    <ContentControl Grid.Column="0"
+                                                    Style="{StaticResource ServerMarkStyle}"
+                                                    Content="{Binding Icon}"
+                                                    Tag="{Binding TrimmedName}"
+                                                    Width="22"
+                                                    Height="22"
+                                                    HorizontalAlignment="Left"
+                                                    VerticalAlignment="Center"/>
 
                                     <TextBlock Grid.Column="1"
                                                Text="{Binding TrimmedName}"
-                                               Foreground="{StaticResource TextBrush}"
-                                               FontWeight="SemiBold"
+                                               Style="{StaticResource RowTitleStyle}"
                                                VerticalAlignment="Center"
                                                HorizontalAlignment="Left"
                                                TextTrimming="CharacterEllipsis"/>
 
                                     <Border Grid.Column="2"
+                                            Style="{StaticResource GameTagStyle}"
                                             Background="{Binding Game, Converter={StaticResource GameClientToBrushConverter}}"
-                                            CornerRadius="3"
-                                            Padding="5,1"
                                             Margin="8,0,0,0"
-                                            VerticalAlignment="Center"
                                             Visibility="{Binding HasGame, Converter={StaticResource BoolToVisibility}}">
 
                                         <TextBlock Text="{Binding GameTagLabel}"
-                                                   Foreground="{StaticResource BackgroundBrush}"
-                                                   FontSize="9"
-                                                   FontWeight="Bold"
-                                                   VerticalAlignment="Center"/>
+                                                   Style="{StaticResource GameTagTextStyle}"/>
                                     </Border>
 
                                     <TextBlock Grid.Column="3"
                                                Text="{Binding StatusLabel}"
-                                               Foreground="{StaticResource SecondaryTextBrush}"
+                                               Style="{StaticResource CaptionTextStyle}"
                                                VerticalAlignment="Center"
                                                Margin="8,0"/>
 
@@ -307,7 +252,7 @@
                         <Border x:Name="DropIndicator"
                                 Height="2"
                                 Width="{Binding ActualWidth, ElementName=DropIndicatorCanvas}"
-                                Background="{StaticResource AccentBrush}"
+                                Background="{StaticResource TextPrimaryBrush}"
                                 CornerRadius="1"
                                 Visibility="Collapsed"/>
 
@@ -363,7 +308,7 @@
                             MinHeight="26"
                             Padding="12,4"
                             DockPanel.Dock="Right"
-                            Style="{StaticResource MainButtonStyle}"
+                            Style="{StaticResource SecondaryButtonStyle}"
                             Command="{Binding OpenAddServerDialogCommand}"/>
 
                     <Button Content="{loc:Loc BrowseButton}"
@@ -382,18 +327,15 @@
                 <TextBox x:Name="ServerAddressBox"
                          Text="{Binding ServerAddress,
                                         UpdateSourceTrigger=PropertyChanged}"
-                         Background="{StaticResource PanelLightBrush}"
-                         Foreground="{StaticResource TextBrush}"
-                         BorderBrush="{StaticResource BorderBrush}"
-                         BorderThickness="1"
-                         Padding="5,1"
+                         Style="{StaticResource TextInputStyle}"
+                         Padding="8,1"
                          FontSize="12"
                          VerticalContentAlignment="Center"
                          MinHeight="10"
                          Margin="20,5,0,0"/>
 
                 <TextBlock Text="{Binding StatusText}"
-                           Foreground="{StaticResource SecondaryTextBrush}"
+                           Style="{StaticResource CaptionTextStyle}"
                            FontSize="11"
                            HorizontalAlignment="Center"
                            Margin="20,2,0,0"/>
@@ -408,7 +350,7 @@
                     Content="{loc:Loc EnterServerButton}"
                     Height="48"
                     Margin="20,0,20,16"
-                    Style="{StaticResource MainButtonStyle}"
+                    Style="{StaticResource PrimaryButtonStyle}"
                     Command="{Binding ConnectCommand}"/>
 
         </Grid>
