@@ -36,6 +36,7 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly IUpdateApplier? _updateApplier;
     private readonly ShortcutDependencies? _shortcuts;
     private readonly LauncherSchemeRegistrar? _webLinks;
+    private readonly ISystemAnimationSetting? _systemAnimations;
     private LauncherUpdate? _latestUpdate;
     private bool _isUpdateAvailable;
     private bool _isUpdateInProgress;
@@ -65,7 +66,8 @@ public class MainViewModel : INotifyPropertyChanged
         IReleaseFeed? releaseFeed = null,
         IUpdateApplier? updateApplier = null,
         ShortcutDependencies? shortcuts = null,
-        LauncherSchemeRegistrar? webLinks = null)
+        LauncherSchemeRegistrar? webLinks = null,
+        ISystemAnimationSetting? systemAnimations = null)
     {
         _resolver = resolver;
         _launcher = launcher;
@@ -83,6 +85,13 @@ public class MainViewModel : INotifyPropertyChanged
         _updateApplier = updateApplier;
         _shortcuts = shortcuts;
         _webLinks = webLinks;
+        _systemAnimations = systemAnimations;
+        if (_systemAnimations is not null)
+        {
+            _systemAnimations.Changed += (_, _) =>
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsMotionEnabled)));
+        }
+
         _settings = settingsRepository.Load();
         LanguageOptions = BuildLanguageOptions();
         _selectedLanguageOption = LanguageOptions.FirstOrDefault(o => o.Tag == _settings.Language)
@@ -658,15 +667,15 @@ public class MainViewModel : INotifyPropertyChanged
     public bool AutoLaunch
     {
         get => _settings.AutoLaunch;
-        set => SetPersistedFlag(_settings.AutoLaunch, value, v => _settings.AutoLaunch = v);
+        set => SetPersisted(_settings.AutoLaunch, value, v => _settings.AutoLaunch = v);
     }
 
-    // A plain persisted checkbox: apply, save, and on a failed save revert to the old value
+    // A plain persisted setting: apply, save, and on a failed save revert to the old value
     // (TrySaveSettings reports the status); PropertyChanged fires either way so the
     // checkbox shows what the settings really hold.
-    private void SetPersistedFlag(bool current, bool value, Action<bool> apply, [CallerMemberName] string? propertyName = null)
+    private void SetPersisted<T>(T current, T value, Action<T> apply, [CallerMemberName] string? propertyName = null)
     {
-        if (current == value)
+        if (EqualityComparer<T>.Default.Equals(current, value))
         {
             return;
         }
@@ -676,11 +685,34 @@ public class MainViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
+    /// <summary>
+    /// The persisted motion preference (its Settings UI arrives with the settings page).
+    /// A failed save reverts it like any other setting.
+    /// </summary>
+    public InterfaceAnimations InterfaceAnimations
+    {
+        get => _settings.InterfaceAnimations;
+        set
+        {
+            SetPersisted(_settings.InterfaceAnimations, value, v => _settings.InterfaceAnimations = v);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsMotionEnabled)));
+        }
+    }
+
+    /// <summary>
+    /// Effective motion: the Default preference AND Windows' client-area animations on
+    /// (an unwired system seam counts as on). The view binds the window-root motion switch
+    /// to it; when false no storyboard runs.
+    /// </summary>
+    public bool IsMotionEnabled =>
+        _settings.InterfaceAnimations == InterfaceAnimations.Default
+        && (_systemAnimations?.IsEnabled ?? true);
+
     // Read by the tray window controller on every minimize; Settings checkbox.
     public bool MinimizeToTray
     {
         get => _settings.MinimizeToTray;
-        set => SetPersistedFlag(_settings.MinimizeToTray, value, v => _settings.MinimizeToTray = v);
+        set => SetPersisted(_settings.MinimizeToTray, value, v => _settings.MinimizeToTray = v);
     }
 
     /// <summary>

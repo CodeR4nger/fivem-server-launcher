@@ -4612,7 +4612,8 @@ public partial class MainViewModelTests
         Func<string>? desktopPathProvider = null,
         Func<string?>? targetExePathProvider = null,
         ShortcutIconWriter? iconWriter = null,
-        LauncherSchemeRegistrar? webLinks = null)
+        LauncherSchemeRegistrar? webLinks = null,
+        ISystemAnimationSetting? systemAnimations = null)
     {
         var resolver = new ServerResolver(
             new CfxService(
@@ -4658,6 +4659,7 @@ public partial class MainViewModelTests
                     desktopPathProvider ?? (() => "C:\\Desktop"),
                     targetExePathProvider ?? (() => @"C:\Games\CFXLauncher.exe"),
                     iconWriter),
-            webLinks: webLinks);
+            webLinks: webLinks,
+            systemAnimations: systemAnimations);
     }
 }

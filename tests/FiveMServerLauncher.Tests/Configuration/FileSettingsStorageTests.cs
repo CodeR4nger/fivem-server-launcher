@@ -200,6 +200,40 @@ public class FileSettingsStorageTests
     }
 
     [Fact]
+    public void SaveAndLoad_ShouldPreserveInterfaceAnimations()
+    {
+        // Given
+        using var tempDir = new TempSettingsDirectory();
+        var settings = new LauncherSettings { InterfaceAnimations = InterfaceAnimations.Minimal };
+        var storage = new FileSettingsStorage(tempDir.FilePath);
+
+        // When
+        storage.Save(settings);
+        var result = storage.Load();
+
+        // Then
+        Assert.NotNull(result);
+        Assert.Equal(InterfaceAnimations.Minimal, result.InterfaceAnimations);
+    }
+
+    [Fact]
+    public void Load_WhenFileLacksInterfaceAnimations_ShouldDefaultToDefault()
+    {
+        // Given
+        using var tempDir = new TempSettingsDirectory();
+        Directory.CreateDirectory(tempDir.DirectoryPath);
+        File.WriteAllText(tempDir.FilePath, """{"PreferredClient":"FiveM"}""");
+        var storage = new FileSettingsStorage(tempDir.FilePath);
+
+        // When
+        var result = storage.Load();
+
+        // Then
+        Assert.NotNull(result);
+        Assert.Equal(InterfaceAnimations.Default, result.InterfaceAnimations);
+    }
+
+    [Fact]
     public void Load_WhenFileLacksDevModeFields_ShouldReturnNullFields()
     {
         // Given
