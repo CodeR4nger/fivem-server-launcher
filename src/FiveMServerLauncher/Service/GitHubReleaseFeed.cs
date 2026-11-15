@@ -41,9 +41,7 @@ public sealed class GitHubReleaseFeed : IReleaseFeed
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, LatestReleaseUrl);
             request.Headers.UserAgent.ParseAdd($"{AppInfo.ProductName}/{AppInfo.Version}");
-            using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-
-            if (await BoundedContent.ReadAsByteArrayAsync(response.Content, MaxBodyBytes) is not { } json)
+            if ((await BoundedContent.GetBytesAsync(_httpClient, request, MaxBodyBytes)).Bytes is not { } json)
             {
                 return null;
             }
@@ -76,18 +74,10 @@ public sealed class GitHubReleaseFeed : IReleaseFeed
 
             return new LauncherUpdate(tagName, AssetName, asset.Size, downloadUrl, sha256);
         }
-        catch (HttpRequestException)
+        catch (Exception exception) when (BoundedContent.IsOutage(exception))
         {
-            return null;
-        }
-        catch (TaskCanceledException)
-        {
-            return null;
-        }
-        catch (IOException)
-        {
-            // The body streams after the headers: a dropped connection surfaces here
-            // (HttpIOException), not as HttpRequestException.
+            // The shared bounded-download outage set: HTTP failures, mid-body transport
+            // failures (the body streams after the headers) and timeouts.
             return null;
         }
         catch (JsonException)
