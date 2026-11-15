@@ -495,6 +495,12 @@ public class MainViewModel : INotifyPropertyChanged
     public void SetGameBuildData(GameBuildData data)
     {
         _gameBuildData = data;
+
+        foreach (var item in SavedServers)
+        {
+            item.SetGameBuildData(data);
+        }
+
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevGameBuildOptions)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DialogGameBuildOptions)));
     }
@@ -1309,7 +1315,8 @@ public class MainViewModel : INotifyPropertyChanged
             savedServer.CfxId,
             savedServer.GameBuild,
             savedServer.PureMode,
-            savedServer.GameClient);
+            savedServer.GameClient,
+            _gameBuildData);
 
         return item;
     }

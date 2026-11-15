@@ -16,10 +16,18 @@ public sealed record ServerRequirements
     {
         return published with
         {
-            SteamRequired = savedServer?.RequiresSteam == true
-                ? true
-                : published.SteamRequired ?? savedServer?.RequiresSteam,
+            SteamRequired = SteamRequiredFor(published.SteamRequired, savedServer?.RequiresSteam),
             DiscordRequired = savedServer?.RequiresDiscord
         };
+    }
+
+    /// <summary>
+    /// The one Steam merge rule: a manual <c>true</c> is additive (always requires
+    /// Steam, even over a published <c>false</c>); otherwise the published value wins
+    /// when present, else the manual fallback.
+    /// </summary>
+    public static bool? SteamRequiredFor(bool? published, bool? manual)
+    {
+        return manual == true ? true : published ?? manual;
     }
 }
