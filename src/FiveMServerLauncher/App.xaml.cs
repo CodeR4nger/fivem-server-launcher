@@ -137,20 +137,39 @@ public partial class App : Application
                 new UriSchemeRegistration(),
                 () => Environment.ProcessPath));
         window.DataContext = viewModel;
+        var trayWindow = new TrayWindowController(new WpfTrayWindow(window), () => viewModel.MinimizeToTray);
         window.Show();
         _viewModel = viewModel;
         window.Dispatcher.InvokeAsync(() => viewModel.InitializeAsync(connectAddress));
 
         window.Closed += (_, _) => refreshCts.Cancel();
 
-        // A minimized or inactive window parks the enrichment loop (no idle catalog
-        // downloads while the game runs in front); activation releases it at once.
+        // A minimized, inactive or tray-hidden window parks the enrichment loop (no idle
+        // catalog downloads while the game runs in front); coming back releases it at once.
         void ReportAttendance(object? sender, EventArgs args) =>
-            viewModel.SetWindowAttended(window.IsActive && window.WindowState != WindowState.Minimized);
+            viewModel.SetWindowAttended(trayWindow.IsAttended);
+        window.StateChanged += (_, _) => trayWindow.OnStateChanged();
         window.Activated += ReportAttendance;
         window.Deactivated += ReportAttendance;
         window.StateChanged += ReportAttendance;
+        window.IsVisibleChanged += (_, _) => ReportAttendance(window, EventArgs.Empty);
         ReportAttendance(window, EventArgs.Empty);
+
+        // A tray-hidden window is only ever shown through WPF (see MainWindowMessages).
+        MainWindowMessages.Attach(window, trayWindow);
+
+        // Always present until exit. Every exit path removes it: window close (also the tray
+        // Exit and Application.Shutdown, which the update relaunch uses), the Exit event, and
+        // a crash or process exit that skips both.
+        var tray = new TrayIcon(
+            AppInfo.Title,
+            viewModel.BuildTrayMenu,
+            entry => OnTrayEntrySelected(entry, window, trayWindow, viewModel),
+            trayWindow.ShowAndActivate);
+        window.Closed += (_, _) => tray.Dispose();
+        Exit += (_, _) => tray.Dispose();
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => tray.RemoveIcon();
+        AppDomain.CurrentDomain.UnhandledException += (_, _) => tray.RemoveIcon();
 
         window.Dispatcher.InvokeAsync(() => viewModel.RunEnrichmentLoopAsync(refreshCts.Token));
         _ = RefreshSessionGameBuildDataAsync(window, viewModel, gameBuildData);
@@ -162,19 +181,48 @@ public partial class App : Application
         Exit += (_, _) => connectCts.Cancel();
         var connectListener = new ConnectRequestListener();
         connectListener.Start(
-            address => window.Dispatcher.InvokeAsync(async () =>
-            {
-                try
-                {
-                    await viewModel.HandleForwardedConnectAsync(address);
-                }
-                catch
-                {
-                    // The browser and manual paths ride the same swallow through
-                    // AsyncRelayCommand; a forwarded connect gets parity.
-                }
-            }),
+            address => window.Dispatcher.InvokeAsync(() => ShowAndConnectAsync(address, trayWindow, viewModel)),
             connectCts.Token);
+    }
+
+    // Forwarded (pipe) and tray quick-connects: bring the window back through WPF so the
+    // connect status is visible, then the normal busy-guarded forwarded connect.
+    private static async Task ShowAndConnectAsync(
+        string? address,
+        TrayWindowController trayWindow,
+        MainViewModel viewModel)
+    {
+        try
+        {
+            trayWindow.ShowAndActivate();
+            await viewModel.HandleForwardedConnectAsync(address);
+        }
+        catch
+        {
+            // The browser and manual paths ride the same swallow through
+            // AsyncRelayCommand; a forwarded connect gets parity.
+        }
+    }
+
+    private static void OnTrayEntrySelected(
+        TrayMenuEntry entry,
+        Window window,
+        TrayWindowController trayWindow,
+        MainViewModel viewModel)
+    {
+        switch (entry.Kind)
+        {
+            case TrayMenuEntryKind.Server:
+                _ = ShowAndConnectAsync(entry.Address, trayWindow, viewModel);
+                break;
+            case TrayMenuEntryKind.Show:
+            case TrayMenuEntryKind.ShowAll:
+                trayWindow.ShowAndActivate();
+                break;
+            case TrayMenuEntryKind.Exit:
+                window.Close();
+                break;
+        }
     }
 
     // Last resort: a bug that escaped every guarded path keeps the app running with one

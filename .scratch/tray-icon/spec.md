@@ -100,6 +100,12 @@ WPF's back (WPF still thinks it is hidden). New behaviour:
   `Activate()` actually take the foreground.
 - The forwarded-connect handler (pipe) ALSO calls `ShowAndActivate()` before connecting
   (belt and braces: the message and the pipe race, and either alone restores the window).
+- Found in the manual check: anything ELSE that natively shows the hidden window (an older
+  copy's activator, a third-party tool, a posted `SC_RESTORE`/`SC_MINIMIZE` — a native
+  minimize of a hidden window shows it minimized) left it natively visible while WPF still
+  believed it hidden, so every later minimize stayed on the taskbar. `Views/MainWindowMessages`
+  (the main-window hook, thin glue) watches `WM_SHOWWINDOW`/`SWP_SHOWWINDOW` and, deferred to
+  the dispatcher, adopts a foreign show with a WPF `Show()` and re-runs the minimize decision.
 
 ## Icon lifetime (no ghost icon)
 
