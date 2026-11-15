@@ -164,6 +164,6 @@ public class ConnectRequestListenerTests : IDisposable
         // Then
         var completed = await Task.WhenAny(received.Task, Task.Delay(3000));
         Assert.Same(received.Task, completed);
-        Assert.Equal("survivor", received.Task.Result);
+        Assert.Equal("survivor", await received.Task);
     }
 }
