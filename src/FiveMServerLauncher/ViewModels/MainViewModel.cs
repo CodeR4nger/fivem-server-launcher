@@ -1190,6 +1190,13 @@ public class MainViewModel : INotifyPropertyChanged
         private set => SetProperty(ref _statusText, value);
     }
 
+    // The last-resort entry point for the composition root's unhandled-exception hooks:
+    // the app stays up and says so in one generic line (no log file by design).
+    public void ReportUnexpectedError()
+    {
+        StatusText = _localizer.Get("StatusUnexpectedError");
+    }
+
     public bool IsBusy
     {
         get => _isBusy;

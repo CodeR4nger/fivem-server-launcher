@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using System.Net.Http;
 using System.Windows;
+using System.Windows.Threading;
 using FiveMServerLauncher.Configuration;
 using FiveMServerLauncher.Core;
 using FiveMServerLauncher.Domain;
@@ -20,9 +21,16 @@ public partial class App : Application
     private static string LegacyAppDataDirectory =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FiveMServerLauncher");
 
+    // Set once the window is up; until then an unhandled exception is a failed startup
+    // and must still end the process (a handled one would leave it alive with no window).
+    private MainViewModel? _viewModel;
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        DispatcherUnhandledException += OnDispatcherUnhandledException;
+        TaskScheduler.UnobservedTaskException += (_, args) => args.SetObserved();
 
         var singleInstance = new SingleInstanceGuard(
             new MutexSingleInstanceLock(),
@@ -126,6 +134,7 @@ public partial class App : Application
                     "shortcut-icons"))));
         window.DataContext = viewModel;
         window.Show();
+        _viewModel = viewModel;
         window.Dispatcher.InvokeAsync(() => viewModel.InitializeAsync(connectAddress));
 
         window.Closed += (_, _) => refreshCts.Cancel();
@@ -152,6 +161,19 @@ public partial class App : Application
                 }
             }),
             connectCts.Token);
+    }
+
+    // Last resort: a bug that escaped every guarded path keeps the app running with one
+    // generic status line. The tested unit is MainViewModel.ReportUnexpectedError.
+    private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+    {
+        if (_viewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        viewModel.ReportUnexpectedError();
     }
 
     private static async Task RefreshSessionGameBuildDataAsync(

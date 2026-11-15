@@ -341,6 +341,55 @@ public partial class MainViewModelTests
         Assert.False(vm.IsBusy);
     }
 
+    [Fact]
+    public async Task InitializeAsync_WhenStartupHitsAPermissionFault_ShouldShowStartupFailed()
+    {
+        // Given
+        var installLocator = new FakeClientInstallLocator { IsInstalledFailure = new UnauthorizedAccessException() };
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), installLocator: installLocator);
+
+        // When
+        await vm.InitializeAsync();
+
+        // Then
+        Assert.False(vm.IsBusy);
+        Assert.Equal("Startup failed", vm.StatusText);
+    }
+
+    [Fact]
+    public void Construction_WhenBothStoresDenyTheFirstRead_ShouldStartWithDefaults()
+    {
+        // Given — a read-only/ACL-denied data folder
+        using var tempDir = new TempSettingsDirectory();
+        Directory.CreateDirectory(tempDir.DirectoryPath);
+        File.WriteAllText(tempDir.FilePath, "[]");
+        Func<string, string> denied = _ => throw new UnauthorizedAccessException();
+
+        // When
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            new FileServerRepository(tempDir.FilePath, denied),
+            settings: new ConfigurationRepository(new FileSettingsStorage(tempDir.FilePath, denied)));
+
+        // Then
+        Assert.Empty(vm.SavedServers);
+        Assert.False(vm.AutoLaunch);
+    }
+
+    [Fact]
+    public void ReportUnexpectedError_ShouldShowTheGenericStatus()
+    {
+        // Given
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+
+        // When
+        vm.ReportUnexpectedError();
+
+        // Then
+        Assert.Equal("Something went wrong", vm.StatusText);
+    }
+
     private sealed class ThrowingSettingsStorage : ISettingsStorage
     {
         private LauncherSettings? _settings;
