@@ -439,6 +439,24 @@ public class ServerEnrichmentServiceTests
     }
 
     [Fact]
+    public async Task GetIconAsync_WhenAllowedHostUsesDifferentLetterCase_ShouldFetchIt()
+    {
+        // Given — host names are case-insensitive; the allowlist must not reject
+        // the CFX metadata host because a server published it in upper case.
+        var png = TestIcons.Png(8);
+        var handler = new RoutedHttpMessageHandler();
+        handler.AddBytesRoute("images/7665c31f", HttpStatusCode.OK, png);
+        using var httpClient = new HttpClient(handler);
+        var service = new ServerEnrichmentService(httpClient);
+
+        // When
+        var icon = await service.GetIconAsync("https://CFX-Server-Metadata.CFX-Services.NET/images/7665c31f");
+
+        // Then
+        Assert.Equal(png, icon);
+    }
+
+    [Fact]
     public async Task GetIconAsync_WhenIconUrlServesWebP_ShouldReturnNormalizedPng()
     {
         // Given — CFX's icon host serves WebP, which WPF cannot render; the icon
