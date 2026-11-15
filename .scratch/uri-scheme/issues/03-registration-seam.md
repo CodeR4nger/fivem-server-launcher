@@ -1,5 +1,5 @@
 # registration-seam
 
-Status: open
+Status: done
 
 See ../spec.md. IUriSchemeRegistration extension + LauncherSchemeRegistrar enable/disable-if-ours/refresh, tested with a fake.
