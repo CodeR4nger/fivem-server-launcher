@@ -8,10 +8,10 @@ namespace FiveMServerLauncher.Tests.Views;
 
 public class CfxStatusToBrushConverterTests
 {
-    private const string Green = "#FF55C271";
-    private const string Amber = "#FFF5A623";
+    private const string Green = "#FF3FB950";
+    private const string Amber = "#FFD29922";
     private const string Red = "#FFE05252";
-    private const string Grey = "#FF3A3A3A";
+    private const string Grey = "#FF7A7A7A";
 
     private static string ArgbHex(SolidColorBrush brush) =>
         $"#{brush.Color.A:X2}{brush.Color.R:X2}{brush.Color.G:X2}{brush.Color.B:X2}";
