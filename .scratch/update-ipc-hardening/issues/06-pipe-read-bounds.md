@@ -4,4 +4,8 @@
 
 **Blocked by:** 05
 
-**Status:** open
+**Status:** resolved
+
+## Answer
+
+`ConnectRequestListener` gained optional `readTimeout` (default 2 s) and `maxLineBytes` (default 2048) ctor params and reads the line itself (`ReadBoundedLineAsync`), keeping ReadLine semantics (`\r\n`/`\n`, final unterminated line dispatches, empty EOF dispatches nothing). A timeout or over-cap read throws inside the loop and the connection is dropped without dispatch; only cancellation of the listener's own token ends the loop. Defaults are used in `App.xaml.cs`, which was not touched.
