@@ -1,5 +1,5 @@
 # catalog-user-agent
 
-Status: open
+Status: done
 
 See ../spec.md section 3.

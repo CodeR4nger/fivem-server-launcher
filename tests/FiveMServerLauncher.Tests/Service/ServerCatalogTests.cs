@@ -1,4 +1,5 @@
 using System.Net;
+using FiveMServerLauncher.Core;
 using FiveMServerLauncher.Service;
 using FiveMServerLauncher.Tests.Domain;
 using Xunit;
@@ -165,6 +166,26 @@ public class ServerCatalogTests
         {
             throw new InvalidOperationException("Simulated programming error");
         }
+    }
+
+    [Fact]
+    public async Task Lookup_ShouldIdentifyAsTheLauncherProductAndVersion()
+    {
+        // Given
+        var handler = new FakeHttpMessageHandler(
+            HttpStatusCode.OK,
+            TestProtobufFrames.BuildFrameStream(new Master.Server { EndPoint = "y4lg95" }));
+        using var httpClient = new HttpClient(handler);
+        var catalog = new ServerCatalog(httpClient);
+
+        // When
+        await catalog.LookupByEndPointAsync("y4lg95");
+
+        // Then — one product token (no space allowed) carrying the single version source
+        var product = Assert.Single(handler.LastRequest!.Headers.UserAgent).Product;
+        Assert.NotNull(product);
+        Assert.Equal(AppInfo.ProductName.Replace(" ", string.Empty), product.Name);
+        Assert.Equal(AppInfo.Version, product.Version);
     }
 
     [Fact]
