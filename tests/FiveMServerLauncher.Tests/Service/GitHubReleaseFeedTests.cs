@@ -315,6 +315,64 @@ public class GitHubReleaseFeedTests
         Assert.Null(update);
     }
 
+    [Fact]
+    public async Task CheckForUpdateAsync_WhenBodyExceedsCap_ShouldReturnNull()
+    {
+        // Given: an otherwise valid newer release whose body is far beyond any real one
+        // (the real latest-release body is about 5 KB)
+        var tag = NewerTag();
+        var padding = new string('x', 2 * 1024 * 1024);
+        var json = $$"""
+            {
+              "tag_name": "{{tag}}",
+              "body": "{{padding}}",
+              "assets": [{{AssetJson(tag)}}]
+            }
+            """;
+        var feed = CreateFeed(out _, HttpStatusCode.OK, json);
+
+        // When
+        var update = await feed.CheckForUpdateAsync();
+
+        // Then
+        Assert.Null(update);
+    }
+
+    [Fact]
+    public async Task CheckForUpdateAsync_WhenBodyStreamFailsMidway_ShouldReturnNull()
+    {
+        // Given: the headers arrive, then the connection drops while the body streams
+        var feed = new GitHubReleaseFeed(new HttpClient(new BrokenBodyHandler()));
+
+        // When
+        var update = await feed.CheckForUpdateAsync();
+
+        // Then
+        Assert.Null(update);
+    }
+
+    private sealed class BrokenBodyHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StreamContent(new BrokenStream())
+            });
+        }
+    }
+
+    private sealed class BrokenStream : MemoryStream
+    {
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
+            throw new HttpIOException(HttpRequestError.ResponseEnded, "Simulated dropped connection");
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            throw new HttpIOException(HttpRequestError.ResponseEnded, "Simulated dropped connection");
+    }
+
     private sealed class ThrowingHandler(Exception exception) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(

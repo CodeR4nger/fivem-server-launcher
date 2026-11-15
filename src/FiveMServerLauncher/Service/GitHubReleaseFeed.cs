@@ -1,3 +1,4 @@
+using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -19,6 +20,9 @@ public sealed class GitHubReleaseFeed : IReleaseFeed
 
     private const string DownloadHost = "github.com";
 
+    // The real latest-release body is about 5 KB, release notes included.
+    private const long MaxBodyBytes = 1024 * 1024;
+
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         PropertyNameCaseInsensitive = true
@@ -37,8 +41,13 @@ public sealed class GitHubReleaseFeed : IReleaseFeed
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, LatestReleaseUrl);
             request.Headers.UserAgent.ParseAdd($"{AppInfo.ProductName}/{AppInfo.Version}");
-            using var response = await _httpClient.SendAsync(request);
-            var json = await response.Content.ReadAsStringAsync();
+            using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+
+            if (await BoundedContent.ReadAsByteArrayAsync(response.Content, MaxBodyBytes) is not { } json)
+            {
+                return null;
+            }
+
             var release = JsonSerializer.Deserialize<GitHubRelease>(json, SerializerOptions);
 
             if (release?.TagName is not { } tagName
@@ -73,6 +82,12 @@ public sealed class GitHubReleaseFeed : IReleaseFeed
         }
         catch (TaskCanceledException)
         {
+            return null;
+        }
+        catch (IOException)
+        {
+            // The body streams after the headers: a dropped connection surfaces here
+            // (HttpIOException), not as HttpRequestException.
             return null;
         }
         catch (JsonException)
