@@ -31,7 +31,7 @@ public class ConnectRequestForwarderTests : IDisposable
         Assert.True(delivered);
         var completed = await Task.WhenAny(received.Task, Task.Delay(3000));
         Assert.Same(received.Task, completed);
-        Assert.Equal("cfx.re/join/abc", received.Task.Result);
+        Assert.Equal("cfx.re/join/abc", await received.Task);
     }
 
     [Fact]

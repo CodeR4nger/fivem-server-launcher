@@ -464,7 +464,7 @@ public class FiveMLaunchOptionsTests
         return type
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Select(property => property.SetMethod)
-            .Where(setter => setter is not null)
+            .OfType<MethodInfo>()
             .ToArray();
     }
 

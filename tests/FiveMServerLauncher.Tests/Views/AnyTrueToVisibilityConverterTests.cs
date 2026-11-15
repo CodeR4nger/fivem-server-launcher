@@ -9,7 +9,7 @@ public class AnyTrueToVisibilityConverterTests
     private static Visibility Convert(params object?[] values)
     {
         return (Visibility)new AnyTrueToVisibilityConverter().Convert(
-            values, typeof(Visibility), null!, CultureInfo.InvariantCulture);
+            (object[])values, typeof(Visibility), null!, CultureInfo.InvariantCulture);
     }
 
     [Theory]

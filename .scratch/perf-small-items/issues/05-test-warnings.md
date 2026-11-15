@@ -1,5 +1,5 @@
 # test-warnings
 
-Status: open
+Status: done
 
 See ../spec.md section 5.
