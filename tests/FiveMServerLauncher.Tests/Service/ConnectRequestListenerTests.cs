@@ -1,4 +1,5 @@
 using System.IO.Pipes;
+using System.Security.Principal;
 using System.Text;
 using FiveMServerLauncher.Service;
 
@@ -249,5 +250,32 @@ public class ConnectRequestListenerTests : IDisposable
         var completed = await Task.WhenAny(received.Task, Task.Delay(3000));
         Assert.Same(received.Task, completed);
         Assert.Equal("cfx.re/join/xyz", await received.Task);
+    }
+
+    [Fact]
+    public async Task Start_ShouldGrantThePipeToTheCurrentUserOnly()
+    {
+        // Given: a listening first instance
+        _listener.Start(_ => { }, _cts.Token);
+        var currentUser = WindowsIdentity.GetCurrent().User!;
+
+        // When: a client opens the inbound pipe for writing plus reading its security
+        // descriptor (asking for read data on an inbound pipe is refused)
+        await using var client = new NamedPipeClientStream(
+            ".",
+            _listener.PipeName,
+            PipeAccessRights.WriteData | PipeAccessRights.ReadPermissions,
+            PipeOptions.None,
+            TokenImpersonationLevel.None,
+            HandleInheritability.None);
+        await client.ConnectAsync(2000);
+        var rules = client.GetAccessControl()
+            .GetAccessRules(includeExplicit: true, includeInherited: true, typeof(SecurityIdentifier))
+            .Cast<PipeAccessRule>()
+            .ToList();
+
+        // Then: only the current user is granted anything (no Everyone/Anonymous/other users)
+        Assert.NotEmpty(rules);
+        Assert.All(rules, rule => Assert.Equal(currentUser, rule.IdentityReference));
     }
 }
