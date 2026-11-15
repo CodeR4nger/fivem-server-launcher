@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using FiveMServerLauncher.Core.Enums;
+using FiveMServerLauncher.Domain;
 using FiveMServerLauncher.Localization;
 using FiveMServerLauncher.Service;
 
@@ -19,6 +20,10 @@ public class SavedServerItem : INotifyPropertyChanged
     private int? _maxPlayers;
     private byte[]? _icon;
     private GameClient? _game;
+    private bool? _publishedSteamRequired;
+    private int? _publishedGameBuild;
+    private int? _publishedPureMode;
+    private GameBuildData? _gameBuildData;
 
     public SavedServerItem(
         string name,
@@ -30,7 +35,8 @@ public class SavedServerItem : INotifyPropertyChanged
         string? cfxId = null,
         int? gameBuild = null,
         int? pureMode = null,
-        GameClient? gameClient = null)
+        GameClient? gameClient = null,
+        GameBuildData? gameBuildData = null)
     {
         Name = name;
         Address = address;
@@ -42,6 +48,7 @@ public class SavedServerItem : INotifyPropertyChanged
         _requiresDiscord = requiresDiscord == true;
         _changeHandler = changeHandler;
         _localizer = localizer;
+        _gameBuildData = gameBuildData;
         // Rows are short-lived (deleted/edited); a strong subscription to the
         // app-lifetime localizer would root every row forever. The weak event
         // manager holds the row only while something else does.
@@ -51,7 +58,8 @@ public class SavedServerItem : INotifyPropertyChanged
 
     private void OnLanguageChanged(object? sender, EventArgs e)
     {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StatusLabel)));
+        Raise(nameof(StatusLabel));
+        RaiseDetailChanged();
     }
 
     public string Name { get; }
@@ -124,6 +132,7 @@ public class SavedServerItem : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CfxId)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasCfxId)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StatusLabel)));
+        RaiseDetailChanged();
     }
 
     public bool RequiresSteam
@@ -133,6 +142,7 @@ public class SavedServerItem : INotifyPropertyChanged
         {
             if (SetProperty(ref _requiresSteam, value))
             {
+                Raise(nameof(EffectiveRequiresSteam));
                 _changeHandler();
             }
         }
@@ -145,10 +155,19 @@ public class SavedServerItem : INotifyPropertyChanged
         {
             if (SetProperty(ref _requiresDiscord, value))
             {
+                Raise(nameof(EffectiveRequiresDiscord));
                 _changeHandler();
             }
         }
     }
+
+    // What a connect would require: the manual flags merged with the published
+    // Steam flag by the connect rule. A stale published flag from a server that
+    // has gone offline is never applied.
+    public bool EffectiveRequiresSteam =>
+        ServerRequirements.SteamRequiredFor(Online ? _publishedSteamRequired : null, RequiresSteam) == true;
+
+    public bool EffectiveRequiresDiscord => RequiresDiscord;
 
     public bool Online
     {
@@ -193,6 +212,71 @@ public class SavedServerItem : INotifyPropertyChanged
                 ? $"{players}/{max}"
                 : _localizer.Get("StatusOffline");
 
+    // ---- Detail pane data ----
+
+    // Mirrors the connect rule for loopback servers: a listed manual cfx id wins
+    // (its published values apply); otherwise the manual values do.
+    private bool HasManualParameters =>
+        ServerAddress.IsLoopbackAddress(Address)
+        && (GameBuild.HasValue || PureMode.HasValue || GameClient.HasValue);
+
+    public ServerDetailState DetailState =>
+        Online ? ServerDetailState.Listed
+        : HasManualParameters ? ServerDetailState.Manual
+        : HasCfxId ? ServerDetailState.Offline
+        : ServerDetailState.NotListed;
+
+    public bool ShowsDetails => DetailState is ServerDetailState.Listed or ServerDetailState.Manual;
+
+    public string DetailStateLabel => DetailState switch
+    {
+        ServerDetailState.Offline => _localizer.Get("DetailStateOffline"),
+        ServerDetailState.NotListed => _localizer.Get("DetailStateNotListed"),
+        ServerDetailState.Manual => _localizer.Get("DetailStateManual"),
+        _ => string.Empty
+    };
+
+    private bool UsesManualValues => DetailState == ServerDetailState.Manual;
+
+    private int? DetailGameBuild => UsesManualValues ? GameBuild : _publishedGameBuild;
+
+    private int? DetailPureMode => UsesManualValues ? PureMode : _publishedPureMode;
+
+    public GameClient? DetailGame => UsesManualValues ? GameClient : Game;
+
+    public string DetailGameLabel => LabelOf(DetailGame);
+
+    public string PlayersText =>
+        Online && Players is { } players && MaxPlayers is { } max ? $"{players}/{max}" : string.Empty;
+
+    public string BuildLabel => DetailGameBuild is { } build
+        ? GameBuilds.NameOf(build, _gameBuildData) is { } name ? $"{build} · {name}" : build.ToString()
+        : _localizer.Get("DetailBuildServerDefault");
+
+    public string PureModeLabel => DetailPureMode is { } pure
+        ? pure.ToString()
+        : _localizer.Get("DetailPureModeOff");
+
+    public void SetGameBuildData(GameBuildData data)
+    {
+        _gameBuildData = data;
+        Raise(nameof(BuildLabel));
+    }
+
+    private void RaiseDetailChanged()
+    {
+        Raise(nameof(DetailState));
+        Raise(nameof(ShowsDetails));
+        Raise(nameof(DetailStateLabel));
+        Raise(nameof(PlayersText));
+        Raise(nameof(BuildLabel));
+        Raise(nameof(PureModeLabel));
+        Raise(nameof(DetailGame));
+        Raise(nameof(DetailGameLabel));
+        Raise(nameof(EffectiveRequiresSteam));
+        Raise(nameof(EffectiveRequiresDiscord));
+    }
+
     public GameClient? Game
     {
         get => _game;
@@ -206,7 +290,10 @@ public class SavedServerItem : INotifyPropertyChanged
         }
     }
 
-    public string GameTagLabel => Game is { } game ? InstalledClientOption.DisplayNameOf(game) : string.Empty;
+    public string GameTagLabel => LabelOf(Game);
+
+    private static string LabelOf(GameClient? game) =>
+        game is { } known ? InstalledClientOption.DisplayNameOf(known) : string.Empty;
 
     public bool HasGame => Game is not null;
 
@@ -236,13 +323,20 @@ public class SavedServerItem : INotifyPropertyChanged
             Online = true;
             Players = presence.Players;
             MaxPlayers = presence.MaxPlayers;
+            _publishedSteamRequired = presence.SteamRequired;
+            _publishedGameBuild = presence.GameBuild;
+            _publishedPureMode = presence.PureMode;
         }
         else
         {
+            // Last known build/pure/steam are kept (like the game) but the detail
+            // state hides them behind Offline; nothing stale is ever applied.
             Online = false;
             Players = null;
             MaxPlayers = null;
         }
+
+        RaiseDetailChanged();
     }
 
     public void SetIcon(byte[] icon)
@@ -251,6 +345,11 @@ public class SavedServerItem : INotifyPropertyChanged
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    private void Raise(string name)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    }
 
     private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? name = null)
     {

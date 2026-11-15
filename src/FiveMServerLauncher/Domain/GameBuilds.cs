@@ -60,6 +60,10 @@ public static class GameBuilds
         return options;
     }
 
+    /// <summary>The DLC name of a build (null data → the baseline), or null when unnamed.</summary>
+    public static string? NameOf(int build, GameBuildData? data = null) =>
+        (data ?? Baseline).Names.TryGetValue(build, out var name) ? name : null;
+
     private static string LabelFor(GameBuildData dataset, int build) =>
-        dataset.Names.TryGetValue(build, out var name) ? $"[{build}] {name}" : build.ToString();
+        NameOf(build, dataset) is { } name ? $"[{build}] {name}" : build.ToString();
 }

@@ -9,7 +9,10 @@ public sealed record ServerPresence(
     int Players,
     int MaxPlayers,
     GameClient? Game,
-    string? IconUrl = null)
+    string? IconUrl = null,
+    int? GameBuild = null,
+    int? PureMode = null,
+    bool? SteamRequired = null)
 {
     public static ServerPresence Offline { get; } = new(false, 0, 0, null);
 }
@@ -108,12 +111,19 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
                 {
                     var server = g.First();
 
+                    // The same vars → info mapping the connect route uses, so the
+                    // detail pane shows exactly what a connect would apply.
+                    var info = CfxVars.ToServerInfo(g.Key, projectName: null, server.Data!.Vars, requestSteamTicket: null);
+
                     return new ServerPresence(
                         Online: true,
-                        server.Data!.Clients,
+                        server.Data.Clients,
                         server.Data.SvMaxclients,
-                        CfxVars.TryGetGameClient(server.Data.Vars),
-                        CfxVars.TryGetIconUrl(server.Data.Vars));
+                        info.GameClient,
+                        CfxVars.TryGetIconUrl(server.Data.Vars),
+                        info.EnforceGameBuild,
+                        info.PureLevel,
+                        info.SteamEnforced);
                 });
     }
 

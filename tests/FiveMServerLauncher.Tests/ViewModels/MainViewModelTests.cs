@@ -692,6 +692,77 @@ public partial class MainViewModelTests
     }
 
     [Fact]
+    public async Task RefreshServerInfoAsync_WhenBuildPureAndSteamPublished_ShouldFillRowDetail()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/y4lg95", requiresDiscord: true));
+        var enrichment = new FakeServerEnrichmentService
+        {
+            Presence = new Dictionary<string, ServerPresence>
+            {
+                ["y4lg95"] = new ServerPresence(true, 12, 64, GameClient.FiveM, GameBuild: 3258, PureMode: 1, SteamRequired: true)
+            }
+        };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            enrichment: enrichment);
+
+        // When
+        await vm.RefreshServerInfoAsync();
+
+        // Then
+        var item = Assert.Single(vm.SavedServers);
+        Assert.Equal(ServerDetailState.Listed, item.DetailState);
+        Assert.Equal("12/64", item.PlayersText);
+        Assert.Equal("3258 · Bottom Dollar Bounties", item.BuildLabel);
+        Assert.Equal("1", item.PureModeLabel);
+        Assert.True(item.EffectiveRequiresSteam);
+        Assert.True(item.EffectiveRequiresDiscord);
+    }
+
+    [Fact]
+    public async Task SetGameBuildData_WhenSessionDataArrives_ShouldRelabelExistingAndNewRows()
+    {
+        // Given
+        var repository = new InMemoryServerRepository();
+        repository.Add(SavedServer.Create("My Server", "cfx.re/join/y4lg95"));
+        var enrichment = new FakeServerEnrichmentService
+        {
+            Presence = new Dictionary<string, ServerPresence>
+            {
+                ["y4lg95"] = new ServerPresence(true, 1, 32, GameClient.FiveM, GameBuild: 4000),
+                ["abc123"] = new ServerPresence(true, 1, 32, GameClient.FiveM, GameBuild: 4000)
+            }
+        };
+        var vm = CreateViewModel(
+            new FakeGameProcessLauncher(),
+            CfxJson("gta5"),
+            repository: repository,
+            enrichment: enrichment);
+        await vm.RefreshServerInfoAsync();
+        var existing = Assert.Single(vm.SavedServers);
+        Assert.Equal("4000", existing.BuildLabel);
+        var data = new GameBuildData([4000], [], new Dictionary<int, string> { [4000] = "Future DLC" });
+
+        // When
+        vm.SetGameBuildData(data);
+        vm.OpenAddServerDialogCommand.Execute(null);
+        vm.DialogServerName = "Second";
+        vm.DialogServerAddress = "cfx.re/join/abc123";
+        vm.SaveServerDialogCommand.Execute(null);
+        await vm.WaitForPendingCapturesAsync();
+        await vm.RefreshServerInfoAsync();
+
+        // Then
+        Assert.Equal("4000 · Future DLC", existing.BuildLabel);
+        var added = Assert.Single(vm.SavedServers, row => row.Name == "Second");
+        Assert.Equal("4000 · Future DLC", added.BuildLabel);
+    }
+
+    [Fact]
     public async Task RefreshServerInfoAsync_WhenCfxIdNotInCatalog_ShouldShowOfflineStatus()
     {
         // Given

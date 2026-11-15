@@ -86,6 +86,85 @@ public class ServerEnrichmentServiceTests
     }
 
     [Fact]
+    public async Task RefreshAsync_WhenBuildPureAndSteamPublished_ShouldExposeThemOnPresence()
+    {
+        // Given
+        var handler = new RoutedHttpMessageHandler();
+        var frame = new Master.Server
+        {
+            EndPoint = "boya5d",
+            Data = new Master.ServerData
+            {
+                Clients = 2,
+                SvMaxclients = 48,
+                Vars =
+                {
+                    ["sv_enforceGameBuild"] = "3258",
+                    ["sv_pureLevel"] = "1",
+                    ["sv_enforceSteamAuth"] = "true"
+                }
+            }
+        };
+        handler.AddBytesRoute("streamRedir", HttpStatusCode.OK, TestProtobufFrames.BuildFrameStream(frame));
+        using var httpClient = new HttpClient(handler);
+        var service = new ServerEnrichmentService(httpClient);
+
+        // When
+        var result = await service.RefreshAsync();
+
+        // Then
+        var presence = Assert.Single(result!).Value;
+        Assert.Equal(3258, presence.GameBuild);
+        Assert.Equal(1, presence.PureMode);
+        Assert.True(presence.SteamRequired);
+    }
+
+    [Fact]
+    public async Task RefreshAsync_WhenBuildPureAndSteamAbsentOrInvalid_ShouldExposeNull()
+    {
+        // Given
+        var handler = new RoutedHttpMessageHandler();
+        handler.AddBytesRoute(
+            "streamRedir",
+            HttpStatusCode.OK,
+            TestProtobufFrames.Join(
+                TestProtobufFrames.BuildFrameStream(new Master.Server
+                {
+                    EndPoint = "absent",
+                    Data = new Master.ServerData { Clients = 1, SvMaxclients = 32 }
+                }),
+                TestProtobufFrames.BuildFrameStream(new Master.Server
+                {
+                    EndPoint = "invalid",
+                    Data = new Master.ServerData
+                    {
+                        Clients = 1,
+                        SvMaxclients = 32,
+                        Vars =
+                        {
+                            ["sv_enforceGameBuild"] = "latest",
+                            ["sv_pureLevel"] = "",
+                            ["sv_enforceSteamAuth"] = "yes"
+                        }
+                    }
+                })));
+        using var httpClient = new HttpClient(handler);
+        var service = new ServerEnrichmentService(httpClient);
+
+        // When
+        var result = await service.RefreshAsync();
+
+        // Then
+        Assert.Equal(2, result!.Count);
+        Assert.All(result.Values, presence =>
+        {
+            Assert.Null(presence.GameBuild);
+            Assert.Null(presence.PureMode);
+            Assert.Null(presence.SteamRequired);
+        });
+    }
+
+    [Fact]
     public async Task RefreshAsync_WhenServerAbsent_ShouldNotIncludeIt()
     {
         // Given
