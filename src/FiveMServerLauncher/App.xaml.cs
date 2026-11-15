@@ -138,6 +138,16 @@ public partial class App : Application
         window.Dispatcher.InvokeAsync(() => viewModel.InitializeAsync(connectAddress));
 
         window.Closed += (_, _) => refreshCts.Cancel();
+
+        // A minimized or inactive window parks the enrichment loop (no idle catalog
+        // downloads while the game runs in front); activation releases it at once.
+        void ReportAttendance(object? sender, EventArgs args) =>
+            viewModel.SetWindowAttended(window.IsActive && window.WindowState != WindowState.Minimized);
+        window.Activated += ReportAttendance;
+        window.Deactivated += ReportAttendance;
+        window.StateChanged += ReportAttendance;
+        ReportAttendance(window, EventArgs.Empty);
+
         window.Dispatcher.InvokeAsync(() => viewModel.RunEnrichmentLoopAsync(refreshCts.Token));
         _ = RefreshSessionGameBuildDataAsync(window, viewModel, gameBuildData);
 

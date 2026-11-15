@@ -1,5 +1,5 @@
 # idle-loop-pause
 
-Status: open
+Status: done
 
 See ../spec.md section 1.

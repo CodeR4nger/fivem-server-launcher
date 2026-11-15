@@ -1143,6 +1143,34 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
+    // Completed while the window is attended; a fresh, pending source while it is away
+    // (minimized or inactive). The enrichment loop parks on it before every cycle, so an
+    // unseen window downloads no catalog, and the return releases the parked cycle at once.
+    private TaskCompletionSource _windowAttended = CompletedAttendance();
+
+    private static TaskCompletionSource CompletedAttendance()
+    {
+        var attended = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        attended.SetResult();
+        return attended;
+    }
+
+    public void SetWindowAttended(bool attended)
+    {
+        var current = Volatile.Read(ref _windowAttended);
+
+        if (attended)
+        {
+            current.TrySetResult();
+        }
+        else if (current.Task.IsCompleted)
+        {
+            Volatile.Write(
+                ref _windowAttended,
+                new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
+        }
+    }
+
     public async Task RunEnrichmentLoopAsync(
         CancellationToken cancellationToken,
         TimeSpan? cadence = null,
@@ -1155,6 +1183,7 @@ public class MainViewModel : INotifyPropertyChanged
         {
             try
             {
+                await Volatile.Read(ref _windowAttended).Task.WaitAsync(cancellationToken);
                 await RefreshServerInfoAsync(cancellationToken: cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
                 await RefreshCfxStatusAsync();
