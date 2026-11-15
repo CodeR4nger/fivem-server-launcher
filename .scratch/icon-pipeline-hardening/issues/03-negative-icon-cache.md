@@ -1,6 +1,6 @@
 # 03 — Bounded negative icon cache
 
-Status: open
+Status: done
 
 ## What
 

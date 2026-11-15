@@ -30,6 +30,7 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
     private const long DefaultMaxIconBytes = 8 * 1024 * 1024;
     private const int DefaultMaxConcurrentIconDownloads = 4;
     private const int DefaultMaxCachedIcons = 256;
+    private static readonly TimeSpan DefaultIconRetryDelay = TimeSpan.FromMinutes(5);
 
     private readonly HttpClient _httpClient;
     private readonly ServerCatalog _catalog;
@@ -41,6 +42,14 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
     private readonly SemaphoreSlim _iconDownloadSlots;
     private readonly object _iconGate = new();
     private readonly LruCache<string, byte[]> _iconCache;
+
+    // Failed icon URLs → the moment they may be tried again. Content rejections
+    // (over the cap, bomb gate, undecodable) are deterministic for a self-versioned
+    // URL and are remembered for the session; transport failures (non-success
+    // status, network, timeout) may be transient and expire after the retry
+    // delay. Bounded like the icon cache: a forgotten failure is just retried.
+    private readonly LruCache<string, DateTimeOffset> _failedIcons;
+    private readonly TimeSpan _iconRetryDelay;
     private readonly Dictionary<string, Task<byte[]?>> _inFlightIcons = new();
     private readonly IconImageNormalizer _iconNormalizer = new(new LibWebpDecoder());
 
@@ -54,7 +63,8 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
         TimeSpan? forceCooldown = null,
         long? maxIconBytes = null,
         int? maxConcurrentIconDownloads = null,
-        int? maxCachedIcons = null)
+        int? maxCachedIcons = null,
+        TimeSpan? iconRetryDelay = null)
     {
         _catalog = catalog;
         _httpClient = httpClient;
@@ -65,10 +75,12 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
         _maxCachedIcons = Math.Max(1, maxCachedIcons ?? DefaultMaxCachedIcons);
         _iconDownloadSlots = new SemaphoreSlim(Math.Max(1, maxConcurrentIconDownloads ?? DefaultMaxConcurrentIconDownloads));
         _iconCache = new LruCache<string, byte[]>(_maxCachedIcons);
+        _failedIcons = new LruCache<string, DateTimeOffset>(_maxCachedIcons);
+        _iconRetryDelay = iconRetryDelay ?? DefaultIconRetryDelay;
     }
 
-    public ServerEnrichmentService(HttpClient httpClient, TimeProvider? timeProvider = null, TimeSpan? cacheTtl = null, IDnsResolver? dnsResolver = null, TimeSpan? forceCooldown = null, long? maxIconBytes = null, int? maxConcurrentIconDownloads = null, int? maxCachedIcons = null)
-        : this(new ServerCatalog(httpClient, timeProvider, cacheTtl ?? DefaultCacheTtl, dnsResolver), httpClient, dnsResolver, timeProvider, forceCooldown, maxIconBytes, maxConcurrentIconDownloads, maxCachedIcons)
+    public ServerEnrichmentService(HttpClient httpClient, TimeProvider? timeProvider = null, TimeSpan? cacheTtl = null, IDnsResolver? dnsResolver = null, TimeSpan? forceCooldown = null, long? maxIconBytes = null, int? maxConcurrentIconDownloads = null, int? maxCachedIcons = null, TimeSpan? iconRetryDelay = null)
+        : this(new ServerCatalog(httpClient, timeProvider, cacheTtl ?? DefaultCacheTtl, dnsResolver), httpClient, dnsResolver, timeProvider, forceCooldown, maxIconBytes, maxConcurrentIconDownloads, maxCachedIcons, iconRetryDelay)
     {
     }
 
@@ -124,6 +136,11 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
             if (_iconCache.TryGet(key, out var cached))
             {
                 return Task.FromResult<byte[]?>(cached);
+            }
+
+            if (_failedIcons.TryGet(key, out var retryAt) && _timeProvider.GetUtcNow() < retryAt)
+            {
+                return Task.FromResult<byte[]?>(null);
             }
 
             // Single-flight per icon: concurrent requests (e.g. several browser rows for
@@ -185,11 +202,11 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
             try
             {
                 using var request = new HttpRequestMessage(HttpMethod.Get, iconUrl);
-                var icon = await BoundedContent.GetBytesAsync(_httpClient, request, _maxIconBytes).ConfigureAwait(false);
+                var body = await BoundedContent.GetBytesAsync(_httpClient, request, _maxIconBytes).ConfigureAwait(false);
 
-                if (icon is null)
+                if (body.Bytes is not { } icon)
                 {
-                    return null;
+                    return RememberFailure(iconUrl, transient: !body.TooLarge);
                 }
 
                 // Normalize before caching: the icon host serves WebP, which WPF
@@ -199,7 +216,7 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
 
                 if (normalized is null)
                 {
-                    return null;
+                    return RememberFailure(iconUrl, transient: false);
                 }
 
                 lock (_iconGate)
@@ -216,8 +233,22 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
         }
         catch (Exception exception) when (BoundedContent.IsOutage(exception))
         {
-            return null;
+            return RememberFailure(iconUrl, transient: true);
         }
+    }
+
+    private byte[]? RememberFailure(string iconUrl, bool transient)
+    {
+        var retryAt = transient
+            ? _timeProvider.GetUtcNow() + _iconRetryDelay
+            : DateTimeOffset.MaxValue;
+
+        lock (_iconGate)
+        {
+            _failedIcons.Set(iconUrl, retryAt);
+        }
+
+        return null;
     }
 
     private static bool IsSafeIconUrl(string? iconUrl)

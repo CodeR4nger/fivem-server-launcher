@@ -119,7 +119,7 @@ public class ServerCatalog(
             using var request = new HttpRequestMessage(HttpMethod.Get, CatalogUrl);
             request.Headers.UserAgent.Add(
                 new System.Net.Http.Headers.ProductInfoHeaderValue("FiveMServerLauncher", "0.1"));
-            var payload = await BoundedContent.GetBytesAsync(_httpClient, request, _maxPayloadBytes);
+            var payload = (await BoundedContent.GetBytesAsync(_httpClient, request, _maxPayloadBytes)).Bytes;
 
             if (payload is null)
             {

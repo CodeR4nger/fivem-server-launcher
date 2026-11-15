@@ -482,30 +482,117 @@ public class ServerEnrichmentServiceTests
         Assert.Null(await service.GetIconAsync(IconUrlFor("corrupt")));
     }
 
+    private static readonly byte[] UndecodableWebp =
+    [
+        (byte)'R', (byte)'I', (byte)'F', (byte)'F', 0x00, 0x00, 0x00, 0x00,
+        (byte)'W', (byte)'E', (byte)'B', (byte)'P', 0x01, 0x02, 0x03, 0x04
+    ];
+
     [Fact]
-    public async Task GetIconAsync_WhenIconUrlServesUndecodableWebP_ShouldReturnNullWithoutCaching()
+    public async Task GetIconAsync_WhenIconContentIsRejected_ShouldNotRequestItAgainThisSession()
     {
-        // Given — bytes with a WebP signature but no decodable payload: they must
-        // degrade to no icon AND never enter the cache (a later successful upload
-        // gets a new URL anyway, but the failed slot must not pin null bytes).
+        // Given — a content rejection (undecodable, bomb-gated, over the byte cap)
+        // is deterministic for a URL, and icon URLs are self-versioned (a new
+        // upload is a new guid URL): the per-minute refresh must not re-download
+        // the same failing body every cycle, not even after a long time.
+        var time = new FakeTimeProvider();
         var handler = new RoutedHttpMessageHandler();
-        handler.AddBytesRoute("images/7665c31f", HttpStatusCode.OK,
-        [
-            (byte)'R', (byte)'I', (byte)'F', (byte)'F', 0x00, 0x00, 0x00, 0x00,
-            (byte)'W', (byte)'E', (byte)'B', (byte)'P', 0x01, 0x02, 0x03, 0x04
-        ]);
+        handler.AddBytesRoute("images/undecodable", HttpStatusCode.OK, UndecodableWebp);
+        handler.AddBytesRoute("images/html", HttpStatusCode.OK, TestIcons.Html);
+        handler.AddBytesRoute("images/oversize", HttpStatusCode.OK, new byte[500]);
+        using var httpClient = new HttpClient(handler);
+        var service = new ServerEnrichmentService(httpClient, timeProvider: time, maxIconBytes: 100);
+
+        foreach (var id in new[] { "undecodable", "html", "oversize" })
+        {
+            // When
+            var first = await service.GetIconAsync(IconUrlFor(id));
+            time.Advance(TimeSpan.FromHours(6));
+            var second = await service.GetIconAsync(IconUrlFor(id));
+
+            // Then
+            Assert.Null(first);
+            Assert.Null(second);
+            Assert.Equal(1, handler.RequestCountByPath($"images/{id}"));
+        }
+    }
+
+    [Fact]
+    public async Task GetIconAsync_WhenIconTransportFails_ShouldRetryOnlyAfterTheRetryDelay()
+    {
+        // Given — a 404 or a network failure may be transient (CDN hiccup, outage):
+        // it is remembered for the retry delay, then the icon is tried again, so a
+        // short outage never blacklists an icon for the session.
+        var time = new FakeTimeProvider();
+        var handler = new RoutedHttpMessageHandler();
+        handler.AddBytesRoute("images/notfound", HttpStatusCode.NotFound, Array.Empty<byte>());
+        handler.AddBytesRoute("images/network", throwOnSend: true);
+        using var httpClient = new HttpClient(handler);
+        var service = new ServerEnrichmentService(
+            httpClient, timeProvider: time, iconRetryDelay: TimeSpan.FromMinutes(5));
+
+        foreach (var id in new[] { "notfound", "network" })
+        {
+            // When — inside the delay: answered from memory.
+            Assert.Null(await service.GetIconAsync(IconUrlFor(id)));
+            time.Advance(TimeSpan.FromMinutes(4));
+            Assert.Null(await service.GetIconAsync(IconUrlFor(id)));
+
+            // Then
+            Assert.Equal(1, handler.RequestCountByPath($"images/{id}"));
+        }
+
+        // When — the host recovers and the delay elapses.
+        var png = TestIcons.Png(6);
+        handler.AddBytesRoute("images/notfound", HttpStatusCode.OK, png);
+        handler.AddBytesRoute("images/network", HttpStatusCode.OK, png);
+        time.Advance(TimeSpan.FromMinutes(1));
+
+        // Then — tried again and served.
+        Assert.Equal(png, await service.GetIconAsync(IconUrlFor("notfound")));
+        Assert.Equal(png, await service.GetIconAsync(IconUrlFor("network")));
+        Assert.Equal(2, handler.RequestCountByPath("images/notfound"));
+        Assert.Equal(2, handler.RequestCountByPath("images/network"));
+    }
+
+    [Fact]
+    public async Task GetIconAsync_WhenRememberedFailuresExceedCapacity_ShouldForgetTheLeastRecentOne()
+    {
+        // Given — the failure memory is bounded like the icon cache: a catalog
+        // full of broken icons never grows it without limit; a forgotten failure
+        // is simply requested again.
+        var handler = new RoutedHttpMessageHandler();
+        handler.AddBytesRoute("images/bad", HttpStatusCode.OK, TestIcons.Html);
+        using var httpClient = new HttpClient(handler);
+        var service = new ServerEnrichmentService(httpClient, maxCachedIcons: 1);
+
+        // When
+        await service.GetIconAsync(IconUrlFor("bad1"));
+        await service.GetIconAsync(IconUrlFor("bad2"));
+        await service.GetIconAsync(IconUrlFor("bad2"));
+        await service.GetIconAsync(IconUrlFor("bad1"));
+
+        // Then — bad2 stayed remembered; bad1 was evicted by it and re-requested.
+        Assert.Equal(1, handler.RequestCountByPath("images/bad2"));
+        Assert.Equal(2, handler.RequestCountByPath("images/bad1"));
+    }
+
+    [Fact]
+    public async Task GetIconAsync_WhenDownloadFaultedUnexpectedly_ShouldNotRememberTheFailure()
+    {
+        // Given — a fault is not an icon verdict: it propagates and is not
+        // remembered, so the next request tries again.
+        var handler = new FaultingIconHttpMessageHandler();
+        handler.Release();
         using var httpClient = new HttpClient(handler);
         var service = new ServerEnrichmentService(httpClient);
 
         // When
-        var icon = await service.GetIconAsync(IconUrlFor("7665c31f"));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.GetIconAsync(IconUrlFor("7665c31f")));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.GetIconAsync(IconUrlFor("7665c31f")));
 
         // Then
-        Assert.Null(icon);
-
-        // And — nothing was cached: the fetch repeats rather than pinning null.
-        Assert.Null(await service.GetIconAsync(IconUrlFor("7665c31f")));
-        Assert.Equal(2, handler.RequestCountByPath("images/7665c31f"));
+        Assert.Equal(2, handler.TotalRequests);
     }
 
     [Fact]

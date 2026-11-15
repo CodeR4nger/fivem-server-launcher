@@ -10,17 +10,28 @@ namespace FiveMServerLauncher.Service;
 /// buffered whole; the response is always disposed, which drops an abandoned
 /// connection rather than draining it.
 /// </summary>
+/// <summary>
+/// A bounded download's outcome: the body, or why there is none — a non-success
+/// status (possibly transient) versus a body over the cap (a verdict on the content).
+/// </summary>
+internal readonly record struct BoundedBody(byte[]? Bytes, bool TooLarge)
+{
+    public static BoundedBody Unsuccessful { get; } = new(null, TooLarge: false);
+
+    public static BoundedBody OverCap { get; } = new(null, TooLarge: true);
+}
+
 internal static class BoundedContent
 {
     /// <summary>
-    /// Sends the request and returns the body, or null when the status is not a
+    /// Sends the request and returns the body, or no body when the status is not a
     /// success or the body exceeds <paramref name="maxBytes"/>. Transport failures
     /// propagate to the caller's outage handling: mid-body failures surface as
     /// <see cref="IOException"/>, and the client's <see cref="HttpClient.Timeout"/>
     /// (which, with headers-read, no longer covers the body on its own) bounds the
     /// whole exchange as an <see cref="OperationCanceledException"/>.
     /// </summary>
-    public static async Task<byte[]?> GetBytesAsync(HttpClient client, HttpRequestMessage request, long maxBytes)
+    public static async Task<BoundedBody> GetBytesAsync(HttpClient client, HttpRequestMessage request, long maxBytes)
     {
         using var timeout = new CancellationTokenSource(client.Timeout);
         using var response = await client
@@ -29,10 +40,12 @@ internal static class BoundedContent
 
         if (!response.IsSuccessStatusCode)
         {
-            return null;
+            return BoundedBody.Unsuccessful;
         }
 
-        return await ReadAsByteArrayAsync(response.Content, maxBytes, timeout.Token).ConfigureAwait(false);
+        var bytes = await ReadAsByteArrayAsync(response.Content, maxBytes, timeout.Token).ConfigureAwait(false);
+
+        return bytes is null ? BoundedBody.OverCap : new BoundedBody(bytes, TooLarge: false);
     }
 
     /// <summary>
