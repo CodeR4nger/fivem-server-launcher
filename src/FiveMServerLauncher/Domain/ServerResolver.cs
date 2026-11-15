@@ -53,12 +53,17 @@ public class ServerResolver(
     {
         var cfxId = ServerAddress.ExtractCfxId(originalAddress);
 
-        var server = await TryGetServerAsync(cfxId);
+        var lookup = await LookupServerAsync(cfxId);
 
-        if (server is null)
+        if (lookup.Server is not { } server)
         {
+            // A saved direct address is the user's own CFX-independent path and wins.
+            // Otherwise only an authoritative "not found" is an invalid address; on an
+            // outage FiveM can still resolve the id itself through the join form.
             return BuildDirectFallbackProfile(savedServer)
-                ?? throw new InvalidAddressException(originalAddress);
+                ?? (lookup.IsOutage
+                    ? BuildUnvalidatedProfile(ServerAddress.FromCfxId(cfxId))
+                    : throw new InvalidAddressException(originalAddress));
         }
 
         return new ServerProfile
@@ -83,7 +88,7 @@ public class ServerResolver(
     {
         // The manual cfx id links the loopback address to one specific listed server;
         // its published facts win over the manual values whenever it resolves.
-        var server = savedServer.CfxId is null ? null : await TryGetServerAsync(savedServer.CfxId);
+        var server = savedServer.CfxId is null ? null : (await LookupServerAsync(savedServer.CfxId)).Server;
 
         if (server is not null)
         {
@@ -109,19 +114,15 @@ public class ServerResolver(
         };
     }
 
-    private async Task<CfxServerInfo?> TryGetServerAsync(string cfxId)
+    private async Task<(CfxServerInfo? Server, bool IsOutage)> LookupServerAsync(string cfxId)
     {
         try
         {
-            return await cfxService.GetServerAsync(cfxId);
+            return (await cfxService.GetServerAsync(cfxId), IsOutage: false);
         }
-        catch (HttpRequestException)
+        catch (Exception exception) when (BoundedContent.IsOutage(exception))
         {
-            return null;
-        }
-        catch (TaskCanceledException)
-        {
-            return null;
+            return (null, IsOutage: true);
         }
     }
 

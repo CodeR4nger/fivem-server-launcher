@@ -7,54 +7,56 @@ namespace FiveMServerLauncher.Service;
 
 public class CfxService(HttpClient httpClient)
 {
+    public const int MaxResponseBytes = 4 * 1024 * 1024;
+
     private readonly HttpClient _httpClient = httpClient;
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
        PropertyNameCaseInsensitive = true
     };
 
+    /// <summary>
+    /// Answers the server, or <c>null</c> ONLY when CFX authoritatively says the id is
+    /// unknown (HTTP 404). Every other failure is an outage and throws in the
+    /// sanctioned outage set (<see cref="BoundedContent.IsOutage"/>): any other
+    /// non-success status, transport failures, timeouts, and an unusable or over-cap
+    /// 200 body (an edge/proxy error page is not a verdict on the id).
+    /// </summary>
     public async Task<CfxServerInfo?> GetServerAsync(string cfxId)
     {
-        using var response = await _httpClient.GetAsync($"https://frontend.cfx-services.net/api/servers/single/{cfxId}");
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get, $"https://frontend.cfx-services.net/api/servers/single/{cfxId}");
+        var body = await BoundedContent.GetBytesAsync(_httpClient, request, MaxResponseBytes);
 
-        if (response.StatusCode == HttpStatusCode.NotFound)
+        if (body.Status == HttpStatusCode.NotFound)
         {
             return null;
         }
 
-        response.EnsureSuccessStatusCode();
+        if (body.Bytes is null)
+        {
+            throw new HttpRequestException(
+                body.TooLarge ? "CFX response exceeded the size cap." : $"CFX answered {(int)body.Status}.",
+                inner: null,
+                body.TooLarge ? null : body.Status);
+        }
 
-        var json = await response.Content.ReadAsStringAsync();
+        var data = TryParseData(body.Bytes)
+            ?? throw new HttpRequestException("CFX answered an unusable server response.");
 
-        CfxServerResponse? cfxResponse;
+        return CfxVars.ToServerInfo(cfxId, data.Sv_projectName, data.Vars, data.RequestSteamTicket);
+    }
 
+    private static CfxServerData? TryParseData(byte[] json)
+    {
         try
         {
-            cfxResponse = JsonSerializer.Deserialize<CfxServerResponse>(json, SerializerOptions);
+            return JsonSerializer.Deserialize<CfxServerResponse>(json, SerializerOptions)?.Data;
         }
         catch (JsonException)
         {
             return null;
         }
-
-        if (cfxResponse?.Data is null)
-        {
-            return null;
-        }
-
-        return new CfxServerInfo
-        {
-            CfxId = cfxId,
-            ProjectName = cfxResponse.Data.Sv_projectName ?? string.Empty,
-            EnforceGameBuild = CfxVars.TryGetInt(cfxResponse.Data.Vars, "sv_enforceGameBuild"),
-            GameClient = CfxVars.TryGetGameClient(cfxResponse.Data.Vars),
-            PureLevel = CfxVars.TryGetInt(cfxResponse.Data.Vars, "sv_pureLevel"),
-            RequestSteamTicket = CfxVars.MapSteamTicket(cfxResponse.Data.RequestSteamTicket),
-            DefaultGameBuild = CfxVars.TryGetInt(cfxResponse.Data.Vars, "sv_defaultGameBuild"),
-            ReplaceExecutableToSwitchBuilds = CfxVars.TryGetBool(cfxResponse.Data.Vars, "sv_replaceExeToSwitchBuilds"),
-            PoolSizesIncrease = CfxVars.TryGetString(cfxResponse.Data.Vars, "sv_poolSizesIncrease"),
-            SteamEnforced = CfxVars.TryGetBool(cfxResponse.Data.Vars, "sv_enforceSteamAuth")
-        };
     }
 
     private sealed class CfxServerResponse

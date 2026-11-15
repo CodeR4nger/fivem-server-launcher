@@ -156,29 +156,6 @@ public class CfxServiceTests
         Assert.Equal(ProjectName, result.ProjectName);
     }
     [Fact]
-    public async Task GetServer_ShouldReturnNullWhenResponseHasNoData()
-    {
-        // Given
-        const string cfxId = "y4lg95";
-
-        var handler = new FakeHttpMessageHandler(
-            HttpStatusCode.OK,
-            """
-            {
-                "EndPoint": "https://example.com"
-            }
-            """);
-
-        using var httpClient = new HttpClient(handler);
-        var cfxService = new CfxService(httpClient);
-
-        // When
-        var result = await cfxService.GetServerAsync(cfxId);
-
-        // Then
-        Assert.Null(result);
-    }
-    [Fact]
     public async Task GetServer_ShouldReturnTypedServerVariables()
     {
         // Given
@@ -472,22 +449,65 @@ public class CfxServiceTests
     }
 
     [Fact]
-    public async Task GetServerAsync_WhenBodyIsCorrupt_ShouldReturnNull()
+    public async Task GetServer_WhenResponseHasNoData_ShouldThrowOutage()
     {
-        // Given — a malformed body (e.g. a proxy error page) degrades to
-        // "cannot resolve", never an uncaught JsonException.
+        // Given — a 200 without Data is not CFX saying "not found" (that is a 404).
+        var handler = new FakeHttpMessageHandler(
+            HttpStatusCode.OK,
+            """
+            {
+                "EndPoint": "https://example.com"
+            }
+            """);
+        using var httpClient = new HttpClient(handler);
+
+        // When / Then
+        await Assert.ThrowsAsync<HttpRequestException>(
+            () => new CfxService(httpClient).GetServerAsync("y4lg95"));
+    }
+
+    [Fact]
+    public async Task GetServer_WhenBodyIsCorrupt_ShouldThrowOutage()
+    {
+        // Given — a malformed body (e.g. a proxy error page) is an outage, never an
+        // uncaught JsonException and never "not found".
         var handler = new FakeHttpMessageHandler(
             HttpStatusCode.OK,
             "<html>proxy error page</html>");
-
         using var httpClient = new HttpClient(handler);
-        var cfxService = new CfxService(httpClient);
 
-        // When
-        var result = await cfxService.GetServerAsync("y4lg95");
-
-        // Then
-        Assert.Null(result);
+        // When / Then
+        await Assert.ThrowsAsync<HttpRequestException>(
+            () => new CfxService(httpClient).GetServerAsync("y4lg95"));
     }
 
+    [Theory]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    [InlineData(HttpStatusCode.BadGateway)]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    [InlineData(HttpStatusCode.TooManyRequests)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    public async Task GetServer_WhenStatusIsNotSuccessAndNot404_ShouldThrowOutage(HttpStatusCode status)
+    {
+        // Given
+        var handler = new FakeHttpMessageHandler(status, "error");
+        using var httpClient = new HttpClient(handler);
+
+        // When / Then
+        await Assert.ThrowsAsync<HttpRequestException>(
+            () => new CfxService(httpClient).GetServerAsync("y4lg95"));
+    }
+
+    [Fact]
+    public async Task GetServer_WhenBodyExceedsCap_ShouldThrowOutage()
+    {
+        // Given — the /single/ body is read bounded; an over-cap body is no verdict on the id.
+        var huge = new byte[CfxService.MaxResponseBytes + 1];
+        var handler = new FakeHttpMessageHandler(HttpStatusCode.OK, huge);
+        using var httpClient = new HttpClient(handler);
+
+        // When / Then
+        await Assert.ThrowsAsync<HttpRequestException>(
+            () => new CfxService(httpClient).GetServerAsync("y4lg95"));
+    }
 }
