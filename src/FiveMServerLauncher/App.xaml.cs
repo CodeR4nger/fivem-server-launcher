@@ -39,7 +39,8 @@ public partial class App : Application
         if (!singleInstance.TryStart())
         {
             // The duplicate never reaches the view model: the activator already
-            // brought the running window forward, so the shortcut's address —
+            // brought the running window forward, so the shortcut's (or the
+            // cfxlauncher:// web link's) address —
             // and nothing else — travels the pipe.
             var forwardedAddress = ConnectArgument.TryParse(e.Args);
 
@@ -131,7 +132,10 @@ public partial class App : Application
                 () => Environment.ProcessPath,
                 new ShortcutIconWriter(() => Path.Combine(
                     Path.GetDirectoryName(Environment.ProcessPath) ?? string.Empty,
-                    "shortcut-icons"))));
+                    "shortcut-icons"))),
+            webLinks: new LauncherSchemeRegistrar(
+                new UriSchemeRegistration(),
+                () => Environment.ProcessPath));
         window.DataContext = viewModel;
         window.Show();
         _viewModel = viewModel;

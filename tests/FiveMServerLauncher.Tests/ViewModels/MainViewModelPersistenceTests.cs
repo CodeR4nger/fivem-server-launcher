@@ -179,6 +179,7 @@ public partial class MainViewModelTests
     public static TheoryData<string> SettingChanges => new()
     {
         nameof(MainViewModel.AutoLaunch),
+        nameof(MainViewModel.WebLinks),
         nameof(MainViewModel.DevGameBuild),
         nameof(MainViewModel.DevPureMode),
         nameof(MainViewModel.PreferredClientOption),
@@ -202,6 +203,7 @@ public partial class MainViewModelTests
     private static object? ReadSetting(MainViewModel vm, string setting) => setting switch
     {
         nameof(MainViewModel.AutoLaunch) => vm.AutoLaunch,
+        nameof(MainViewModel.WebLinks) => vm.WebLinks,
         nameof(MainViewModel.DevGameBuild) => vm.DevGameBuild,
         nameof(MainViewModel.DevPureMode) => vm.DevPureMode,
         nameof(MainViewModel.PreferredClientOption) => vm.PreferredClientOption,
@@ -214,6 +216,9 @@ public partial class MainViewModelTests
         {
             case nameof(MainViewModel.AutoLaunch):
                 vm.AutoLaunch = !vm.AutoLaunch;
+                break;
+            case nameof(MainViewModel.WebLinks):
+                vm.WebLinks = !vm.WebLinks;
                 break;
             case nameof(MainViewModel.DevGameBuild):
                 vm.DevGameBuild = 3095;
@@ -390,7 +395,7 @@ public partial class MainViewModelTests
         Assert.Equal("Something went wrong", vm.StatusText);
     }
 
-    private sealed class ThrowingSettingsStorage : ISettingsStorage
+    internal sealed class ThrowingSettingsStorage : ISettingsStorage
     {
         private LauncherSettings? _settings;
 

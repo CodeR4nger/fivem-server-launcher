@@ -4521,7 +4521,8 @@ public partial class MainViewModelTests
         IShortcutCreator? shortcutCreator = null,
         Func<string>? desktopPathProvider = null,
         Func<string?>? targetExePathProvider = null,
-        ShortcutIconWriter? iconWriter = null)
+        ShortcutIconWriter? iconWriter = null,
+        LauncherSchemeRegistrar? webLinks = null)
     {
         var resolver = new ServerResolver(
             new CfxService(
@@ -4566,6 +4567,7 @@ public partial class MainViewModelTests
                     shortcutCreator,
                     desktopPathProvider ?? (() => "C:\\Desktop"),
                     targetExePathProvider ?? (() => @"C:\Games\CFXLauncher.exe"),
-                    iconWriter));
+                    iconWriter),
+            webLinks: webLinks);
     }
 }
