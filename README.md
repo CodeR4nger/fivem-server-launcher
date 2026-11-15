@@ -34,7 +34,13 @@ Built with C#/.NET 10 + WPF (MVVM), developed strictly with TDD.
   (`HKCU\Software\Classes\cfxlauncher`, no admin), is re-pointed at startup if you moved the
   exe, and unticking removes it. With several copies of the exe, the last one started with the
   option on owns the links.
-- **Portable** — a single self-contained executable (~137 MB); settings are stored next to the exe.
+- **Tray icon** — the launcher icon stays in the notification area while the app runs. Its
+  right-click menu lists your saved servers (first 15, in your order; "All servers..." opens
+  the window) for a one-click connect, plus Show and Exit; a left click shows the window. Tick
+  "Minimize to the system tray" under Settings and minimizing hides the window from the
+  taskbar until you bring it back from the icon, a shortcut, a web link or a second launch.
+  Closing the window always exits.
+- **Portable** — a single self-contained executable (~63 MB); settings are stored next to the exe.
 
 ## Usage
 
