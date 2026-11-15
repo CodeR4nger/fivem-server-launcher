@@ -44,18 +44,7 @@ public sealed class UpdateApplier(
 
         try
         {
-            // Best-effort housekeeping: backups from previous updates are swept away. A
-            // locked stale backup (its old process still running) never blocks the update.
-            foreach (var stale in Directory.GetFiles(directory, $"{executableName}.old-*"))
-            {
-                try
-                {
-                    File.Delete(stale);
-                }
-                catch (Exception)
-                {
-                }
-            }
+            SweepStaleFiles(directory, executableName);
 
             // The asset downloads straight into the staged file (streamed, never fully in
             // memory).
@@ -96,6 +85,27 @@ public sealed class UpdateApplier(
         exitApplication();
 
         return true;
+    }
+
+    // Best-effort housekeeping before this update stages anything of its own: backups from
+    // previous updates and staged downloads a crashed update left behind are swept away
+    // (single-instance, so no live applier owns them). A locked stale file (an old process
+    // still running from a backup) never blocks the update.
+    private static void SweepStaleFiles(string directory, string executableName)
+    {
+        foreach (var pattern in new[] { $"{executableName}.old-*", $"{executableName}.new-*" })
+        {
+            foreach (var stale in Directory.GetFiles(directory, pattern))
+            {
+                try
+                {
+                    File.Delete(stale);
+                }
+                catch (Exception)
+                {
+                }
+            }
+        }
     }
 
     // The staged file must be non-empty and match the published size (a truncated or

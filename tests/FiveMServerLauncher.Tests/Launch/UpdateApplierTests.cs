@@ -324,4 +324,53 @@ public class UpdateApplierTests
         Assert.True(applied);
         Assert.Equal(asset, File.ReadAllBytes(directory.ExePath));
     }
+
+    [Fact]
+    public async Task ApplyAsync_WhenStaleStagedDownloadsExist_ShouldSweepThem()
+    {
+        // Given: a crashed update left a staged download behind
+        using var directory = new TempLauncherDirectory();
+        var staleStaged = Path.Combine(directory.DirectoryPath, "CFXLauncher.exe.new-deadbeef");
+        File.WriteAllText(staleStaged, "half-written");
+        var order = new List<string>();
+        byte[] asset = [1, 2, 3];
+        var applier = CreateApplier(
+            new FakeHttpMessageHandler(HttpStatusCode.OK, asset),
+            () => directory.ExePath,
+            order);
+
+        // When
+        var applied = await applier.ApplyAsync(Update(asset.Length));
+
+        // Then
+        Assert.True(applied);
+        Assert.False(File.Exists(staleStaged));
+        Assert.Empty(Directory.GetFiles(directory.DirectoryPath, "CFXLauncher.exe.new-*"));
+    }
+
+    [Fact]
+    public async Task ApplyAsync_WhenStaleStagedDownloadIsLocked_ShouldStillApply()
+    {
+        // Given: a stale staged file another process holds open
+        using var directory = new TempLauncherDirectory();
+        var staleStaged = Path.Combine(directory.DirectoryPath, "CFXLauncher.exe.new-deadbeef");
+        File.WriteAllText(staleStaged, "half-written");
+        var order = new List<string>();
+        byte[] asset = [1, 2, 3];
+        var applier = CreateApplier(
+            new FakeHttpMessageHandler(HttpStatusCode.OK, asset),
+            () => directory.ExePath,
+            order);
+
+        bool applied;
+        using (File.Open(staleStaged, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            // When
+            applied = await applier.ApplyAsync(Update(asset.Length));
+        }
+
+        // Then: the sweep is best-effort — the locked file never blocks the update
+        Assert.True(applied);
+        Assert.Equal(asset, File.ReadAllBytes(directory.ExePath));
+    }
 }

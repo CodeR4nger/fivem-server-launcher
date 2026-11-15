@@ -4,4 +4,8 @@
 
 **Blocked by:** none
 
-**Status:** open
+**Status:** resolved
+
+## Answer
+
+The sweep moved into `UpdateApplier.SweepStaleFiles` and covers `<exe>.new-*` next to `<exe>.old-*`, still before this update stages its own file and still best-effort (a locked stale staged file never blocks — pinned by a test).
