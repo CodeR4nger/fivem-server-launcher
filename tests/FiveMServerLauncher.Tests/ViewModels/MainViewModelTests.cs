@@ -14,7 +14,7 @@ using FiveMServerLauncher.ViewModels;
 
 namespace FiveMServerLauncher.Tests.ViewModels;
 
-public class MainViewModelTests
+public partial class MainViewModelTests
 {
     [Fact]
     public async Task ConnectAsync_WithValidCfxJoinAddress_ShouldLaunchConnectUri()

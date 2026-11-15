@@ -51,6 +51,8 @@
   "StatusLaunchFailed": "启动失败",
   "StatusInvalidAddress": "无效的地址",
   "StatusServerSaved": "服务器已保存",
+  "StatusSaveFailed": "无法保存更改",
+  "StatusUnexpectedError": "出现问题",
   "DialogNewServer": "新建服务器",
   "DialogEditServer": "编辑服务器",
   "DialogInvalidNameOrAddress": "名称或地址无效",
