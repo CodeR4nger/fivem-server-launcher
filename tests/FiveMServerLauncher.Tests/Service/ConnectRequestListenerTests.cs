@@ -48,7 +48,7 @@ public class ConnectRequestListenerTests : IDisposable
         // Then
         var completed = await Task.WhenAny(received.Task, Task.Delay(3000));
         Assert.Same(received.Task, completed);
-        Assert.Equal("cfx.re/join/abc", received.Task.Result);
+        Assert.Equal("cfx.re/join/abc", await received.Task);
     }
 
     [Fact]
@@ -78,7 +78,7 @@ public class ConnectRequestListenerTests : IDisposable
         // Then
         var completed = await Task.WhenAny(second.Task, Task.Delay(3000));
         Assert.Same(second.Task, completed);
-        Assert.Equal("second", second.Task.Result);
+        Assert.Equal("second", await second.Task);
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public class ConnectRequestListenerTests : IDisposable
         // Then
         var completed = await Task.WhenAny(received.Task, Task.Delay(3000));
         Assert.Same(received.Task, completed);
-        Assert.Equal("still-here", received.Task.Result);
+        Assert.Equal("still-here", await received.Task);
     }
 
     [Fact]
@@ -118,7 +118,7 @@ public class ConnectRequestListenerTests : IDisposable
         // Then
         var completed = await Task.WhenAny(received.Task, Task.Delay(3000));
         Assert.Same(received.Task, completed);
-        Assert.Equal(string.Empty, received.Task.Result);
+        Assert.Equal(string.Empty, await received.Task);
     }
 
     [Fact]

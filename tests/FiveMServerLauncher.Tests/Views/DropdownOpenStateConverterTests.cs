@@ -8,7 +8,7 @@ public class DropdownOpenStateConverterTests
     private static bool Convert(params object?[] values)
     {
         return (bool)new DropdownOpenStateConverter().Convert(
-            values, typeof(bool), null!, CultureInfo.InvariantCulture);
+            (object[])values, typeof(bool), null!, CultureInfo.InvariantCulture);
     }
 
     [Fact]

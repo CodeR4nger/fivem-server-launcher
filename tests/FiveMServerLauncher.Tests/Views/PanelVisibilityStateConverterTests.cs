@@ -9,7 +9,7 @@ public class PanelVisibilityStateConverterTests
     private static Visibility Convert(params object?[] values)
     {
         return (Visibility)new PanelVisibilityStateConverter().Convert(
-            values, typeof(Visibility), null!, CultureInfo.InvariantCulture);
+            (object[])values, typeof(Visibility), null!, CultureInfo.InvariantCulture);
     }
 
     [Fact]
@@ -93,7 +93,7 @@ public class PanelVisibilityStateConverterTests
     private static Visibility ConvertWithInvert(params object?[] values)
     {
         return (Visibility)new PanelVisibilityStateConverter().Convert(
-            values, typeof(Visibility), "invert", CultureInfo.InvariantCulture);
+            (object[])values, typeof(Visibility), "invert", CultureInfo.InvariantCulture);
     }
 
     [Fact]

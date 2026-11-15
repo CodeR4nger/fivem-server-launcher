@@ -1,4 +1,6 @@
 using System.Net.Http;
+using System.Net.Http.Headers;
+using FiveMServerLauncher.Core;
 using FiveMServerLauncher.Domain;
 
 namespace FiveMServerLauncher.Service;
@@ -12,6 +14,10 @@ public class ServerCatalog(
 {
     private static readonly string CatalogUrl = "https://frontend.cfx-services.net/api/servers/streamRedir/";
     private const long DefaultMaxPayloadBytes = 64 * 1024 * 1024;
+
+    // A product token may not contain a space, so "CFX Launcher" travels as "CFXLauncher".
+    private static readonly ProductInfoHeaderValue UserAgent =
+        new(AppInfo.ProductName.Replace(" ", string.Empty), AppInfo.Version);
 
     private readonly HttpClient _httpClient = httpClient;
     private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
@@ -117,16 +123,20 @@ public class ServerCatalog(
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, CatalogUrl);
-            request.Headers.UserAgent.Add(
-                new System.Net.Http.Headers.ProductInfoHeaderValue("FiveMServerLauncher", "0.1"));
-            var payload = (await BoundedContent.GetBytesAsync(_httpClient, request, _maxPayloadBytes)).Bytes;
+            request.Headers.UserAgent.Add(UserAgent);
 
-            if (payload is null)
+            // Frames decode as the body arrives (the payload is never held whole), on the
+            // thread pool so ~33k protobuf parses never run on the calling dispatcher.
+            var servers = await BoundedContent.ReadStreamAsync(
+                _httpClient,
+                request,
+                _maxPayloadBytes,
+                (body, token) => Task.Run(() => ServerCatalogDecoder.DecodeAsync(body, _maxPayloadBytes, token), token));
+
+            if (servers is null)
             {
                 return null;
             }
-
-            var servers = await Task.Run(() => ServerCatalogDecoder.Decode(payload));
 
             CacheServers(servers);
 
