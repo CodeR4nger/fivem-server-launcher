@@ -941,16 +941,14 @@ public class MainViewModelTests
             repository: repository,
             enrichment: enrichment);
         using var cts = new CancellationTokenSource();
+        var cycles = new LoopCycleSignal(target: 3);
         var loop = vm.RunEnrichmentLoopAsync(
             cancellationToken: cts.Token,
             cadence: TimeSpan.FromMinutes(1),
-            delay: async (_, _) => await Task.Yield());
+            delay: cycles.DelayAsync);
 
-        // When
-        while (enrichment.RefreshCalls < 3)
-        {
-            await Task.Yield();
-        }
+        // When — three full cycles complete
+        await cycles.ReachedAsync();
 
         cts.Cancel();
         await loop;
@@ -980,17 +978,14 @@ public class MainViewModelTests
             repository: repository,
             enrichment: enrichment);
         using var cts = new CancellationTokenSource();
+        var cycles = new LoopCycleSignal(target: 3);
         var loop = vm.RunEnrichmentLoopAsync(
             cancellationToken: cts.Token,
             cadence: TimeSpan.FromMinutes(1),
-            delay: async (_, _) => await Task.Yield());
+            delay: cycles.DelayAsync);
 
-        // When
-        var spins = 0;
-        while (enrichment.RefreshCalls < 3 && spins++ < 100_000)
-        {
-            await Task.Yield();
-        }
+        // When — three full cycles complete
+        await cycles.ReachedAsync();
 
         cts.Cancel();
         await loop;
@@ -3279,17 +3274,14 @@ public class MainViewModelTests
         };
         var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), cfxStatus: statusService);
         using var cts = new CancellationTokenSource();
+        var cycles = new LoopCycleSignal(target: 3);
         var loop = vm.RunEnrichmentLoopAsync(
             cancellationToken: cts.Token,
             cadence: TimeSpan.FromMinutes(1),
-            delay: async (_, _) => await Task.Yield());
+            delay: cycles.DelayAsync);
 
-        // When
-        var spins = 0;
-        while (statusService.GetCalls < 3 && spins++ < 100_000)
-        {
-            await Task.Yield();
-        }
+        // When — three full cycles complete
+        await cycles.ReachedAsync();
 
         cts.Cancel();
         await loop;
@@ -3315,17 +3307,14 @@ public class MainViewModelTests
         };
         var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), cfxStatus: statusService);
         using var cts = new CancellationTokenSource();
+        var cycles = new LoopCycleSignal(target: 3);
         var loop = vm.RunEnrichmentLoopAsync(
             cancellationToken: cts.Token,
             cadence: TimeSpan.FromMinutes(1),
-            delay: async (_, _) => await Task.Yield());
+            delay: cycles.DelayAsync);
 
-        // When
-        var spins = 0;
-        while (statusService.GetCalls < 3 && spins++ < 100_000)
-        {
-            await Task.Yield();
-        }
+        // When — three full cycles complete
+        await cycles.ReachedAsync();
 
         cts.Cancel();
         await loop;
@@ -4482,6 +4471,32 @@ public class MainViewModelTests
                 Content = new StringContent(payload, System.Text.Encoding.UTF8, "application/json")
             };
         }
+    }
+
+    /// <summary>
+    /// Deterministic wait for the enrichment loop: stands in for the loop's
+    /// injected delay (called once at the end of every cycle) and completes
+    /// <see cref="ReachedAsync"/> when the target number of cycles has finished.
+    /// The generous real-time timeout is the only failure path.
+    /// </summary>
+    private sealed class LoopCycleSignal(int target)
+    {
+        private readonly TaskCompletionSource _reached =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _cycles;
+
+        public async Task DelayAsync(TimeSpan duration, CancellationToken cancellationToken)
+        {
+            if (Interlocked.Increment(ref _cycles) >= target)
+            {
+                _reached.TrySetResult();
+            }
+
+            // Stay asynchronous so an all-fake cycle cannot spin the loop inline.
+            await Task.Yield();
+        }
+
+        public Task ReachedAsync() => _reached.Task.WaitAsync(TimeSpan.FromSeconds(30));
     }
 
     private static MainViewModel CreateViewModel(

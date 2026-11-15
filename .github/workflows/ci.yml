@@ -1,0 +1,35 @@
+# Tests only. Releases stay manual (build + publish commands in AGENTS.md):
+# no publish, no release, no artifacts here.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up .NET 10 SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build
+        run: dotnet build FiveMServerLauncher.slnx
+
+      - name: Test
+        run: dotnet test FiveMServerLauncher.slnx --no-build
