@@ -21,12 +21,18 @@ public sealed class ConnectRequestListener(
 
     private CancellationTokenSource? _linked;
 
+    /// <summary>
+    /// The accept loop: completes once the loop has exited after cancellation (the server
+    /// end is disposed by then). Completed when the listener was never started.
+    /// </summary>
+    public Task Completion { get; private set; } = Task.CompletedTask;
+
     public void Start(Action<string> onAddress, CancellationToken cancellationToken)
     {
         _linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var token = _linked.Token;
         var pipeName = PipeName;
-        _ = Task.Run(() => AcceptLoopAsync(pipeName, onAddress, token));
+        Completion = Task.Run(() => AcceptLoopAsync(pipeName, onAddress, token));
     }
 
     private async Task AcceptLoopAsync(

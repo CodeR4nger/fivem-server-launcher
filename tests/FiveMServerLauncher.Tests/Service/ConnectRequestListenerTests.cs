@@ -124,13 +124,15 @@ public class ConnectRequestListenerTests : IDisposable
     [Fact]
     public async Task Start_WhenCancelled_ShouldStopAccepting()
     {
-        // Given
-        _listener.Start(_ => { }, _cts.Token);
-        await Task.Delay(100);
+        // Given: a listener proven to be serving
+        var received = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _listener.Start(address => received.TrySetResult(address), _cts.Token);
+        await SendLineAsync("alive", connectTimeoutMs: 2000);
+        await received.Task.WaitAsync(TimeSpan.FromSeconds(3));
 
-        // When
+        // When: cancelled, and the accept loop has observably exited
         _cts.Cancel();
-        await Task.Delay(100);
+        await _listener.Completion.WaitAsync(TimeSpan.FromSeconds(10));
 
         // Then — a new client can no longer find a server end.
         await using var client = new NamedPipeClientStream(
@@ -138,6 +140,14 @@ public class ConnectRequestListenerTests : IDisposable
 
         await Assert.ThrowsAsync<TimeoutException>(
             () => client.ConnectAsync(200));
+    }
+
+    [Fact]
+    public void Completion_BeforeStart_ShouldBeCompleted()
+    {
+        // Given / When: a listener that was never started
+        // Then: there is no loop to wait for
+        Assert.True(_listener.Completion.IsCompleted);
     }
 
     [Fact]
@@ -156,8 +166,9 @@ public class ConnectRequestListenerTests : IDisposable
 
             received.TrySetResult(address);
         }, _cts.Token);
+        // (the single server instance orders the clients: the second cannot connect
+        // before the first was handled, so no settle delay is needed)
         await SendLineAsync("boom", connectTimeoutMs: 2000);
-        await Task.Delay(150);
 
         // When
         await SendLineAsync("survivor", connectTimeoutMs: 2000);
