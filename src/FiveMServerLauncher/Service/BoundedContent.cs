@@ -33,7 +33,42 @@ internal static class BoundedContent
     /// (which, with headers-read, no longer covers the body on its own) bounds the
     /// whole exchange as an <see cref="OperationCanceledException"/>.
     /// </summary>
-    public static async Task<BoundedBody> GetBytesAsync(HttpClient client, HttpRequestMessage request, long maxBytes)
+    public static Task<BoundedBody> GetBytesAsync(HttpClient client, HttpRequestMessage request, long maxBytes)
+    {
+        return SendAsync(
+            client,
+            request,
+            maxBytes,
+            async (body, token) => await ReadAsByteArrayAsync(body, maxBytes, token).ConfigureAwait(false) is { } bytes
+                ? new BoundedBody(bytes, TooLarge: false)
+                : BoundedBody.OverCap,
+            BoundedBody.Unsuccessful,
+            BoundedBody.OverCap);
+    }
+
+    /// <summary>
+    /// The streaming twin of <see cref="GetBytesAsync"/> for a body the caller consumes as
+    /// it arrives (the catalog decodes frame by frame): same headers-read, timeout and
+    /// dispose rules; null when the status is not a success or the declared length is over
+    /// <paramref name="maxBytes"/>. The reader owns the cap while it reads.
+    /// </summary>
+    public static Task<T?> ReadStreamAsync<T>(
+        HttpClient client,
+        HttpRequestMessage request,
+        long maxBytes,
+        Func<Stream, CancellationToken, Task<T?>> read)
+        where T : class
+    {
+        return SendAsync(client, request, maxBytes, read, _ => null, null);
+    }
+
+    private static async Task<T> SendAsync<T>(
+        HttpClient client,
+        HttpRequestMessage request,
+        long maxBytes,
+        Func<Stream, CancellationToken, Task<T>> read,
+        Func<HttpStatusCode, T> unsuccessful,
+        T overCap)
     {
         using var timeout = new CancellationTokenSource(client.Timeout);
         using var response = await client
@@ -42,12 +77,17 @@ internal static class BoundedContent
 
         if (!response.IsSuccessStatusCode)
         {
-            return BoundedBody.Unsuccessful(response.StatusCode);
+            return unsuccessful(response.StatusCode);
         }
 
-        var bytes = await ReadAsByteArrayAsync(response.Content, maxBytes, timeout.Token).ConfigureAwait(false);
+        if (response.Content.Headers.ContentLength is > 0 and var declared && declared > maxBytes)
+        {
+            return overCap;
+        }
 
-        return bytes is null ? BoundedBody.OverCap : new BoundedBody(bytes, TooLarge: false);
+        using var body = await response.Content.ReadAsStreamAsync(timeout.Token).ConfigureAwait(false);
+
+        return await read(body, timeout.Token).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -59,14 +99,8 @@ internal static class BoundedContent
         return exception is HttpRequestException or IOException or OperationCanceledException;
     }
 
-    private static async Task<byte[]?> ReadAsByteArrayAsync(HttpContent content, long maxBytes, CancellationToken cancellationToken)
+    private static async Task<byte[]?> ReadAsByteArrayAsync(Stream source, long maxBytes, CancellationToken cancellationToken)
     {
-        if (content.Headers.ContentLength is > 0 and var declared && declared > maxBytes)
-        {
-            return null;
-        }
-
-        using var source = await content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         using var buffer = new MemoryStream();
         var chunk = new byte[8192];
 

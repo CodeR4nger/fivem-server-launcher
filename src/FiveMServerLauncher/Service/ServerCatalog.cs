@@ -119,14 +119,19 @@ public class ServerCatalog(
             using var request = new HttpRequestMessage(HttpMethod.Get, CatalogUrl);
             request.Headers.UserAgent.Add(
                 new System.Net.Http.Headers.ProductInfoHeaderValue("FiveMServerLauncher", "0.1"));
-            var payload = (await BoundedContent.GetBytesAsync(_httpClient, request, _maxPayloadBytes)).Bytes;
 
-            if (payload is null)
+            // Frames decode as the body arrives (the payload is never held whole), on the
+            // thread pool so ~33k protobuf parses never run on the calling dispatcher.
+            var servers = await BoundedContent.ReadStreamAsync(
+                _httpClient,
+                request,
+                _maxPayloadBytes,
+                (body, token) => Task.Run(() => ServerCatalogDecoder.DecodeAsync(body, _maxPayloadBytes, token), token));
+
+            if (servers is null)
             {
                 return null;
             }
-
-            var servers = await Task.Run(() => ServerCatalogDecoder.Decode(payload));
 
             CacheServers(servers);
 
