@@ -96,5 +96,13 @@
   "TrayShow": "Mostra",
   "TrayExit": "Esci",
   "TrayAllServers": "Tutti i server...",
-  "TrayNoServers": "Nessun server salvato"
+  "TrayNoServers": "Nessun server salvato",
+  "NavServers": "Server",
+  "NavBrowse": "Esplora",
+  "NavSettings": "Impostazioni",
+  "WindowMinimize": "Riduci a icona",
+  "WindowMaximize": "Ingrandisci",
+  "WindowRestore": "Ripristina",
+  "WindowClose": "Chiudi",
+  "DismissUpdate": "Ignora"
 }

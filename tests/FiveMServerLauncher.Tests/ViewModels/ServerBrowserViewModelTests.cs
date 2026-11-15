@@ -587,12 +587,12 @@ public class ServerBrowserViewModelTests
         await finished;
     }
 
-    private static byte[] CatalogBytes(params Master.Server[] servers)
+    internal static byte[] CatalogBytes(params Master.Server[] servers)
     {
         return TestProtobufFrames.Join(servers.Select(TestProtobufFrames.BuildFrameStream).ToArray());
     }
 
-    private static Master.Server Entry(string id, string name, string game, int players, int max, string? endpoint = null)
+    internal static Master.Server Entry(string id, string name, string game, int players, int max, string? endpoint = null)
     {
         return new Master.Server
         {

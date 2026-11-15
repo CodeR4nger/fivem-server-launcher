@@ -1,0 +1,47 @@
+<!-- The Settings page: the general settings and the Dev Mode panel side by side, re-homed
+     unchanged from the old left frame (ticket 09 redesigns the page into grouped rows and
+     General / Dev mode tabs). DataContext is inherited (MainViewModel). -->
+<UserControl x:Class="FiveMServerLauncher.Views.SettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:FiveMServerLauncher.Views"
+             xmlns:views="clr-namespace:FiveMServerLauncher.Views">
+
+    <UserControl.Resources>
+        <views:ThemeResources/>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled"
+                  Focusable="False">
+
+        <Grid Margin="24,20,24,24">
+
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="20"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Row="0"
+                       Grid.ColumnSpan="3"
+                       Text="{loc:Loc NavSettings}"
+                       Style="{StaticResource PageTitleStyle}"
+                       Margin="0,0,0,16"/>
+
+            <views:SettingsPanel Grid.Row="1"
+                                 Grid.Column="0"/>
+
+            <views:DevModePanel Grid.Row="1"
+                                Grid.Column="2"/>
+
+        </Grid>
+
+    </ScrollViewer>
+
+</UserControl>

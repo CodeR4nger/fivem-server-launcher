@@ -98,6 +98,12 @@
     <sys:Double x:Key="SpaceXl">20</sys:Double>
     <sys:Double x:Key="SpaceXxl">24</sys:Double>
 
+    <!-- Shell: the fixed page-tab width (the sliding highlight moves by whole tabs; the
+         shell layout test pins every language's label inside it) and the open-client slot. -->
+    <sys:Double x:Key="NavTabWidthValue">128</sys:Double>
+    <GridLength x:Key="NavTabWidth">128</GridLength>
+    <sys:Double x:Key="OpenClientSlotWidth">260</sys:Double>
+
     <!-- Type ramp -->
     <sys:Double x:Key="FontSizePageTitle">22</sys:Double>
     <sys:Double x:Key="FontSizeRowTitle">14</sys:Double>
@@ -234,6 +240,49 @@
                     <RemoveStoryboard BeginStoryboardName="SurfaceSlideOut"/>
                 </Trigger.EnterActions>
             </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Page in (the shell's pages): fade up from a short rise. The element needs a
+         TranslateTransform as RenderTransform (PageSurfaceStyle sets one). -->
+    <Storyboard x:Key="MotionPageIn">
+        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1"
+                         Duration="{StaticResource MotionMedium}"
+                         EasingFunction="{StaticResource MotionEase}"/>
+        <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(TranslateTransform.Y)" From="12" To="0"
+                         Duration="{StaticResource MotionMedium}"
+                         EasingFunction="{StaticResource MotionEase}"/>
+    </Storyboard>
+
+    <!-- A page of the shell: bind views:Motion.Shown to the page flag (IsServersPage, ...).
+         Shown → visible, and with motion on it fades/slides in; hidden → collapsed at once
+         (the incoming page carries the motion, so nothing fades out underneath it). The in
+         storyboard and its removal sit on ONE trigger: storyboards begun by different
+         triggers compose in layers by declaration order. -->
+    <Style x:Key="PageSurfaceStyle" TargetType="{x:Type FrameworkElement}">
+        <Setter Property="Visibility" Value="Collapsed"/>
+        <Setter Property="RenderTransform">
+            <Setter.Value>
+                <TranslateTransform/>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="views:Motion.Shown" Value="True">
+                <Setter Property="Visibility" Value="Visible"/>
+            </Trigger>
+            <MultiTrigger>
+                <MultiTrigger.Conditions>
+                    <Condition Property="views:Motion.Shown" Value="True"/>
+                    <Condition Property="views:Motion.IsEnabled" Value="True"/>
+                </MultiTrigger.Conditions>
+                <MultiTrigger.EnterActions>
+                    <BeginStoryboard x:Name="PageIn" Storyboard="{StaticResource MotionPageIn}"/>
+                </MultiTrigger.EnterActions>
+                <MultiTrigger.ExitActions>
+                    <RemoveStoryboard BeginStoryboardName="PageIn"/>
+                </MultiTrigger.ExitActions>
+
+            </MultiTrigger>
         </Style.Triggers>
     </Style>
 
@@ -545,6 +594,27 @@
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- A bottom-bar page tab: borderless text on the nav track. Tag = the page flag
+         (IsServersPage, ...): the selected tab sits on the sliding TextPrimary highlight, so
+         its text turns OnSelected (dark). The highlight itself is drawn by the bar. -->
+    <Style x:Key="NavTabStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource PillButtonBaseStyle}">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+        <Setter Property="Padding" Value="12,0"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            </Trigger>
+            <Trigger Property="Tag">
+                <Trigger.Value>
+                    <sys:Boolean>True</sys:Boolean>
+                </Trigger.Value>
+                <Setter Property="Foreground" Value="{StaticResource OnSelectedBrush}"/>
             </Trigger>
         </Style.Triggers>
     </Style>

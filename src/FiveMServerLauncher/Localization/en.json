@@ -95,5 +95,13 @@
   "TrayShow": "Show",
   "TrayExit": "Exit",
   "TrayAllServers": "All servers...",
-  "TrayNoServers": "No saved servers"
+  "TrayNoServers": "No saved servers",
+  "NavServers": "Servers",
+  "NavBrowse": "Browse",
+  "NavSettings": "Settings",
+  "WindowMinimize": "Minimize",
+  "WindowMaximize": "Maximize",
+  "WindowRestore": "Restore",
+  "WindowClose": "Close",
+  "DismissUpdate": "Dismiss"
 }

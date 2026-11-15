@@ -1,0 +1,102 @@
+<!-- The shell's bottom bar: CFX status (left), the page tabs with one sliding highlight
+     (centre) and the open-client slot (right; ticket 05 replaces the OPEN split button).
+     DataContext is inherited (MainViewModel). -->
+<UserControl x:Class="FiveMServerLauncher.Views.BottomBar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:FiveMServerLauncher.Views"
+             xmlns:viewModels="clr-namespace:FiveMServerLauncher.ViewModels"
+             xmlns:views="clr-namespace:FiveMServerLauncher.Views">
+
+    <UserControl.Resources>
+        <views:ThemeResources/>
+    </UserControl.Resources>
+
+    <Grid Margin="16,10,16,10" MinHeight="48">
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <views:CfxStatusPanel Grid.Column="0"
+                              HorizontalAlignment="Left"
+                              VerticalAlignment="Center"/>
+
+        <!-- PAGE TABS: a fixed-width tab row on a pill track; the highlight is one element
+             moved by its TranslateTransform (code-behind: it slides with motion on and
+             snaps with motion off). Left/Right arrows move between the tabs, Tab leaves
+             the row, Enter/Space activate. -->
+
+        <views:RoundedBorder x:Name="NavTrack"
+                             Grid.Column="1"
+                             VerticalAlignment="Center"
+                             Margin="16,0"
+                             Padding="4"
+                             Background="{StaticResource PanelBrush}"
+                             BorderBrush="{StaticResource BorderSubtleBrush}"
+                             BorderThickness="1"
+                             CornerRadius="{StaticResource RadiusPill}">
+
+            <Grid x:Name="NavTabs"
+                  KeyboardNavigation.DirectionalNavigation="Cycle">
+
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="{StaticResource NavTabWidth}"/>
+                    <ColumnDefinition Width="{StaticResource NavTabWidth}"/>
+                    <ColumnDefinition Width="{StaticResource NavTabWidth}"/>
+                </Grid.ColumnDefinitions>
+
+                <views:RoundedBorder x:Name="NavHighlight"
+                                     Grid.Column="0"
+                                     Background="{StaticResource TextPrimaryBrush}"
+                                     CornerRadius="{StaticResource RadiusPill}"
+                                     IsHitTestVisible="False">
+                    <views:RoundedBorder.RenderTransform>
+                        <TranslateTransform/>
+                    </views:RoundedBorder.RenderTransform>
+                </views:RoundedBorder>
+
+                <Button x:Name="ServersTab"
+                        Grid.Column="0"
+                        Height="36"
+                        Content="{loc:Loc NavServers}"
+                        Tag="{Binding IsServersPage}"
+                        Style="{StaticResource NavTabStyle}"
+                        Command="{Binding NavigateCommand}"
+                        CommandParameter="{x:Static viewModels:AppPage.Servers}"/>
+
+                <Button x:Name="BrowseTab"
+                        Grid.Column="1"
+                        Height="36"
+                        Content="{loc:Loc NavBrowse}"
+                        Tag="{Binding IsBrowsePage}"
+                        Style="{StaticResource NavTabStyle}"
+                        Command="{Binding NavigateCommand}"
+                        CommandParameter="{x:Static viewModels:AppPage.Browse}"/>
+
+                <Button x:Name="SettingsTab"
+                        Grid.Column="2"
+                        Height="36"
+                        Content="{loc:Loc NavSettings}"
+                        Tag="{Binding IsSettingsPage}"
+                        Style="{StaticResource NavTabStyle}"
+                        Command="{Binding NavigateCommand}"
+                        CommandParameter="{x:Static viewModels:AppPage.Settings}"/>
+
+            </Grid>
+
+        </views:RoundedBorder>
+
+        <!-- OPEN-CLIENT SLOT (the existing OPEN split button; its client list unrolls
+             upward over the content panel) -->
+
+        <views:OpenClientButton Grid.Column="2"
+                                Width="{StaticResource OpenClientSlotWidth}"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"/>
+
+    </Grid>
+
+</UserControl>

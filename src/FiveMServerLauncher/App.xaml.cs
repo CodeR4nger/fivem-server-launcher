@@ -138,6 +138,9 @@ public partial class App : Application
                 () => Environment.ProcessPath),
             systemAnimations: new SystemAnimationSetting());
         window.DataContext = viewModel;
+        // Before the tray controller (it remembers a maximized start as the state to restore
+        // to) and before Show (a maximized window maximizes on its stored monitor).
+        window.ApplyPlacement(new WindowPlacementRules(new MonitorWorkAreas()).Restore(viewModel.WindowPlacement));
         var trayWindow = new TrayWindowController(new WpfTrayWindow(window), () => viewModel.MinimizeToTray);
         window.Show();
         _viewModel = viewModel;
@@ -145,11 +148,16 @@ public partial class App : Application
 
         window.Closed += (_, _) => refreshCts.Cancel();
 
+        // Remembered on close and on every state change (maximize, restore, minimize).
+        void RememberPlacement() => viewModel.WindowPlacement = window.CapturePlacement(trayWindow.RestoreState);
+        window.Closing += (_, _) => RememberPlacement();
+
         // A minimized, inactive or tray-hidden window parks the enrichment loop (no idle
         // catalog downloads while the game runs in front); coming back releases it at once.
         void ReportAttendance(object? sender, EventArgs args) =>
             viewModel.SetWindowAttended(trayWindow.IsAttended);
         window.StateChanged += (_, _) => trayWindow.OnStateChanged();
+        window.StateChanged += (_, _) => RememberPlacement();
         window.Activated += ReportAttendance;
         window.Deactivated += ReportAttendance;
         window.StateChanged += ReportAttendance;

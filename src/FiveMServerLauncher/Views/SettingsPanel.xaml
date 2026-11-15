@@ -1,4 +1,4 @@
-<!-- Settings dropdown panel (preferred client, language, checkboxes). DataContext is inherited (MainViewModel). -->
+<!-- Settings group on the Settings page (preferred client, language, checkboxes). DataContext is inherited (MainViewModel). -->
 <UserControl x:Class="FiveMServerLauncher.Views.SettingsPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -9,29 +9,12 @@
         <views:ThemeResources/>
     </UserControl.Resources>
 
-    <!-- Bottom padding 18 (was 14): with Inter's metrics the CFX status header it overlays
-         sits ~3 px lower, and a 14 px bottom left a sliver of it showing under the panel. -->
     <Border VerticalAlignment="Top"
-            Margin="14,10,14,0"
             Padding="14,14,14,18"
             Background="{StaticResource SettingsGroupBrush}"
             BorderBrush="{StaticResource BorderStrongBrush}"
             BorderThickness="1"
-            CornerRadius="{StaticResource RadiusGroup}"
-            views:Motion.Shown="{Binding IsSettingsOpen}">
-
-        <Border.Visibility>
-            <MultiBinding Converter="{StaticResource PanelVisibilityStateConverter}"
-                          Mode="OneWay">
-                <Binding Path="IsSettingsOpen"/>
-                <Binding Path="Opacity"
-                         RelativeSource="{RelativeSource Self}"/>
-            </MultiBinding>
-        </Border.Visibility>
-
-        <Border.Style>
-            <StaticResource ResourceKey="FadeSurfaceStyle"/>
-        </Border.Style>
+            CornerRadius="{StaticResource RadiusGroup}">
 
         <StackPanel VerticalAlignment="Top">
 

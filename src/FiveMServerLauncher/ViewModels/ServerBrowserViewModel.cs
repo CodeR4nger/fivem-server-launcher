@@ -304,6 +304,14 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
         }
     }
 
+    /// <summary>
+    /// The page-visit load: the catalog loads on the first visit (and again after a
+    /// visit that left no rows, e.g. an outage), never while a load is running; a
+    /// loaded browser keeps its rows so a return visit lands where it was left.
+    /// </summary>
+    public Task EnsureLoadedAsync() =>
+        Servers.Count == 0 && !IsRefreshing ? LoadAsync() : Task.CompletedTask;
+
     public async Task LoadAsync()
     {
         // The open path owns the refreshing flag only when nothing else raised

@@ -2,9 +2,9 @@ using System.Windows.Controls;
 
 namespace FiveMServerLauncher.Views
 {
-    public partial class UpdateBanner : UserControl
+    public partial class UpdatePill : UserControl
     {
-        public UpdateBanner()
+        public UpdatePill()
         {
             InitializeComponent();
         }

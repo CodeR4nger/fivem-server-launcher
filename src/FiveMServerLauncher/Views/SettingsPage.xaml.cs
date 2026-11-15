@@ -2,9 +2,9 @@ using System.Windows.Controls;
 
 namespace FiveMServerLauncher.Views
 {
-    public partial class SettingsBar : UserControl
+    public partial class SettingsPage : UserControl
     {
-        public SettingsBar()
+        public SettingsPage()
         {
             InitializeComponent();
         }

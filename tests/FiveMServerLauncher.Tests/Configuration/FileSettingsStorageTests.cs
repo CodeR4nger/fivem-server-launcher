@@ -217,6 +217,40 @@ public class FileSettingsStorageTests
     }
 
     [Fact]
+    public void SaveAndLoad_ShouldPreserveTheWindowPlacement()
+    {
+        // Given
+        using var tempDir = new TempSettingsDirectory();
+        var placement = new WindowPlacement(-1200.5, 40, 1280, 720, true);
+        var storage = new FileSettingsStorage(tempDir.FilePath);
+
+        // When
+        storage.Save(new LauncherSettings { Window = placement });
+        var result = storage.Load();
+
+        // Then
+        Assert.NotNull(result);
+        Assert.Equal(placement, result.Window);
+    }
+
+    [Fact]
+    public void Load_WhenFileLacksTheWindowPlacement_ShouldReturnNull()
+    {
+        // Given
+        using var tempDir = new TempSettingsDirectory();
+        Directory.CreateDirectory(tempDir.DirectoryPath);
+        File.WriteAllText(tempDir.FilePath, """{"PreferredClient":"FiveM"}""");
+        var storage = new FileSettingsStorage(tempDir.FilePath);
+
+        // When
+        var result = storage.Load();
+
+        // Then
+        Assert.NotNull(result);
+        Assert.Null(result.Window);
+    }
+
+    [Fact]
     public void Load_WhenFileLacksInterfaceAnimations_ShouldDefaultToDefault()
     {
         // Given
