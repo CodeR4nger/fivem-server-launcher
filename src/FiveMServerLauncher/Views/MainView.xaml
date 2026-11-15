@@ -2109,6 +2109,14 @@
 
                     </Grid>
 
+                    <ComboBox ItemsSource="{Binding Browser.SortOptions}"
+                              SelectedItem="{Binding Browser.SelectedSortOption}"
+                              DisplayMemberPath="Label"
+                              MinWidth="130"
+                              MinHeight="26"
+                              Margin="12,0,0,0"
+                              VerticalContentAlignment="Center"/>
+
                 </StackPanel>
 
                 <Border Grid.Row="2"

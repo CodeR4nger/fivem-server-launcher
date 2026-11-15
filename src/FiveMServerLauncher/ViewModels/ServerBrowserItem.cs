@@ -26,6 +26,13 @@ public sealed class ServerBrowserItem : INotifyPropertyChanged
 
     public string Name { get; }
 
+    // Assigned by ServerBrowserSorting.RankNames when the load builds the rows (off the UI thread).
+    internal int NameRank { get; set; }
+
+    internal int NameOrdinal { get; set; }
+
+    internal bool HasSortableName { get; set; }
+
     public GameClient? Game { get; }
 
     public int Players { get; }

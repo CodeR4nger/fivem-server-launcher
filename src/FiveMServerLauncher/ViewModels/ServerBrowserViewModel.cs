@@ -48,6 +48,8 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => !IsRefreshing);
         GameFilterOptions = BuildGameFilterOptions();
         _selectedGameFilterOption = GameFilterOptions[0];
+        SortOptions = BuildSortOptions();
+        _selectedSortOption = SortOptions[0];
     }
 
     private void OnLanguageChanged(object? sender, EventArgs e)
@@ -59,6 +61,51 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
 
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(GameFilterOptions)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedGameFilterOption)));
+
+        var selectedSort = _selectedSortOption.Sort;
+        SortOptions = BuildSortOptions();
+        _selectedSortOption = SortOptions.First(o => o.Sort == selectedSort);
+
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SortOptions)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedSortOption)));
+    }
+
+    public sealed record SortOption(string Label, ServerBrowserSort Sort);
+
+    // Session-only (like the filters); the first option is the default.
+    public IReadOnlyList<SortOption> SortOptions { get; private set; }
+
+    private IReadOnlyList<SortOption> BuildSortOptions()
+    {
+        return
+        [
+            new SortOption(_localizer.Get("SortMostPlayers"), ServerBrowserSort.PlayersDescending),
+            new SortOption(_localizer.Get("SortFewestPlayers"), ServerBrowserSort.PlayersAscending),
+            new SortOption(_localizer.Get("SortNameAscending"), ServerBrowserSort.NameAscending),
+            new SortOption(_localizer.Get("SortNameDescending"), ServerBrowserSort.NameDescending)
+        ];
+    }
+
+    private SortOption _selectedSortOption = null!;
+
+    // Pre-sorting, not ICollectionView sorting: a CustomSort would re-sort all rows on every
+    // filter/search Refresh(). A sort change re-sorts the backing rows once and swaps them in
+    // (same row instances, so icons and saved markers survive; the swap re-attaches the filter).
+    public SortOption SelectedSortOption
+    {
+        get => _selectedSortOption;
+        set
+        {
+            if (value is null || !SetProperty(ref _selectedSortOption, value))
+            {
+                return;
+            }
+
+            if (Servers.Count > 1)
+            {
+                Servers = new ObservableCollection<ServerBrowserItem>(ServerBrowserSorting.Sort(Servers, value.Sort));
+            }
+        }
     }
 
     public sealed record GameFilterOption(string Label, GameClient? Game);
@@ -283,10 +330,19 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
 
             // Build the 33k rows off the UI thread and swap the collection wholesale —
             // 33k individual ObservableCollection.Adds would freeze the UI on open.
-            var items = await Task.Run(() => snapshot
-                .Where(s => s.Data is not null)
-                .Select(ServerBrowserItem.FromServer)
-                .ToList());
+            // The culture-aware name ranking runs there too; the cheap keyed sort runs at the
+            // swap with the sort selected THEN, so a refresh (or a sort change mid-load) always
+            // lands in the selected order.
+            var rows = await Task.Run(() =>
+            {
+                var built = snapshot
+                    .Where(s => s.Data is not null)
+                    .Select(ServerBrowserItem.FromServer)
+                    .ToList();
+                ServerBrowserSorting.RankNames(built);
+                return built;
+            });
+            var items = ServerBrowserSorting.Sort(rows, _selectedSortOption.Sort);
 
             foreach (var item in items)
             {
