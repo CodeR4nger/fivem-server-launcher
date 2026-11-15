@@ -185,6 +185,99 @@ public class ServerCatalogTests
     }
 
     [Fact]
+    public async Task GetSnapshot_WhenBodyExceedsMaxSize_ShouldAbandonItMidStream()
+    {
+        // Given — a catalog body far over the cap, without a Content-Length: the
+        // cap must stop the read, not judge a fully buffered body afterwards.
+        const long cap = 64 * 1024;
+        var handler = new StreamingHttpMessageHandler(() => new TestHttpContent
+        {
+            Payload = [0x42],
+            TotalLength = cap * 10
+        });
+        using var httpClient = new HttpClient(handler);
+        var catalog = new ServerCatalog(httpClient, maxPayloadBytes: cap);
+
+        // When
+        var result = await catalog.GetSnapshotAsync();
+
+        // Then
+        Assert.Null(result);
+        var content = Assert.Single(handler.Contents);
+        Assert.True(content.BytesPulled <= cap + 81920, $"pulled {content.BytesPulled} bytes past a {cap}-byte cap");
+        Assert.True(content.IsDisposed);
+    }
+
+    [Fact]
+    public async Task GetSnapshot_WhenBodyFailsMidStream_ShouldDegradeToOutage()
+    {
+        // Given — a reset mid-body surfaces as IOException when streaming.
+        var handler = new StreamingHttpMessageHandler(() => new TestHttpContent
+        {
+            Payload = [0x42],
+            TotalLength = 4096,
+            FailAfter = 100
+        });
+        using var httpClient = new HttpClient(handler);
+        var catalog = new ServerCatalog(httpClient);
+
+        // When
+        var result = await catalog.GetSnapshotAsync();
+
+        // Then
+        Assert.Null(result);
+        Assert.True(Assert.Single(handler.Contents).IsDisposed);
+    }
+
+    [Fact]
+    public async Task GetSnapshot_WhenBodyNeverCompletes_ShouldDegradeToOutageAtTheClientTimeout()
+    {
+        // Given — a stalled body must not hang the single-flight download (every
+        // connect, refresh and browser load joins it).
+        var handler = new StreamingHttpMessageHandler(() => new TestHttpContent
+        {
+            Payload = [0x42],
+            TotalLength = 4096,
+            StallAfter = 100
+        });
+        using var httpClient = new HttpClient(handler) { Timeout = TimeSpan.FromMilliseconds(200) };
+        var catalog = new ServerCatalog(httpClient);
+
+        // When
+        var snapshot = catalog.GetSnapshotAsync();
+        var finished = await Task.WhenAny(snapshot, Task.Delay(TimeSpan.FromSeconds(10)));
+
+        // Then
+        Assert.Same(snapshot, finished);
+        Assert.Null(await snapshot);
+    }
+
+    [Fact]
+    public async Task GetSnapshot_AfterDownload_ShouldDisposeTheResponse()
+    {
+        // Given — success and failure paths both release the response.
+        var frames = TestProtobufFrames.BuildFrameStream(new Master.Server
+        {
+            EndPoint = "y4lg95",
+            Data = new Master.ServerData { Clients = 1, SvMaxclients = 32 }
+        });
+        var ok = new StreamingHttpMessageHandler(() => new TestHttpContent { Payload = frames });
+        var down = new StreamingHttpMessageHandler(() => new TestHttpContent(), HttpStatusCode.ServiceUnavailable);
+        using var okClient = new HttpClient(ok);
+        using var downClient = new HttpClient(down);
+
+        // When
+        var snapshot = await new ServerCatalog(okClient).GetSnapshotAsync();
+        var outage = await new ServerCatalog(downClient).GetSnapshotAsync();
+
+        // Then
+        Assert.Single(snapshot!);
+        Assert.Null(outage);
+        Assert.True(Assert.Single(ok.Contents).IsDisposed);
+        Assert.True(Assert.Single(down.Contents).IsDisposed);
+    }
+
+    [Fact]
     public async Task LookupByIpPort_WhenServerListed_ShouldReturnServer()
     {
         // Given

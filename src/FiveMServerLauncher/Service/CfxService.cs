@@ -15,7 +15,7 @@ public class CfxService(HttpClient httpClient)
 
     public async Task<CfxServerInfo?> GetServerAsync(string cfxId)
     {
-        var response = await _httpClient.GetAsync($"https://frontend.cfx-services.net/api/servers/single/{cfxId}");
+        using var response = await _httpClient.GetAsync($"https://frontend.cfx-services.net/api/servers/single/{cfxId}");
 
         if (response.StatusCode == HttpStatusCode.NotFound)
         {

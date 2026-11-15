@@ -184,14 +184,8 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
 
             try
             {
-                var response = await _httpClient.GetAsync(iconUrl).ConfigureAwait(false);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    return null;
-                }
-
-                var icon = await BoundedContent.ReadAsByteArrayAsync(response.Content, _maxIconBytes).ConfigureAwait(false);
+                using var request = new HttpRequestMessage(HttpMethod.Get, iconUrl);
+                var icon = await BoundedContent.GetBytesAsync(_httpClient, request, _maxIconBytes).ConfigureAwait(false);
 
                 if (icon is null)
                 {
@@ -220,11 +214,7 @@ public sealed class ServerEnrichmentService : IServerEnrichmentService
                 _iconDownloadSlots.Release();
             }
         }
-        catch (HttpRequestException)
-        {
-            return null;
-        }
-        catch (TaskCanceledException)
+        catch (Exception exception) when (BoundedContent.IsOutage(exception))
         {
             return null;
         }

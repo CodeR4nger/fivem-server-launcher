@@ -88,6 +88,27 @@ public class CfxServiceTests
             handler.LastRequest?.RequestUri?.ToString());
     }
     [Fact]
+    public async Task GetServer_AfterRequest_ShouldDisposeTheResponse()
+    {
+        // Given — the found and not-found paths both release the response.
+        var json = System.Text.Encoding.UTF8.GetBytes("""{ "Data": { "sv_projectName": "Test Server" } }""");
+        var found = new StreamingHttpMessageHandler(() => new TestHttpContent { Payload = json });
+        var missing = new StreamingHttpMessageHandler(() => new TestHttpContent(), HttpStatusCode.NotFound);
+        using var foundClient = new HttpClient(found);
+        using var missingClient = new HttpClient(missing);
+
+        // When
+        var server = await new CfxService(foundClient).GetServerAsync("y4lg95");
+        var none = await new CfxService(missingClient).GetServerAsync("y4lg95");
+
+        // Then
+        Assert.Equal("Test Server", server!.ProjectName);
+        Assert.Null(none);
+        Assert.True(Assert.Single(found.Contents).IsDisposed);
+        Assert.True(Assert.Single(missing.Contents).IsDisposed);
+    }
+
+    [Fact]
     public async Task GetServer_ShouldReturnNullWhenCfxReturnsNotFound()
     {
         // Given

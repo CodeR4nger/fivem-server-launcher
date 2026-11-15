@@ -260,6 +260,96 @@ public class ServerEnrichmentServiceTests
     }
 
     [Fact]
+    public async Task GetIconAsync_WhenBodyExceedsMaxSize_ShouldAbandonItMidStream()
+    {
+        // Given — a hostile icon URL streaming far more than the cap. The cap is
+        // only real if the body is read as it arrives: a buffered response would
+        // pull all of it into memory before a single byte is counted.
+        const long cap = 64 * 1024;
+        var handler = new StreamingHttpMessageHandler(() => new TestHttpContent
+        {
+            Payload = [0x42],
+            TotalLength = cap * 10
+        });
+        using var httpClient = new HttpClient(handler);
+        var service = new ServerEnrichmentService(httpClient, maxIconBytes: cap);
+
+        // When
+        var icon = await service.GetIconAsync(IconUrlFor("7665c31f"));
+
+        // Then — abandoned within one read chunk of the cap, and released.
+        Assert.Null(icon);
+        var content = Assert.Single(handler.Contents);
+        Assert.True(content.BytesPulled <= cap + 81920, $"pulled {content.BytesPulled} bytes past a {cap}-byte cap");
+        Assert.True(content.IsDisposed);
+    }
+
+    [Fact]
+    public async Task GetIconAsync_WhenBodyFailsMidStream_ShouldReturnNullWithoutThrowing()
+    {
+        // Given — a connection reset while the body streams surfaces as an
+        // IOException (not HttpRequestException) once the body is read as it
+        // arrives; it is still an outage, never a fault.
+        var handler = new StreamingHttpMessageHandler(() => new TestHttpContent
+        {
+            Payload = TestIcons.Png(5),
+            FailAfter = 10
+        });
+        using var httpClient = new HttpClient(handler);
+        var service = new ServerEnrichmentService(httpClient);
+
+        // When
+        var icon = await service.GetIconAsync(IconUrlFor("7665c31f"));
+
+        // Then
+        Assert.Null(icon);
+        Assert.True(Assert.Single(handler.Contents).IsDisposed);
+    }
+
+    [Fact]
+    public async Task GetIconAsync_WhenBodyNeverCompletes_ShouldGiveUpAtTheClientTimeout()
+    {
+        // Given — a body that stalls forever after the headers: the client's
+        // timeout must still bound the whole download, or the icon slot (and
+        // every caller joined to it) hangs for the session.
+        var handler = new StreamingHttpMessageHandler(() => new TestHttpContent
+        {
+            Payload = TestIcons.Png(5),
+            StallAfter = 10
+        });
+        using var httpClient = new HttpClient(handler) { Timeout = TimeSpan.FromMilliseconds(200) };
+        var service = new ServerEnrichmentService(httpClient);
+
+        // When
+        var download = service.GetIconAsync(IconUrlFor("7665c31f"));
+        var finished = await Task.WhenAny(download, Task.Delay(TimeSpan.FromSeconds(10)));
+
+        // Then
+        Assert.Same(download, finished);
+        Assert.Null(await download);
+    }
+
+    [Fact]
+    public async Task GetIconAsync_AfterDownload_ShouldDisposeTheResponse()
+    {
+        // Given — success and failure paths both release the response.
+        var ok = new StreamingHttpMessageHandler(() => new TestHttpContent { Payload = TestIcons.Png(5) });
+        var missing = new StreamingHttpMessageHandler(() => new TestHttpContent(), HttpStatusCode.NotFound);
+        using var okClient = new HttpClient(ok);
+        using var missingClient = new HttpClient(missing);
+
+        // When
+        var icon = await new ServerEnrichmentService(okClient).GetIconAsync(IconUrlFor("ok"));
+        var none = await new ServerEnrichmentService(missingClient).GetIconAsync(IconUrlFor("missing"));
+
+        // Then
+        Assert.NotNull(icon);
+        Assert.Null(none);
+        Assert.True(Assert.Single(ok.Contents).IsDisposed);
+        Assert.True(Assert.Single(missing.Contents).IsDisposed);
+    }
+
+    [Fact]
     public async Task GetIconAsync_WhenIconUrlUnchanged_ShouldServeCachedIconWithoutRedownload()
     {
         // Given — the icon URL is the complete icon identity since CFX's 2026-10
