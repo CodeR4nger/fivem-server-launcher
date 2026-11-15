@@ -695,8 +695,15 @@
 
                     <ControlTemplate TargetType="{x:Type CheckBox}">
 
-                        <StackPanel Orientation="Horizontal"
-                                    Background="Transparent">
+                        <!-- A Grid, not a horizontal StackPanel: a StackPanel gives the
+                             label unlimited width, so a long label could never wrap and
+                             was cut off by its container instead. -->
+                        <Grid Background="Transparent">
+
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
 
                             <Border x:Name="CheckBoxBox"
                                     Width="16"
@@ -705,7 +712,7 @@
                                     BorderBrush="{StaticResource BorderBrush}"
                                     BorderThickness="1"
                                     CornerRadius="2"
-                                    VerticalAlignment="Center"
+                                    VerticalAlignment="Top"
                                     SnapsToDevicePixels="True">
 
                                 <Path x:Name="CheckMark"
@@ -719,10 +726,17 @@
 
                             </Border>
 
-                            <ContentPresenter Margin="8,0,0,0"
-                                              VerticalAlignment="Center"/>
+                            <ContentPresenter Grid.Column="1"
+                                              Margin="8,0,0,0"
+                                              VerticalAlignment="Center">
+                                <ContentPresenter.Resources>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextWrapping" Value="Wrap"/>
+                                    </Style>
+                                </ContentPresenter.Resources>
+                            </ContentPresenter>
 
-                        </StackPanel>
+                        </Grid>
 
                         <ControlTemplate.Triggers>
 
@@ -847,8 +861,14 @@
                 </DockPanel>
 
                 <!-- SETTINGS PANEL -->
+                <!-- Spans the CFX status row and paints above it (ZIndex: the status
+                     block is a later sibling): the panel sizes to its content, so it
+                     covers only what it needs while open, like a dropdown. The leftover
+                     row alone is too short for every setting. -->
 
                 <Border Grid.Row="1"
+                        Grid.RowSpan="2"
+                        Panel.ZIndex="1"
                         VerticalAlignment="Top"
                         Margin="14,10,14,0"
                         Padding="14"
