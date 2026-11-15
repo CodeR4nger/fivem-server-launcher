@@ -13,7 +13,7 @@
 
     <!-- ROOT -->
 
-    <Grid Background="{StaticResource BackgroundBrush}">
+    <Grid Background="{StaticResource GroundBrush}">
 
         <Grid.RowDefinitions>
 
@@ -36,9 +36,7 @@
         <!-- FIVEM -->
 
         <Border Grid.Column="0"
-                Background="{StaticResource PanelBrush}"
-                BorderBrush="{StaticResource BorderBrush}"
-                BorderThickness="1"
+                Style="{StaticResource ContentPanelStyle}"
                 Margin="20,24,10,24">
 
             <Grid>

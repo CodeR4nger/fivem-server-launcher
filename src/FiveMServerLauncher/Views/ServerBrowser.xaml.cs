@@ -49,8 +49,10 @@ namespace FiveMServerLauncher.Views
         // navigation slide, not a nudge. The travel distance is the live
         // window width, which a style storyboard cannot animate (style
         // storyboards freeze their animations, so their To cannot bind), so
-        // the motion lives here as visual glue. The VM flag stays the single
-        // truth; only visibility, the transform and hit-testing are touched.
+        // the motion lives here as visual glue, gated on the inherited
+        // Motion.IsEnabled switch (off: the overlay snaps in and out). The VM flag
+        // stays the single truth; only visibility, the transform and hit-testing
+        // are touched.
         private void BrowserOpenStateChanged(bool open)
         {
             if (open)
@@ -71,6 +73,14 @@ namespace FiveMServerLauncher.Views
             _browserClosing = false;
             BrowserOverlay.IsHitTestVisible = true;
             BrowserOverlay.Visibility = Visibility.Visible;
+
+            if (!Motion.GetIsEnabled(this))
+            {
+                // Motion off: the browser is simply there.
+                BrowserSlideTransform.BeginAnimation(TranslateTransform.XProperty, null);
+                BrowserSlideTransform.X = 0;
+                return;
+            }
 
             if (!resuming)
             {
@@ -94,6 +104,15 @@ namespace FiveMServerLauncher.Views
             }
 
             var generation = ++_browserSlideGeneration;
+
+            if (!Motion.GetIsEnabled(this))
+            {
+                BrowserSlideTransform.BeginAnimation(TranslateTransform.XProperty, null);
+                BrowserSlideTransform.X = 0;
+                BrowserOverlay.IsHitTestVisible = false;
+                BrowserOverlay.Visibility = Visibility.Collapsed;
+                return;
+            }
 
             _browserClosing = true;
             BrowserOverlay.IsHitTestVisible = false;

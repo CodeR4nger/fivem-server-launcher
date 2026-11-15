@@ -9,9 +9,9 @@
         <views:ThemeResources/>
     </UserControl.Resources>
 
-    <Border Background="#66000000"
+    <Border Background="{StaticResource ScrimBrush}"
             Padding="40,60"
-            Opacity="0">
+            views:Motion.Shown="{Binding IsConfirmOpen}">
 
         <Border.Visibility>
             <MultiBinding Converter="{StaticResource PanelVisibilityStateConverter}"
@@ -23,26 +23,11 @@
         </Border.Visibility>
 
         <Border.Style>
-            <Style TargetType="Border">
-                <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsConfirmOpen}" Value="True">
-                        <DataTrigger.EnterActions>
-                            <BeginStoryboard Storyboard="{StaticResource PanelFadeIn}"/>
-                        </DataTrigger.EnterActions>
-                        <DataTrigger.ExitActions>
-                            <BeginStoryboard Storyboard="{StaticResource PanelFadeOut}"/>
-                        </DataTrigger.ExitActions>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding IsConfirmOpen}" Value="False">
-                        <Setter Property="IsHitTestVisible" Value="False"/>
-                    </DataTrigger>
-                </Style.Triggers>
-            </Style>
+            <StaticResource ResourceKey="FadeSurfaceStyle"/>
         </Border.Style>
 
-        <Border Background="{StaticResource PanelBrush}"
-                BorderBrush="{StaticResource BorderBrush}"
-                BorderThickness="1"
+        <Border Style="{StaticResource ModalFrameStyle}"
+                views:Motion.Shown="{Binding IsConfirmOpen}"
                 Padding="20"
                 MinWidth="320"
                 VerticalAlignment="Center"
@@ -51,8 +36,7 @@
             <StackPanel>
 
                 <TextBlock Text="{Binding ConfirmText}"
-                           Foreground="{StaticResource TextBrush}"
-                           FontSize="13"
+                           Style="{StaticResource BodyTextStyle}"
                            TextWrapping="Wrap"/>
 
                 <DockPanel Margin="0,14,0,0">
@@ -65,7 +49,7 @@
 
                     <Button Content="{loc:Loc ConfirmButton}"
                             MinHeight="32"
-                            Style="{StaticResource MainButtonStyle}"
+                            Style="{StaticResource PrimaryButtonStyle}"
                             HorizontalAlignment="Right"
                             MinWidth="90"
                             Command="{Binding ConfirmCommand}"/>

@@ -45,6 +45,12 @@ namespace FiveMServerLauncher.Views
             _dropdownClosing = false;
             var generation = ++_dropdownHeightGeneration;
 
+            if (!Motion.GetIsEnabled(this))
+            {
+                SnapDropdown(Visibility.Visible);
+                return;
+            }
+
             if (FiveMDropdown.Visibility == Visibility.Collapsed)
             {
                 FiveMDropdown.Height = 0;
@@ -60,7 +66,9 @@ namespace FiveMServerLauncher.Views
 
             var target = FiveMDropdown.Child.DesiredSize.Height
                          + FiveMDropdown.BorderThickness.Top
-                         + FiveMDropdown.BorderThickness.Bottom;
+                         + FiveMDropdown.BorderThickness.Bottom
+                         + FiveMDropdown.Padding.Top
+                         + FiveMDropdown.Padding.Bottom;
 
             var expand = new DoubleAnimation(target, TimeSpan.FromSeconds(0.2))
             {
@@ -81,6 +89,16 @@ namespace FiveMServerLauncher.Views
             FiveMDropdown.BeginAnimation(FrameworkElement.HeightProperty, expand);
         }
 
+        // Motion off: no animation at all, the menu just appears or disappears at its
+        // natural size (any running height animation is dropped).
+        private void SnapDropdown(Visibility visibility)
+        {
+            FiveMDropdown.BeginAnimation(FrameworkElement.HeightProperty, null);
+            FiveMDropdown.Height = double.NaN;
+            FiveMDropdown.Visibility = visibility;
+            _dropdownClosing = false;
+        }
+
         private void CloseDropdown()
         {
             if (FiveMDropdown.Visibility != Visibility.Visible || _dropdownClosing)
@@ -88,8 +106,15 @@ namespace FiveMServerLauncher.Views
                 return;
             }
 
-            _dropdownClosing = true;
             var generation = ++_dropdownHeightGeneration;
+
+            if (!Motion.GetIsEnabled(this))
+            {
+                SnapDropdown(Visibility.Collapsed);
+                return;
+            }
+
+            _dropdownClosing = true;
 
             // Pin the current rendered height as the animation origin: after a
             // completed expand the local Height is NaN (released to auto), and

@@ -8,7 +8,8 @@
         <views:ThemeResources/>
     </UserControl.Resources>
 
-    <Grid Margin="20,0,20,16">
+    <Grid Margin="20,0,20,16"
+          views:Motion.Shown="{Binding IsDevMode, Converter={StaticResource InverseBoolean}}">
 
         <Grid.Visibility>
             <MultiBinding Converter="{StaticResource PanelVisibilityStateConverter}"
@@ -21,21 +22,7 @@
         </Grid.Visibility>
 
         <Grid.Style>
-            <Style TargetType="Grid">
-                <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsDevMode}" Value="False">
-                    <DataTrigger.EnterActions>
-                        <BeginStoryboard Storyboard="{StaticResource PanelFadeIn}"/>
-                    </DataTrigger.EnterActions>
-                    <DataTrigger.ExitActions>
-                        <BeginStoryboard Storyboard="{StaticResource PanelFadeOut}"/>
-                    </DataTrigger.ExitActions>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding IsDevMode}" Value="True">
-                        <Setter Property="IsHitTestVisible" Value="False"/>
-                    </DataTrigger>
-                </Style.Triggers>
-            </Style>
+            <StaticResource ResourceKey="FadeSurfaceStyle"/>
         </Grid.Style>
 
         <Grid.RowDefinitions>
@@ -62,12 +49,14 @@
                     Grid.Column="0"
                     Content="{Binding SelectedOpenClientLabel}"
                     Command="{Binding OpenClientCommand}"
-                    Style="{StaticResource MainButtonStyle}"/>
+                    Margin="0,0,6,0"
+                    FontSize="15"
+                    Style="{StaticResource SecondaryButtonStyle}"/>
 
 
             <Button x:Name="DropdownButton"
                     Grid.Column="1"
-                    Style="{StaticResource ArrowButtonStyle}"
+                    Style="{StaticResource SecondaryButtonStyle}"
                     Click="DropdownButton_Click">
 
                 <TextBlock x:Name="ArrowText"
@@ -85,27 +74,37 @@
 
         <Border x:Name="FiveMDropdown"
                 Grid.Row="1"
-                Background="{StaticResource PanelLightBrush}"
-                BorderBrush="{StaticResource BorderBrush}"
-                BorderThickness="1,0,1,1"
+                Background="{StaticResource SurfaceRaisedBrush}"
+                BorderBrush="{StaticResource BorderStrongBrush}"
+                BorderThickness="1"
+                CornerRadius="{StaticResource RadiusMenu}"
+                Padding="4"
+                Margin="0,6,0,0"
                 ClipToBounds="True"
                 Visibility="Collapsed">
 
+            <!-- The height unroll is code-behind glue (gated on Motion.IsEnabled there);
+                 the fade rides along only with motion on. -->
             <Border.Style>
                 <Style TargetType="Border">
                     <Style.Triggers>
-                        <Trigger Property="IsVisible" Value="True">
-                            <Trigger.EnterActions>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsVisible" Value="True"/>
+                                <Condition Property="views:Motion.IsEnabled" Value="True"/>
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard>
                                         <DoubleAnimation Storyboard.TargetProperty="Opacity"
                                                          From="0"
                                                          To="1"
-                                                         Duration="0:0:0.2"/>
+                                                         Duration="{StaticResource MotionMedium}"
+                                                         EasingFunction="{StaticResource MotionEase}"/>
                                     </Storyboard>
                                 </BeginStoryboard>
-                            </Trigger.EnterActions>
-                        </Trigger>
+                            </MultiTrigger.EnterActions>
+                        </MultiTrigger>
                     </Style.Triggers>
                 </Style>
             </Border.Style>
@@ -120,7 +119,7 @@
 
                             <Button Content="{Binding DisplayName}"
                                     Height="42"
-                                    Style="{StaticResource DropdownButtonStyle}"
+                                    Style="{StaticResource MenuRowButtonStyle}"
                                     Command="{Binding DataContext.SelectOpenClientCommand,
                                                       RelativeSource={RelativeSource AncestorType=UserControl}}"
                                     CommandParameter="{Binding}"
