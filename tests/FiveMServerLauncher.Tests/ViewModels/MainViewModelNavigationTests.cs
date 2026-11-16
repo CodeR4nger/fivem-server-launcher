@@ -141,6 +141,38 @@ public partial class MainViewModelTests
         Assert.Equal(2, vm.Browser.Servers.Count);
     }
 
+    [Theory]
+    [InlineData(AppPage.Browse)]
+    [InlineData(AppPage.Settings)]
+    public async Task HandleForwardedConnectAsync_FromAnotherPage_ShouldShowTheServersPage(AppPage page)
+    {
+        // Given — a web link, shortcut or tray connect arrives while another page is shown;
+        // its status line lives on the Servers page
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+        await vm.NavigateAsync(page);
+
+        // When
+        await vm.HandleForwardedConnectAsync("not..a..valid..address");
+
+        // Then the user sees the connect's outcome
+        Assert.Equal(AppPage.Servers, vm.CurrentPage);
+        Assert.Equal("Invalid address", vm.StatusText);
+    }
+
+    [Fact]
+    public async Task HandleForwardedConnectAsync_WhenIgnored_ShouldStayOnThePage()
+    {
+        // Given
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
+        await vm.NavigateAsync(AppPage.Settings);
+
+        // When — an empty forward is no connect intent
+        await vm.HandleForwardedConnectAsync("   ");
+
+        // Then
+        Assert.Equal(AppPage.Settings, vm.CurrentPage);
+    }
+
     private static byte[] BrowserCatalog() => ServerBrowserViewModelTests.CatalogBytes(
         ServerBrowserViewModelTests.Entry("aaaaaa", "Alpha", game: "gta5", players: 3, max: 32),
         ServerBrowserViewModelTests.Entry("bbbbbb", "Beta", game: "rdr3", players: 64, max: 64));

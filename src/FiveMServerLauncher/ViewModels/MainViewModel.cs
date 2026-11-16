@@ -293,12 +293,8 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    public async Task ConnectFromBrowserAsync(ServerBrowserItem item)
-    {
-        CurrentPage = AppPage.Servers;
-        ServerAddress = Domain.ServerAddress.FromCfxId(item.CfxId);
-        await ConnectAsync();
-    }
+    public Task ConnectFromBrowserAsync(ServerBrowserItem item) =>
+        ConnectOnServersPageAsync(Domain.ServerAddress.FromCfxId(item.CfxId));
 
     // Rebuilt every time the tray menu opens, from the full saved list (never the
     // search-filtered view), so it follows adds, removes, reorders and renames for free.
@@ -311,6 +307,14 @@ public class MainViewModel : INotifyPropertyChanged
             return;
         }
 
+        await ConnectOnServersPageAsync(address);
+    }
+
+    // A connect started away from the Servers page (browser row, web link, shortcut, tray)
+    // shows that page first: its status line is where the outcome is reported.
+    private async Task ConnectOnServersPageAsync(string address)
+    {
+        CurrentPage = AppPage.Servers;
         ServerAddress = address;
         await ConnectAsync();
     }
