@@ -157,7 +157,6 @@ public class SavedServerItemTests
 
         // Then
         Assert.Same(icon, item.Icon);
-        Assert.True(item.HasIcon);
         Assert.Contains(nameof(SavedServerItem.Icon), notifications);
     }
 
@@ -230,59 +229,6 @@ public class SavedServerItemTests
         Assert.Equal(1, handlerRuns);
     }
 
-    [Fact]
-    public void TrimmedName_WhenShort_ShouldReturnUnchanged()
-    {
-        // Given
-        var item = new SavedServerItem("Short Name", "abc123", null, null, () => { }, TestLocalizer.English());
-
-        // When / Then
-        Assert.Equal("Short Name", item.TrimmedName);
-    }
-
-    [Fact]
-    public void TrimmedName_WhenLong_ShouldTruncateWithEllipsis()
-    {
-        // Given
-        var item = new SavedServerItem("NoPixel 4.0 RP Public Green | Visit us @ nopixel.net", "abc123", null, null, () => { }, TestLocalizer.English());
-
-        // When
-        var trimmed = item.TrimmedName;
-
-        // Then
-        Assert.True(trimmed.Length <= 30);
-        Assert.EndsWith("…", trimmed);
-        Assert.StartsWith("NoPixel 4.0 RP Public Gre", trimmed);
-    }
-
-    [Fact]
-    public void TrimmedName_WhenSelected_ShouldUseShorterLimit()
-    {
-        // Given
-        var item = new SavedServerItem("NoPixel 4.0 RP Public Green | Visit us @ nopixel.net", "abc123", null, null, () => { }, TestLocalizer.English());
-
-        // When
-        item.IsSelected = true;
-
-        // Then
-        Assert.True(item.TrimmedName.Length <= 20);
-        Assert.EndsWith("…", item.TrimmedName);
-    }
-
-    [Fact]
-    public void IsSelected_WhenChanged_ShouldNotifyTrimmedName()
-    {
-        // Given
-        var item = new SavedServerItem("Server", "abc123", null, null, () => { }, TestLocalizer.English());
-        var notified = false;
-        item.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(SavedServerItem.TrimmedName)) notified = true; };
-
-        // When
-        item.IsSelected = true;
-
-        // Then
-        Assert.True(notified);
-    }
     [Fact]
     public void Ctor_WhenRowCollected_ShouldNotStayRootedByLocalizerSubscription()
     {

@@ -688,7 +688,7 @@ public partial class MainViewModelTests
         Assert.Equal("12/64", item.StatusLabel);
         Assert.Equal(GameClient.FiveM, item.Game);
         Assert.Equal("FiveM", item.GameTagLabel);
-        Assert.True(item.HasIcon);
+        Assert.NotNull(item.Icon);
     }
 
     [Fact]
@@ -782,7 +782,7 @@ public partial class MainViewModelTests
         var item = Assert.Single(vm.SavedServers);
         Assert.False(item.Online);
         Assert.Equal("OFFLINE", item.StatusLabel);
-        Assert.False(item.HasIcon);
+        Assert.Null(item.Icon);
     }
 
     [Fact]
@@ -813,7 +813,7 @@ public partial class MainViewModelTests
 
         // Then
         var item = Assert.Single(vm.SavedServers);
-        Assert.True(item.HasIcon);
+        Assert.NotNull(item.Icon);
         Assert.Equal(1, enrichment.DirectIconCalls);
         Assert.Equal(iconUrl, enrichment.LastRequestedIconUrl);
     }
@@ -845,7 +845,7 @@ public partial class MainViewModelTests
         // Then
         var item = Assert.Single(vm.SavedServers);
         Assert.True(item.Online);
-        Assert.False(item.HasIcon);
+        Assert.Null(item.Icon);
         Assert.Equal(0, enrichment.DirectIconCalls);
     }
 
@@ -872,7 +872,7 @@ public partial class MainViewModelTests
         var item = Assert.Single(vm.SavedServers);
         Assert.False(item.Online);
         Assert.Equal("UNRESOLVED", item.StatusLabel);
-        Assert.False(item.HasIcon);
+        Assert.Null(item.Icon);
     }
 
     [Fact]

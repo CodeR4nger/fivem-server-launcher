@@ -193,7 +193,6 @@ public partial class MainViewModelTests
 
         // Then
         Assert.Same(vm.SavedServers[0], vm.SelectedServer);
-        Assert.True(vm.SavedServers[0].IsSelected);
         Assert.Equal("cfx.re/join/aaaaaa", vm.ServerAddress);
     }
 
@@ -350,7 +349,6 @@ public partial class MainViewModelTests
         // Then
         Assert.Same(vm.SavedServers[2], vm.SelectedServer);
         Assert.Equal("Charlie Renamed", vm.SelectedServer!.Name);
-        Assert.True(vm.SelectedServer.IsSelected);
     }
 
     [Fact]
