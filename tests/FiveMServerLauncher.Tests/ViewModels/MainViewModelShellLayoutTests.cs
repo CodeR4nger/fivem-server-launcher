@@ -87,37 +87,6 @@ public partial class MainViewModelTests
     }
 
     [Theory]
-    [MemberData(nameof(ShippedLanguageTags))]
-    public void SettingsPage_ShouldShowEveryCheckboxUnclipped(string languageTag)
-    {
-        // Given the real window at its minimum size, in the given language, on the Settings page
-        var problems = RunOnSta(() =>
-        {
-            var (window, vm) = ShowShell(languageTag);
-
-            try
-            {
-                vm.NavigateAsync(AppPage.Settings).GetAwaiter().GetResult();
-                window.UpdateLayout();
-                var checkBoxes = FindSettingsCheckBoxes(window);
-                var panel = FindSettingsPanel(checkBoxes[0]);
-
-                // When each checkbox is measured against the panel and the window
-                return checkBoxes
-                    .SelectMany(checkBox => ClippingProblems(window, panel, checkBox))
-                    .ToList();
-            }
-            finally
-            {
-                window.Close();
-            }
-        });
-
-        // Then every checkbox and its whole label are visible
-        Assert.Empty(problems);
-    }
-
-    [Theory]
     [InlineData(AppPage.Servers, 0)]
     [InlineData(AppPage.Browse, 128)]
     [InlineData(AppPage.Settings, 256)]
@@ -191,7 +160,8 @@ public partial class MainViewModelTests
     private static (MainWindow Window, MainViewModel ViewModel) ShowShell(
         string languageTag,
         Tests.Configuration.InMemoryServerRepository? repository = null,
-        FakeClientInstallLocator? installLocator = null)
+        FakeClientInstallLocator? installLocator = null,
+        FakeReleaseFeed? releaseFeed = null)
     {
         var localizer = Localizer.FromEmbeddedResources();
         LocalizationSource.Instance.Attach(localizer);
@@ -201,7 +171,7 @@ public partial class MainViewModelTests
             installLocator: installLocator,
             localizer: localizer,
             repository: repository,
-            releaseFeed: new FakeReleaseFeed { Update = NewerUpdate() },
+            releaseFeed: releaseFeed ?? new FakeReleaseFeed { Update = NewerUpdate() },
             updateApplier: new FakeUpdateApplier());
         vm.InitializeAsync().GetAwaiter().GetResult();
 

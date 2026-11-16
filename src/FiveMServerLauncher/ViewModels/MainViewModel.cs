@@ -43,6 +43,8 @@ public class MainViewModel : INotifyPropertyChanged
     private bool _isUpdateAvailable;
     private bool _isUpdateInProgress;
     private bool _isUpdateFailed;
+    private bool _isCheckingForUpdates;
+    private UpdateCheckOutcome _updateCheckOutcome;
 
     private string _serverAddress = string.Empty;
     private string _statusText = string.Empty;
@@ -132,10 +134,9 @@ public class MainViewModel : INotifyPropertyChanged
                 SaveBrowserServer(item);
             }
         });
-        ToggleDevClientCommand = new RelayCommand(() =>
-            DevClient = DevClient == GameClient.FiveM ? GameClient.RedM : GameClient.FiveM);
         DevLaunchCommand = new AsyncRelayCommand((object? secondClient) => DevLaunchAsync(secondClient is true), () => !IsBusy, OnCommandFailed);
         UpdateCommand = new AsyncRelayCommand(ApplyUpdateAsync, CanApplyUpdate, OnCommandFailed);
+        CheckForUpdatesCommand = new AsyncRelayCommand(CheckForUpdatesAsync, CanCheckForUpdates, OnCommandFailed);
         DismissUpdateCommand = new RelayCommand(DismissUpdate, CanDismissUpdate);
 
         SavedServers = new ObservableCollection<SavedServerItem>(
@@ -230,6 +231,28 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand UpdateCommand { get; }
 
     public ICommand DismissUpdateCommand { get; }
+
+    public ICommand CheckForUpdatesCommand { get; }
+
+    private SettingsTab _settingsTab = SettingsTab.General;
+
+    /// <summary>The Settings page's open tab (session-only; survives page switches).</summary>
+    public SettingsTab SettingsTab
+    {
+        get => _settingsTab;
+        set
+        {
+            if (SetProperty(ref _settingsTab, value))
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsGeneralSettingsTab)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsDevModeSettingsTab)));
+            }
+        }
+    }
+
+    public bool IsGeneralSettingsTab => SettingsTab == SettingsTab.General;
+
+    public bool IsDevModeSettingsTab => SettingsTab == SettingsTab.DevMode;
 
     private AppPage _currentPage = AppPage.Servers;
 
@@ -516,25 +539,26 @@ public class MainViewModel : INotifyPropertyChanged
     private GameClient _devClient = GameClient.FiveM;
     private GameBuildData? _gameBuildData;
 
+    /// <summary>
+    /// The session-only Dev mode target: Legacy FiveM or RedM (the segmented control's
+    /// two values); any other client is refused.
+    /// </summary>
     public GameClient DevClient
     {
         get => _devClient;
-        private set
+        set
         {
+            if (value is not (GameClient.FiveM or GameClient.RedM))
+            {
+                return;
+            }
+
             if (SetProperty(ref _devClient, value))
             {
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevClientLabel)));
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevClientButtonText)));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevGameBuildOptions)));
             }
         }
     }
-
-    public string DevClientLabel => InstalledClientOption.DisplayNameOf(DevClient);
-
-    public string DevClientButtonText => _localizer.Format("DevClientButton", DevClientLabel);
-
-    public ICommand ToggleDevClientCommand { get; }
 
     public int? DevGameBuild
     {
@@ -780,11 +804,11 @@ public class MainViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LanguageOptions)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedLanguageOption)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ServerDialogTitle)));
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevClientButtonText)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DialogGameClientOptions)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevGameBuildOptions)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DialogGameBuildOptions)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(UpdateBannerText)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(UpdateCheckText)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(OpenClientLabel)));
     }
 
@@ -1308,27 +1332,102 @@ public class MainViewModel : INotifyPropertyChanged
         ? string.Empty
         : _localizer.Format("UpdateBannerText", _latestUpdate.Tag);
 
-    private async Task CheckForUpdateAsync()
+    /// <summary>True while the startup or an on-demand update check waits on the feed.</summary>
+    public bool IsCheckingForUpdates
     {
-        // Both seams or none: the check only runs when the whole update feature is wired
-        // (nulls mean a test or embedding declined the feature).
-        if (_releaseFeed is null || _updateApplier is null)
+        get => _isCheckingForUpdates;
+        private set
+        {
+            if (SetProperty(ref _isCheckingForUpdates, value))
+            {
+                // The button's gate is a CanExecute: re-ask it now, not on the next input.
+                CommandManager.InvalidateRequerySuggested();
+            }
+        }
+    }
+
+    /// <summary>The About row's line for the last on-demand check (empty: nothing to say).</summary>
+    public string UpdateCheckText => _updateCheckOutcome switch
+    {
+        UpdateCheckOutcome.Checking => _localizer.Get("UpdateCheckChecking"),
+        UpdateCheckOutcome.UpToDate => _localizer.Get("UpdateCheckUpToDate"),
+        UpdateCheckOutcome.Failed => _localizer.Get("UpdateCheckFailed"),
+        _ => string.Empty
+    };
+
+    private bool IsUpdateFeatureWired => _releaseFeed is not null && _updateApplier is not null;
+
+    private bool CanCheckForUpdates()
+    {
+        return IsUpdateFeatureWired && !IsCheckingForUpdates && !IsUpdateInProgress;
+    }
+
+    /// <summary>
+    /// Settings' Check for updates: the startup check on demand. A found update raises the
+    /// same pill; the feed's null (its contract folds outage into "no update") reads as up
+    /// to date; a throwing feed reads as could not check.
+    /// </summary>
+    public async Task CheckForUpdatesAsync()
+    {
+        if (!CanCheckForUpdates())
         {
             return;
         }
 
+        SetUpdateCheckOutcome(UpdateCheckOutcome.Checking);
+        var found = await TryCheckFeedAsync();
+        SetUpdateCheckOutcome(found switch
+        {
+            null => UpdateCheckOutcome.Failed,
+            true => UpdateCheckOutcome.None,
+            false => UpdateCheckOutcome.UpToDate
+        });
+    }
+
+    private void SetUpdateCheckOutcome(UpdateCheckOutcome outcome)
+    {
+        _updateCheckOutcome = outcome;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(UpdateCheckText)));
+    }
+
+    private async Task CheckForUpdateAsync()
+    {
+        // Both seams or none: the check only runs when the whole update feature is wired
+        // (nulls mean a test or embedding declined the feature). The startup check is
+        // silent: it never writes the Settings row line.
+        if (!IsUpdateFeatureWired)
+        {
+            return;
+        }
+
+        await TryCheckFeedAsync();
+    }
+
+    // true = an update was found (the pill shows), false = none, null = the feed threw.
+    private async Task<bool?> TryCheckFeedAsync()
+    {
+        IsCheckingForUpdates = true;
         try
         {
-            if (await _releaseFeed.CheckForUpdateAsync() is { } update)
+            if (await _releaseFeed!.CheckForUpdateAsync() is not { } update)
             {
-                _latestUpdate = update;
-                IsUpdateAvailable = true;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(UpdateBannerText)));
+                return false;
             }
+
+            _latestUpdate = update;
+            IsUpdateFailed = false;
+            IsUpdateAvailable = true;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(UpdateBannerText)));
+            return true;
         }
         catch (Exception)
         {
             // A failing update check never breaks startup and never shows a banner.
+            return null;
+        }
+        finally
+        {
+            IsCheckingForUpdates = false;
         }
     }
 

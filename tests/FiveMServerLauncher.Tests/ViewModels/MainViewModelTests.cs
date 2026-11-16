@@ -2839,7 +2839,7 @@ public partial class MainViewModelTests
         vm.DevGameBuild = 3095;
 
         // When
-        vm.ToggleDevClientCommand.Execute(null);
+        vm.DevClient = GameClient.RedM;
         var options = vm.DevGameBuildOptions;
 
         // Then
@@ -2960,34 +2960,6 @@ public partial class MainViewModelTests
     }
 
     [Fact]
-    public async Task ToggleDevClientCommand_ShouldUpdateButtonText()
-    {
-        // Given
-        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
-        await vm.InitializeAsync();
-
-        // When / Then
-        Assert.Equal("CLIENT: FiveM", vm.DevClientButtonText);
-        vm.ToggleDevClientCommand.Execute(null);
-        Assert.Equal("CLIENT: RedM", vm.DevClientButtonText);
-    }
-
-    [Fact]
-    public async Task ToggleDevClientCommand_ShouldSwitchDevTarget()
-    {
-        // Given
-        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
-        await vm.InitializeAsync();
-
-        // When / Then
-        Assert.Equal(GameClient.FiveM, vm.DevClient);
-        vm.ToggleDevClientCommand.Execute(null);
-        Assert.Equal(GameClient.RedM, vm.DevClient);
-        vm.ToggleDevClientCommand.Execute(null);
-        Assert.Equal(GameClient.FiveM, vm.DevClient);
-    }
-
-    [Fact]
     public async Task DevLaunchCommand_WhenRedMSelected_ShouldLaunchRedMExecutableWithFlags()
     {
         // Given
@@ -3003,7 +2975,7 @@ public partial class MainViewModelTests
             installLocator: locator,
             settings: new ConfigurationRepository(storage));
         await vm.InitializeAsync();
-        vm.ToggleDevClientCommand.Execute(null);
+        vm.DevClient = GameClient.RedM;
 
         // When
         await vm.DevLaunchAsync(false);
@@ -3027,7 +2999,7 @@ public partial class MainViewModelTests
         await vm.InitializeAsync();
 
         // When
-        vm.ToggleDevClientCommand.Execute(null);
+        vm.DevClient = GameClient.RedM;
 
         // Then
         Assert.Equal(GameClient.FiveM, new ConfigurationRepository(storage).Load().PreferredClient);
@@ -3714,7 +3686,6 @@ public partial class MainViewModelTests
             "StatusServerSaved": "Servidor guardado",
             "DialogNewServer": "NUEVO SERVIDOR",
             "DialogEditServer": "EDITAR SERVIDOR",
-            "DevClientButton": "CLIENTE: {0}",
             "LanguageSystemDefault": "Predeterminado del sistema",
             "GameClientNone": "Ninguno"
         }
@@ -3765,20 +3736,6 @@ public partial class MainViewModelTests
         // Then
         Assert.Equal("NUEVO SERVIDOR", vm.ServerDialogTitle);
         Assert.Contains(nameof(MainViewModel.ServerDialogTitle), raised);
-    }
-
-    [Fact]
-    public void DevClientButtonText_WhenLanguageSwitched_ShouldRefresh()
-    {
-        // Given
-        var localizer = CreateLocalizer(("en", LanguageEnglishJson), ("es", VmSpanishJson));
-        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), localizer: localizer);
-
-        // When
-        localizer.SetLanguage("es");
-
-        // Then
-        Assert.Equal("CLIENTE: FiveM", vm.DevClientButtonText);
     }
 
     [Fact]
