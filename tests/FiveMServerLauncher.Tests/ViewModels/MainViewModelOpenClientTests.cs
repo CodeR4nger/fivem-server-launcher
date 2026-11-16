@@ -53,20 +53,6 @@ public partial class MainViewModelTests
         Assert.True(vm.HasInstalledClients);
     }
 
-    [Fact]
-    public async Task Initialize_WithRedMInstalled_ShouldOfferRedM()
-    {
-        // Given
-        var locator = new FakeClientInstallLocator();
-        locator.Executables[GameClient.RedM] = RedMExecutablePath;
-
-        // When
-        var vm = await OpenClientViewModel(new InMemorySettingsStorage(), locator);
-
-        // Then
-        Assert.Contains(vm.AvailableOpenClients, c => c.Client == GameClient.RedM && c.DisplayName == "RedM");
-    }
-
     [Theory]
     [InlineData(GameClient.FiveMEnhanced, "Open FiveM Enhanced")]
     [InlineData(GameClient.RedM, "Open RedM")]

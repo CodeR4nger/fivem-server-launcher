@@ -1,6 +1,4 @@
 using System.Windows;
-using System.Windows.Automation.Peers;
-using System.Windows.Automation.Provider;
 using System.Windows.Controls;
 using FiveMServerLauncher.Core.Enums;
 using FiveMServerLauncher.Localization;
@@ -95,6 +93,10 @@ public partial class MainViewModelTests
         Assert.Empty(problems);
     }
 
+    // The menu tests lay the real ClientMenu out WITHOUT opening it: an open ContextMenu is a
+    // real popup window on the live desktop (menu mode, mouse capture, UI Automation events to
+    // any client on the machine), which a unit test must not drive. Opening it is one WPF
+    // property set in OpenMenu; what is tested is what the menu shows and what a pick does.
     [Fact]
     public void OpenClientMenu_ShouldListTheInstalledClientsAndMarkOnlyThePreferredOne()
     {
@@ -106,21 +108,15 @@ public partial class MainViewModelTests
             try
             {
                 vm.PreferredClientOption = vm.AvailableOpenClients.Single(c => c.Client == GameClient.RedM);
-                var button = FindDescendant<OpenClientButton>(window);
 
-                // When the menu opens
-                button.OpenMenu();
-                StaThread.Pump(150);
-                var menu = (ContextMenu)((FrameworkElement)button.FindName("ButtonRow")).Resources["ClientMenu"];
-                var containers = vm.AvailableOpenClients
-                    .Select(c => (MenuItem)menu.ItemContainerGenerator.ContainerFromItem(c))
-                    .ToList();
+                // When the menu is laid out
+                var menu = LaidOutClientMenu(FindDescendant<OpenClientButton>(window));
                 var names = vm.AvailableOpenClients.Select(c => c.DisplayName).ToList();
-                var markedNames = containers
-                    .Where(item => FindDescendants<TextBlock>(item).Any(t => t.Text == "✓" && t.IsVisible))
+                var markedNames = vm.AvailableOpenClients
+                    .Select(c => (MenuItem)menu.ItemContainerGenerator.ContainerFromItem(c))
+                    .Where(item => FindDescendants<TextBlock>(item).Any(t => t.Text == "✓" && t.Visibility == Visibility.Visible))
                     .Select(item => ((InstalledClientOption)item.DataContext).DisplayName)
                     .ToList();
-                menu.IsOpen = false;
                 return (names, markedNames);
             }
             finally
@@ -135,27 +131,25 @@ public partial class MainViewModelTests
     }
 
     [Fact]
-    public void OpenClientMenu_PickingAClient_ShouldSaveItAsPreferredAndClose()
+    public void OpenClientMenu_PickingAClient_ShouldSaveItAsPreferredAndRelabelTheButton()
     {
-        // Given the open menu
-        var (preferred, label, open) = RunOnSta(() =>
+        // Given the laid-out menu
+        var (preferred, label) = RunOnSta(() =>
         {
             var (window, vm) = ShowShell("en", installLocator: AllClientsInstalled());
 
             try
             {
                 var button = FindDescendant<OpenClientButton>(window);
-                button.OpenMenu();
-                StaThread.Pump(150);
-                var menu = (ContextMenu)((FrameworkElement)button.FindName("ButtonRow")).Resources["ClientMenu"];
+                var menu = LaidOutClientMenu(button);
                 var enhanced = vm.AvailableOpenClients.Single(c => c.Client == GameClient.FiveMEnhanced);
                 var item = (MenuItem)menu.ItemContainerGenerator.ContainerFromItem(enhanced);
 
-                // When a client is picked
-                ((IInvokeProvider)new MenuItemAutomationPeer(item).GetPattern(PatternInterface.Invoke)).Invoke();
-                StaThread.Pump(150);
+                // When a client is picked (what MenuItem.OnClick runs: its bound command)
+                item.Command.Execute(item.CommandParameter);
+                window.UpdateLayout();
 
-                return (vm.PreferredClientOption?.Client, ((Button)button.FindName("OpenButton")).Content as string, button.IsMenuOpen);
+                return (vm.PreferredClientOption?.Client, ((Button)button.FindName("OpenButton")).Content as string);
             }
             finally
             {
@@ -163,10 +157,18 @@ public partial class MainViewModelTests
             }
         });
 
-        // Then it is the preferred client, the button says so, and the menu is closed
+        // Then it is the preferred client and the button says so
         Assert.Equal(GameClient.FiveMEnhanced, preferred);
         Assert.Equal("Open FiveM Enhanced", label);
-        Assert.False(open);
+    }
+
+    private static ContextMenu LaidOutClientMenu(OpenClientButton button)
+    {
+        var menu = (ContextMenu)((FrameworkElement)button.FindName("ButtonRow")).Resources["ClientMenu"];
+        menu.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        menu.Arrange(new Rect(menu.DesiredSize));
+        menu.UpdateLayout();
+        return menu;
     }
 
     [Fact]

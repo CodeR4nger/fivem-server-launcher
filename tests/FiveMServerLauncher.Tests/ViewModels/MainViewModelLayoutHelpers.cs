@@ -4,6 +4,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using FiveMServerLauncher.Localization;
 using FiveMServerLauncher.Tests.Launch;
+using FiveMServerLauncher.Tests.Views;
 using FiveMServerLauncher.Views;
 
 namespace FiveMServerLauncher.Tests.ViewModels;
@@ -132,30 +133,5 @@ public partial class MainViewModelTests
         }
     }
 
-    private static T RunOnSta<T>(Func<T> work)
-    {
-        T result = default!;
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                result = work();
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-
-        if (failure is not null)
-        {
-            throw new InvalidOperationException("STA work failed", failure);
-        }
-
-        return result;
-    }
+    private static T RunOnSta<T>(Func<T> work) => StaThread.Run(work);
 }
