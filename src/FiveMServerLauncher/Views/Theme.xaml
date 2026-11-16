@@ -585,7 +585,7 @@
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
     </Style>
 
-    <!-- Icon button: a round, borderless glyph button (refresh, kebab, move arrows) -->
+    <!-- Icon button: a round, borderless glyph button (refresh, add, the actions ⋮) -->
     <Style x:Key="IconButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource PillButtonBaseStyle}">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>

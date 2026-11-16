@@ -4134,7 +4134,7 @@ public partial class MainViewModelTests
         var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
 
         // Then — the top row can only move down, the bottom one only up, the middle
-        // row both ways; the XAML arrows bind to these.
+        // row both ways; the Move up / Move down menu items bind to these.
         Assert.False(vm.SavedServers[0].CanMoveUp);
         Assert.True(vm.SavedServers[0].CanMoveDown);
         Assert.True(vm.SavedServers[1].CanMoveUp);
@@ -4146,7 +4146,7 @@ public partial class MainViewModelTests
     [Fact]
     public void MoveServerCommands_WhenSearchFilterActive_ShouldReportUnavailable()
     {
-        // Given — the command gate is what the arrows' IsEnabled binds to.
+        // Given — the command gate behind the Move up / Move down menu items.
         var repository = new InMemoryServerRepository();
         repository.Add(SavedServer.Create("Alpha Zone", "cfx.re/join/aaaaaa"));
         repository.Add(SavedServer.Create("Alpha Two", "cfx.re/join/cccccc"));
@@ -4191,7 +4191,7 @@ public partial class MainViewModelTests
     [Fact]
     public void MoveServerToIndex_WhenSearchFilterActive_ShouldLeaveListAndStoreUntouched()
     {
-        // Given — the drag entry point obeys the same gate as the arrows.
+        // Given — the drag entry point obeys the same gate as the menu's move items.
         var repository = new InMemoryServerRepository();
         repository.Add(SavedServer.Create("Alpha Zone", "cfx.re/join/aaaaaa"));
         repository.Add(SavedServer.Create("Alpha Two", "cfx.re/join/cccccc"));
