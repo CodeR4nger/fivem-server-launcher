@@ -86,6 +86,7 @@
   "DialogGameField": "JUEGO",
   "GameClientNone": "Ninguno",
   "DialogLocalDevHeader": "DESARROLLO LOCAL",
+  "DialogClose": "Cerrar diálogo",
   "LanguageHeader": "IDIOMA",
   "LanguageSystemDefault": "Predeterminado del sistema",
   "StatusStartupFailed": "Error de inicio",

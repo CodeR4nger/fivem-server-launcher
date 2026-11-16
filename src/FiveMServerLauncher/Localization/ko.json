@@ -86,6 +86,7 @@
   "DialogGameField": "게임",
   "GameClientNone": "없음",
   "DialogLocalDevHeader": "로컬 개발",
+  "DialogClose": "대화 상자 닫기",
   "LanguageHeader": "언어",
   "LanguageSystemDefault": "시스템 기본값",
   "StatusStartupFailed": "시작 오류",

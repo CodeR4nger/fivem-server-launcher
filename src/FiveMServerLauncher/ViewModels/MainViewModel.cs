@@ -342,6 +342,7 @@ public class MainViewModel : INotifyPropertyChanged
     private bool _isConfirmOpen;
     private string _confirmText = string.Empty;
     private Action? _pendingConfirmAction;
+    private bool _isConfirmDestructive;
 
     public SavedServerItem? EditingServer
     {
@@ -407,10 +408,25 @@ public class MainViewModel : INotifyPropertyChanged
         private set => SetProperty(ref _confirmText, value);
     }
 
-    public void RequestConfirmation(string text, Action onConfirm)
+    // True while the open confirmation guards an action that destroys data (delete): the
+    // view draws its confirm button in the danger style.
+    public bool IsConfirmDestructive
+    {
+        get => _isConfirmDestructive;
+        private set => SetProperty(ref _isConfirmDestructive, value);
+    }
+
+    public void RequestConfirmation(string text, Action onConfirm) =>
+        OpenConfirm(text, onConfirm, isDestructive: false);
+
+    public void RequestDestructiveConfirmation(string text, Action onConfirm) =>
+        OpenConfirm(text, onConfirm, isDestructive: true);
+
+    private void OpenConfirm(string text, Action onConfirm, bool isDestructive)
     {
         _pendingConfirmAction = onConfirm;
         ConfirmText = text;
+        IsConfirmDestructive = isDestructive;
         IsConfirmOpen = true;
     }
 
@@ -1536,7 +1552,7 @@ public class MainViewModel : INotifyPropertyChanged
             return;
         }
 
-        RequestConfirmation(
+        RequestDestructiveConfirmation(
             _localizer.Format("ConfirmDeleteServerText", server.Name),
             () => RemoveServer(server));
     }

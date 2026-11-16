@@ -188,7 +188,8 @@ public partial class MainViewModelTests
         return (TranslateTransform)((UIElement)bar.FindName("NavHighlight")).RenderTransform;
     }
 
-    private static (MainWindow Window, MainViewModel ViewModel) ShowShell(string languageTag)
+    private static (MainWindow Window, MainViewModel ViewModel) ShowShell(
+        string languageTag, Tests.Configuration.InMemoryServerRepository? repository = null)
     {
         var localizer = Localizer.FromEmbeddedResources();
         LocalizationSource.Instance.Attach(localizer);
@@ -196,6 +197,7 @@ public partial class MainViewModelTests
             new FakeGameProcessLauncher(),
             CfxJson("gta5"),
             localizer: localizer,
+            repository: repository,
             releaseFeed: new FakeReleaseFeed { Update = NewerUpdate() },
             updateApplier: new FakeUpdateApplier());
         vm.InitializeAsync().GetAwaiter().GetResult();
