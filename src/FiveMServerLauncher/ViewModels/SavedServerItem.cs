@@ -58,7 +58,6 @@ public class SavedServerItem : INotifyPropertyChanged
 
     private void OnLanguageChanged(object? sender, EventArgs e)
     {
-        Raise(nameof(StatusLabel));
         RaiseDetailChanged();
     }
 
@@ -103,7 +102,6 @@ public class SavedServerItem : INotifyPropertyChanged
         CfxId = cfxId;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CfxId)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasCfxId)));
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StatusLabel)));
         RaiseDetailChanged();
     }
 
@@ -148,45 +146,20 @@ public class SavedServerItem : INotifyPropertyChanged
     public bool Online
     {
         get => _online;
-        private set
-        {
-            if (SetProperty(ref _online, value))
-            {
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StatusLabel)));
-            }
-        }
+        private set => SetProperty(ref _online, value);
     }
 
     public int? Players
     {
         get => _players;
-        private set
-        {
-            if (SetProperty(ref _players, value))
-            {
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StatusLabel)));
-            }
-        }
+        private set => SetProperty(ref _players, value);
     }
 
     public int? MaxPlayers
     {
         get => _maxPlayers;
-        private set
-        {
-            if (SetProperty(ref _maxPlayers, value))
-            {
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StatusLabel)));
-            }
-        }
+        private set => SetProperty(ref _maxPlayers, value);
     }
-
-    public string StatusLabel =>
-        !HasCfxId
-            ? _localizer.Get("StatusUnresolved")
-            : Online && Players is { } players && MaxPlayers is { } max
-                ? $"{players}/{max}"
-                : _localizer.Get("StatusOffline");
 
     // ---- Detail pane data ----
 

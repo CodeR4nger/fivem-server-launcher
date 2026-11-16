@@ -55,8 +55,6 @@
   "SortFewestPlayers": "플레이어 적은 순",
   "SortNameAscending": "이름 A–Z",
   "SortNameDescending": "이름 Z–A",
-  "StatusUnresolved": "확인 안 됨",
-  "StatusOffline": "오프라인",
   "DetailBuildServerDefault": "서버 기본값",
   "DetailPureModeOff": "끄기",
   "DetailStateOffline": "오프라인",

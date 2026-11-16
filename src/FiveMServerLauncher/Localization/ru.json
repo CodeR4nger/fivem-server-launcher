@@ -55,8 +55,6 @@
   "SortFewestPlayers": "Меньше игроков",
   "SortNameAscending": "Название А–Я",
   "SortNameDescending": "Название Я–А",
-  "StatusUnresolved": "НЕ РАЗРЕШЁН",
-  "StatusOffline": "ОФЛАЙН",
   "DetailBuildServerDefault": "По умолчанию сервера",
   "DetailPureModeOff": "Выкл.",
   "DetailStateOffline": "Не в сети",
