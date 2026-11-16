@@ -39,6 +39,16 @@ public sealed class ServerBrowserItem : INotifyPropertyChanged
 
     public int MaxPlayers { get; }
 
+    private string? _playersText;
+
+    // Formatted on first read: only the few realized rows of the 30k-row list pay for it,
+    // and the row template binds a plain string instead of a per-row MultiBinding.
+    public string PlayersText => _playersText ??= $"{Players}/{MaxPlayers}";
+
+    public string GameTagLabel => Game is { } game ? InstalledClientOption.DisplayNameOf(game) : string.Empty;
+
+    public bool HasGame => Game is not null;
+
     public string Address { get; }
 
     public string? IconUrl { get; }
