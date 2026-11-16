@@ -455,16 +455,12 @@
                         </Storyboard>
                     </BeginStoryboard>
                 </MultiTrigger.EnterActions>
+                <!-- Release REMOVES the press instead of animating to the hover value: this
+                     trigger is declared after the hover one, so a value it holds would outrank
+                     the hover fade-out forever (a clicked tab kept its grey fill after the
+                     pointer left). Removal hands the layer back to the hover storyboards. -->
                 <MultiTrigger.ExitActions>
-                    <BeginStoryboard x:Name="PressOut">
-                        <Storyboard>
-                            <DoubleAnimation Storyboard.TargetName="HoverLayer"
-                                             Storyboard.TargetProperty="Opacity"
-                                             To="{StaticResource HoverLayerOpacity}"
-                                             Duration="{StaticResource MotionFast}"
-                                             EasingFunction="{StaticResource MotionEase}"/>
-                        </Storyboard>
-                    </BeginStoryboard>
+                    <RemoveStoryboard BeginStoryboardName="PressIn"/>
                 </MultiTrigger.ExitActions>
             </MultiTrigger>
             <MultiTrigger>
@@ -486,7 +482,6 @@
                     <RemoveStoryboard BeginStoryboardName="HoverIn"/>
                     <RemoveStoryboard BeginStoryboardName="HoverOut"/>
                     <RemoveStoryboard BeginStoryboardName="PressIn"/>
-                    <RemoveStoryboard BeginStoryboardName="PressOut"/>
                 </Trigger.EnterActions>
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">

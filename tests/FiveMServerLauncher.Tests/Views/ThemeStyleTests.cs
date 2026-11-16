@@ -263,6 +263,40 @@ public class ThemeStyleTests
         Assert.Equal(0.16, animated.Opacity, 3);
     }
 
+    [Theory]
+    [InlineData("NavTabStyle")]
+    [InlineData("PrimaryButtonStyle")]
+    [InlineData("SecondaryButtonStyle")]
+    public void PillButton_WithMotionOn_AfterAPressIsReleased_ShouldNotHoldTheHoverFill(string styleKey)
+    {
+        // Given a rendering pill button with motion on, not under the mouse
+        var opacity = StaThread.Run(() =>
+        {
+            var button = new Button { Style = (Style)new ThemeResources()[styleKey], Content = "Tab" };
+            Motion.SetIsEnabled(button, true);
+            using var host = new OffscreenHost(button);
+            button.ApplyTemplate();
+            var layer = (Border)button.Template.FindName("HoverLayer", button);
+            var setPressed = typeof(ButtonBase).GetMethod(
+                "SetIsPressed", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+            StaThread.Pump();
+
+            // When it is pressed and released (a click whose pointer then leaves: the
+            // reported nav tab that kept its grey fill after switching pages)
+            setPressed.Invoke(button, [true]);
+            StaThread.Pump(300);
+            setPressed.Invoke(button, [false]);
+            StaThread.Pump(300);
+
+            return layer.Opacity;
+        });
+
+        // Then the press fades out to whatever hover says, and nothing hovers it: no fill.
+        // A press release that animates to the hover value holds it from a later-declared
+        // trigger, which outranks the hover trigger's own fade-out (AGENTS.md motion RULE).
+        Assert.Equal(0, opacity, 3);
+    }
+
     [Fact]
     public void PageSurface_WithMotionOff_ShouldSnapShownAndHiddenWithoutAnimating()
     {
