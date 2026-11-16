@@ -1,147 +1,101 @@
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media.Animation;
+using System.Windows.Input;
+using System.Windows.Threading;
+using FiveMServerLauncher.ViewModels;
 
 namespace FiveMServerLauncher.Views
 {
+    // Thin glue: opens the client menu from the ▾ part (click, Enter/Space, Alt+Down),
+    // puts keyboard focus on the current client, and hands focus back to the ▾ part when
+    // the menu closes from the keyboard. Picking rides the item Command (the view model).
     public partial class OpenClientButton : UserControl
     {
+        // The press that dismisses the open menu is delivered on to the ▾ button, whose
+        // Click arrives on mouse-up, so a click this soon after a close is that same
+        // press and must not reopen the menu (the saved-row kebab's guard). ContextMenu.Closed
+        // is not raised for outside-click dismissals, so IsOpen itself is watched.
+        private const long ReopenGuardMs = 400;
+
+        private readonly ContextMenu _menu;
+        private long _menuClosedAt;
+
         public OpenClientButton()
         {
             InitializeComponent();
+
+            _menu = (ContextMenu)ButtonRow.Resources["ClientMenu"];
+            _menu.PlacementTarget = ButtonRow;
+            _menu.Opened += (_, _) => Dispatcher.BeginInvoke(DispatcherPriority.Input, FocusCurrentClient);
+            DependencyPropertyDescriptor.FromProperty(ContextMenu.IsOpenProperty, typeof(ContextMenu))
+                .AddValueChanged(_menu, Menu_IsOpenChanged);
         }
 
-        private bool _dropdownClosing;
-        private int _dropdownHeightGeneration;
+        public bool IsMenuOpen => _menu.IsOpen;
 
-        private void DropdownButton_Click(object sender, RoutedEventArgs e)
+        public void OpenMenu()
         {
-            if (FiveMDropdown.Visibility == Visibility.Collapsed || _dropdownClosing)
+            if (!ChooserButton.IsEnabled || _menu.IsOpen)
             {
-                OpenDropdown();
-                ArrowText.Text = "▲";
-            }
-            else
-            {
-                CloseDropdown();
-                ArrowText.Text = "▼";
-            }
-        }
-
-        private void ClientOption_Click(object sender, RoutedEventArgs e)
-        {
-            CloseDropdown();
-            ArrowText.Text = "▼";
-        }
-
-        // The client menu is not a popup: it sits in a zero-height Canvas above
-        // the buttons, bottom-anchored, so it grows upward over the content panel.
-        // Both motions animate the menu's Height with the content clipped to the
-        // sweeping border — it unrolls up out of the button seam on open and
-        // collapses back into it on close. Pure visual glue: only visibility and
-        // height are touched.
-        private void OpenDropdown()
-        {
-            _dropdownClosing = false;
-            var generation = ++_dropdownHeightGeneration;
-
-            if (!Motion.GetIsEnabled(this))
-            {
-                SnapDropdown(Visibility.Visible);
                 return;
             }
 
-            if (FiveMDropdown.Visibility == Visibility.Collapsed)
+            _menu.IsOpen = true;
+        }
+
+        private void ChooserButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (Environment.TickCount64 - _menuClosedAt < ReopenGuardMs)
             {
-                FiveMDropdown.Height = 0;
+                return;
             }
 
-            FiveMDropdown.Visibility = Visibility.Visible;
+            OpenMenu();
+        }
 
-            // Measure the child explicitly with an infinite constraint: the
-            // explicit Height (0) clamps the child's measure constraint
-            // (FrameworkElement.MeasureCore), so a layout-pass DesiredSize
-            // would read 0 and the expand would animate to the border only.
-            FiveMDropdown.Child.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-
-            var target = FiveMDropdown.Child.DesiredSize.Height
-                         + FiveMDropdown.BorderThickness.Top
-                         + FiveMDropdown.BorderThickness.Bottom
-                         + FiveMDropdown.Padding.Top
-                         + FiveMDropdown.Padding.Bottom;
-
-            var expand = new DoubleAnimation(target, TimeSpan.FromSeconds(0.2))
+        private void OpenClientButton_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.System && e.SystemKey == Key.Down && Keyboard.Modifiers == ModifierKeys.Alt)
             {
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-            };
+                OpenMenu();
+                e.Handled = true;
+            }
+        }
 
-            expand.Completed += (_, _) =>
+        private void FocusCurrentClient()
+        {
+            var current = (DataContext as MainViewModel)?.PreferredClientOption;
+            var container = current is null ? null : _menu.ItemContainerGenerator.ContainerFromItem(current);
+            container ??= _menu.ItemContainerGenerator.ContainerFromIndex(0);
+            (container as MenuItem)?.Focus();
+        }
+
+        private void Menu_IsOpenChanged(object? sender, EventArgs e)
+        {
+            if (_menu.IsOpen)
             {
-                if (generation != _dropdownHeightGeneration)
+                return;
+            }
+
+            _menuClosedAt = Environment.TickCount64;
+
+            // A keyboard close (Esc, Enter on an item) leaves focus in the closed menu or
+            // nowhere: give it back to the ▾ part. A click elsewhere keeps its own focus.
+            Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
+            {
+                if (Keyboard.FocusedElement is null
+                    || (Keyboard.FocusedElement is DependencyObject focused && IsInMenu(focused)))
                 {
-                    return;
+                    ChooserButton.Focus();
                 }
-
-                FiveMDropdown.BeginAnimation(FrameworkElement.HeightProperty, null);
-                FiveMDropdown.Height = double.NaN;
-            };
-
-            FiveMDropdown.BeginAnimation(FrameworkElement.HeightProperty, expand);
+            });
         }
 
-        // Motion off: no animation at all, the menu just appears or disappears at its
-        // natural size (any running height animation is dropped).
-        private void SnapDropdown(Visibility visibility)
+        private bool IsInMenu(DependencyObject element)
         {
-            FiveMDropdown.BeginAnimation(FrameworkElement.HeightProperty, null);
-            FiveMDropdown.Height = double.NaN;
-            FiveMDropdown.Visibility = visibility;
-            _dropdownClosing = false;
-        }
-
-        private void CloseDropdown()
-        {
-            if (FiveMDropdown.Visibility != Visibility.Visible || _dropdownClosing)
-            {
-                return;
-            }
-
-            var generation = ++_dropdownHeightGeneration;
-
-            if (!Motion.GetIsEnabled(this))
-            {
-                SnapDropdown(Visibility.Collapsed);
-                return;
-            }
-
-            _dropdownClosing = true;
-
-            // Pin the current rendered height as the animation origin: after a
-            // completed expand the local Height is NaN (released to auto), and
-            // a To-only DoubleAnimation throws when its origin value is NaN.
-            // The motion itself is To-only, so a close fired mid-expand still
-            // starts from the live animated height and reverses smoothly.
-            FiveMDropdown.Height = FiveMDropdown.ActualHeight;
-
-            var collapse = new DoubleAnimation(0, TimeSpan.FromSeconds(0.2))
-            {
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-            };
-
-            collapse.Completed += (_, _) =>
-            {
-                if (generation != _dropdownHeightGeneration)
-                {
-                    return;
-                }
-
-                FiveMDropdown.BeginAnimation(FrameworkElement.HeightProperty, null);
-                FiveMDropdown.Height = double.NaN;
-                FiveMDropdown.Visibility = Visibility.Collapsed;
-                _dropdownClosing = false;
-            };
-
-            FiveMDropdown.BeginAnimation(FrameworkElement.HeightProperty, collapse);
+            return ReferenceEquals(element, _menu)
+                   || (element is MenuItem item && ItemsControl.ItemsControlFromItemContainer(item) == _menu);
         }
     }
 }
