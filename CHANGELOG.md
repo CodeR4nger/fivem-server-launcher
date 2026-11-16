@@ -1,6 +1,12 @@
 # Changelog
 
-## [Unreleased]
+## [1.4.0] (2026-11-16)
+
+### Added
+- **System tray icon** — the launcher sits in the notification area with quick-connect to your saved servers, Show and Exit. Turn on **Minimize to the system tray** in Settings to hide the window to the tray when you minimize it.
+- **`cfxlauncher://` web links** — opt in under Settings and links like `cfxlauncher://connect/<address>` on websites open that server in the launcher, whether it is running or not. The launcher only ever registers or removes its own link handler.
+- **Browser sorting** — sort the server browser by most or fewest players, or by name A–Z / Z–A.
+- **Check for updates** — a button in Settings → About checks GitHub on demand instead of only at startup.
 
 ### Changed
 - **A redesigned launcher** — the single fixed 860×520 screen with its stacked overlays is replaced by a resizable window (minimum 1000×640, maximizable) with its own title bar, one rounded content panel and a bottom bar with three pages: **Servers**, **Browse** and **Settings**. The launcher remembers its size, position and maximized state, and comes back on screen if the monitor it was on is gone.
@@ -13,6 +19,25 @@
 - **Motion and look** — page fades, a sliding tab highlight, modal and menu pops, gliding switches and hover feedback, all short and eased. A new **Interface animations: Minimal** setting turns them off, and they also follow Windows' "Show animations" setting. The UI now uses the bundled Inter font with higher-contrast text, and offline servers show a grey dot (red stays for RedM and errors).
 - **Keyboard and screen readers** — every page, the tabs (arrow keys), menus and dialogs can be used without a mouse, Tab moves through each row in reading order, and every control and option is announced by name.
 - A web link, desktop shortcut or tray connect now brings up the Servers page, so you see how the connect is going.
+
+### Fixed
+- **Saved servers and settings can no longer be wiped** — if a file is locked (for example by an antivirus) or unreadable, the launcher refuses to overwrite it instead of saving an empty list; a corrupt file is backed up as `.bak` first, and entries it cannot read are kept rather than dropped. A failed save shows a message instead of crashing.
+- **Connecting during a CFX outage** — a `cfx.re/join/` address now still connects through FiveM when CFX's server lookup is down, instead of showing "Invalid address".
+- **Same settings whichever address you use** — joining by IP:port or domain applies the same game build and pool settings as joining by cfx id.
+- **Accented install paths stay intact** — the launcher no longer corrupts non-English characters (like `José`) in FiveM's `CitizenFX.ini`.
+- **Pasted addresses with spaces or line breaks** now connect instead of failing as invalid.
+- **No more stuck "Resolving…"** — an unexpected error during connect, open or dev launch ends with an error message.
+- **A server whose icon is not a real image** can no longer crash the launcher.
+
+### Security
+- **Verified updates** — an update is only installed when its download matches the SHA-256 digest GitHub publishes, and only from github.com.
+- **Shortcut and link forwarding is private to your Windows user and session**, and a client that never sends anything can no longer block it.
+- **Server icons are only fetched from CFX's own icon host**, and every download is size-limited while it streams instead of after.
+- **Join links are validated strictly**, so text placed before `cfx.re/join/` can no longer slip into a desktop shortcut.
+
+### Performance
+- **No background downloads while you play** — the server list (about 20 MB) is no longer re-downloaded every few minutes while the launcher is minimized or in the background, about 250 MB an hour less.
+- **Lower memory use** — the server list is decoded as it downloads, about 70 MB less per refresh.
 
 ## [1.3.1] (2026-10-26)
 
