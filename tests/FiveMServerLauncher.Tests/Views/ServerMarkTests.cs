@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using FiveMServerLauncher.Views;
 
@@ -137,8 +139,99 @@ public class ServerMarkTests
     }
 
     [Theory]
+    [InlineData(22, 8.8)]
+    [InlineData(36, 14.4)]
+    [InlineData(56, 22.4)]
+    public void InitialsFontSize_ShouldDependOnlyOnTheMarkSize(double markSize, double expected)
+    {
+        // Given / When / Then — a fixed share of the mark, never shrunk to fit the
+        // letters, so "WW" and "LS" render at the same size
+        Assert.Equal(expected, ServerMark.InitialsFontSize(markSize), precision: 6);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(double.NaN)]
+    public void InitialsFontSize_BeforeLayout_ShouldStillBeAUsableSize(double markSize)
+    {
+        // Given / When / Then — ActualHeight is 0 (or unset) until the first layout pass
+        Assert.True(ServerMark.InitialsFontSize(markSize) >= 1);
+    }
+
+    [Fact]
+    public void FontSizeConverter_ShouldMapTheMarkHeightToTheInitialsSize()
+    {
+        // Given
+        var converter = new ServerMarkFontSizeConverter();
+
+        // When
+        var result = converter.Convert(36.0, typeof(double), null!, CultureInfo.InvariantCulture);
+
+        // Then
+        Assert.Equal(ServerMark.InitialsFontSize(36), (double)result, precision: 6);
+    }
+
+    [Fact]
+    public void MarkStyle_WideAndNarrowInitials_ShouldRenderAtTheSameSizeAndFit()
+    {
+        // Given two 36 px marks whose initials differ in width
+        var (wide, narrow) = StaThread.Run(() => (Initials("Wild West"), Initials("Los Santos")));
+
+        // Then — same font size (no shrink-to-fit), and the wide pair still fits the mark
+        Assert.Equal(narrow.FontSize, wide.FontSize, precision: 6);
+        Assert.Equal(ServerMark.InitialsFontSize(36), wide.FontSize, precision: 6);
+        Assert.True(wide.Width <= 36, $"'WW' is {wide.Width:F1} px wide in a 36 px mark");
+    }
+
+    private static (double FontSize, double Width) Initials(string name)
+    {
+        var mark = new ContentControl
+        {
+            Style = (Style)new ThemeResources()["ServerMarkStyle"],
+            Tag = name,
+            Width = 36,
+            Height = 36
+        };
+        mark.Measure(new Size(36, 36));
+        mark.Arrange(new Rect(0, 0, 36, 36));
+        mark.UpdateLayout();
+        var text = FindText(mark)!;
+        Assert.Null(FindAncestor<Viewbox>(text));
+        return (text.FontSize, text.ActualWidth);
+    }
+
+    private static TextBlock? FindText(DependencyObject node)
+    {
+        if (node is TextBlock text)
+        {
+            return text;
+        }
+
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++)
+        {
+            if (FindText(VisualTreeHelper.GetChild(node, i)) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
+    private static T? FindAncestor<T>(DependencyObject? node) where T : DependencyObject
+    {
+        while (node is not null and not T)
+        {
+            node = VisualTreeHelper.GetParent(node);
+        }
+
+        return node as T;
+    }
+
+    [Theory]
     [InlineData(typeof(ServerMarkInitialsConverter))]
     [InlineData(typeof(ServerMarkBrushConverter))]
+    [InlineData(typeof(ServerMarkFontSizeConverter))]
     public void Converters_ShouldHaveATrueParameterlessConstructor(Type type)
     {
         // Given / When / Then: XAML-instantiated, BAML needs it

@@ -56,6 +56,14 @@ public static class ServerMark
         return initials.Length == 0 ? NoInitials : initials.ToString();
     }
 
+    // The initials' share of the mark's height. Fixed, never shrink-to-fit: every mark of a
+    // size shows its initials at the same size ("WW" as large as "LS"); at 0.4 of the side
+    // even the widest pair in Inter Bold fits inside the mark.
+    private const double InitialsShare = 0.4;
+
+    public static double InitialsFontSize(double markSize) =>
+        double.IsFinite(markSize) && markSize > 0 ? markSize * InitialsShare : 1;
+
     public static Color Color(string? name) => Palette[IndexOf(name)];
 
     // Frozen, shared: one brush per palette colour instead of one per bound row.

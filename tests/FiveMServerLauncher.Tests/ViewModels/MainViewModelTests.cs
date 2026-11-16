@@ -1624,19 +1624,18 @@ public partial class MainViewModelTests
     }
 
     [Fact]
-    public void DeleteServerCommand_WithoutSelectionOrParameter_ShouldDoNothing()
+    public void DeleteServerCommand_WithNoSavedServers_ShouldDoNothing()
     {
-        // Given — no row handed over, nothing selected: the command is a no-op.
-        var repository = new InMemoryServerRepository();
-        repository.Add(SavedServer.Create("My Server", "cfx.re/join/abc123"));
-        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository: repository);
+        // Given — no row handed over and, with an empty list, nothing selected (a
+        // non-empty list always has a selection): the command is a no-op.
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
 
         // When
         vm.DeleteServerCommand.Execute(null);
 
         // Then
         Assert.False(vm.IsConfirmOpen);
-        Assert.Single(vm.SavedServers);
+        Assert.Empty(vm.SavedServers);
     }
 
     [Fact]
@@ -4549,7 +4548,8 @@ public partial class MainViewModelTests
         Func<string?>? targetExePathProvider = null,
         ShortcutIconWriter? iconWriter = null,
         LauncherSchemeRegistrar? webLinks = null,
-        ISystemAnimationSetting? systemAnimations = null)
+        ISystemAnimationSetting? systemAnimations = null,
+        IClipboardService? clipboard = null)
     {
         var resolver = new ServerResolver(
             new CfxService(
@@ -4596,6 +4596,7 @@ public partial class MainViewModelTests
                     targetExePathProvider ?? (() => @"C:\Games\CFXLauncher.exe"),
                     iconWriter),
             webLinks: webLinks,
-            systemAnimations: systemAnimations);
+            systemAnimations: systemAnimations,
+            clipboard: clipboard);
     }
 }

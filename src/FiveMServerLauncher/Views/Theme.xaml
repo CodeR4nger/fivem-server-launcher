@@ -29,6 +29,7 @@
     <views:CfxStatusToBrushConverter x:Key="CfxStatusToBrushConverter"/>
     <views:ServerMarkInitialsConverter x:Key="ServerMarkInitials"/>
     <views:ServerMarkBrushConverter x:Key="ServerMarkBrush"/>
+    <views:ServerMarkFontSizeConverter x:Key="ServerMarkFontSize"/>
 
     <views:SelectionEqualityToVisibilityConverter x:Key="SelectionEqualityToVisibility"/>
     <views:DropdownOpenStateConverter x:Key="DropdownOpenStateConverter"/>
@@ -835,11 +836,14 @@
                                 Background="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource ServerMarkBrush}}"
                                 CornerRadius="6"
                                 Visibility="Collapsed">
-                            <Viewbox Margin="3">
-                                <TextBlock Text="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource ServerMarkInitials}}"
-                                           Foreground="{StaticResource TextPrimaryBrush}"
-                                           FontWeight="Bold"/>
-                            </Viewbox>
+                            <!-- A fixed share of the mark (ServerMark.InitialsFontSize), never a
+                                 shrink-to-fit Viewbox: "WW" renders as large as "LS". -->
+                            <TextBlock Text="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource ServerMarkInitials}}"
+                                       FontSize="{Binding ActualHeight, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource ServerMarkFontSize}}"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       FontWeight="Bold"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
                         </Border>
                         <Image x:Name="Icon"
                                Source="{Binding Content, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource BytesToImageSourceConverter}}"
