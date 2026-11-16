@@ -32,9 +32,9 @@
 
             <Grid>
 
-                <views:SavedServersPanel x:Name="ServersPage"
-                                         views:Motion.Shown="{Binding IsServersPage}"
-                                         Style="{StaticResource PageSurfaceStyle}"/>
+                <views:ServersPage x:Name="ServersPage"
+                                   views:Motion.Shown="{Binding IsServersPage}"
+                                   Style="{StaticResource PageSurfaceStyle}"/>
 
                 <views:ServerBrowser x:Name="BrowsePage"
                                      views:Motion.Shown="{Binding IsBrowsePage}"

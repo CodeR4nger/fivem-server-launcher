@@ -1,0 +1,749 @@
+<!-- The Servers page: the saved-server list (search, All / Online / Offline chips, drag
+     reorder) on the left, the selected server's detail with its actions menu on the right, and
+     the address field + Connect at the bottom of the detail. DataContext is inherited
+     (MainViewModel); every rule (filter, counts, selection, reorder gate) lives in the view
+     model, the code-behind is drag, menu-placement and motion glue only. -->
+<UserControl x:Class="FiveMServerLauncher.Views.ServersPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:FiveMServerLauncher.Views"
+             xmlns:viewModels="clr-namespace:FiveMServerLauncher.ViewModels"
+             xmlns:views="clr-namespace:FiveMServerLauncher.Views">
+
+    <UserControl.Resources>
+        <views:ThemeResources>
+
+            <views:EnumEqualityConverter x:Key="EnumEquality"/>
+            <views:ServerDetailStateToBrushConverter x:Key="DetailStateBrush"/>
+
+            <!-- A saved-server row: a quiet hover layer and a raised selection layer, both
+                 easing in with motion on and snapping with motion off. -->
+            <Style x:Key="ServerRowStyle" TargetType="{x:Type ListBoxItem}">
+                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                <Setter Property="Padding" Value="8,7"/>
+                <Setter Property="Margin" Value="0,1"/>
+                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type ListBoxItem}">
+                            <Grid SnapsToDevicePixels="True">
+                                <Border x:Name="SelectedLayer"
+                                        Background="{StaticResource SurfaceHoverBrush}"
+                                        BorderBrush="{StaticResource BorderStrongBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="{StaticResource RadiusItem}"
+                                        Opacity="0"/>
+                                <Border x:Name="HoverLayer"
+                                        Background="{StaticResource HoverLayerBrush}"
+                                        CornerRadius="{StaticResource RadiusItem}"
+                                        Opacity="0"/>
+                                <Border x:Name="FocusRing"
+                                        BorderBrush="Transparent"
+                                        BorderThickness="1"
+                                        CornerRadius="{StaticResource RadiusItem}"/>
+                                <ContentPresenter Margin="{TemplateBinding Padding}"
+                                                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <MultiTrigger>
+                                    <MultiTrigger.Conditions>
+                                        <Condition Property="IsMouseOver" Value="True"/>
+                                        <Condition Property="views:Motion.IsEnabled" Value="True"/>
+                                    </MultiTrigger.Conditions>
+                                    <MultiTrigger.EnterActions>
+                                        <BeginStoryboard x:Name="RowHoverIn">
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetName="HoverLayer"
+                                                                 Storyboard.TargetProperty="Opacity"
+                                                                 To="{StaticResource HoverLayerOpacity}"
+                                                                 Duration="{StaticResource MotionFast}"
+                                                                 EasingFunction="{StaticResource MotionEase}"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </MultiTrigger.EnterActions>
+                                    <MultiTrigger.ExitActions>
+                                        <BeginStoryboard x:Name="RowHoverOut">
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetName="HoverLayer"
+                                                                 Storyboard.TargetProperty="Opacity"
+                                                                 To="0"
+                                                                 Duration="{StaticResource MotionFast}"
+                                                                 EasingFunction="{StaticResource MotionEase}"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </MultiTrigger.ExitActions>
+                                </MultiTrigger>
+                                <MultiTrigger>
+                                    <MultiTrigger.Conditions>
+                                        <Condition Property="IsSelected" Value="True"/>
+                                        <Condition Property="views:Motion.IsEnabled" Value="True"/>
+                                    </MultiTrigger.Conditions>
+                                    <MultiTrigger.EnterActions>
+                                        <BeginStoryboard x:Name="RowSelectIn">
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetName="SelectedLayer"
+                                                                 Storyboard.TargetProperty="Opacity"
+                                                                 To="1"
+                                                                 Duration="{StaticResource MotionFast}"
+                                                                 EasingFunction="{StaticResource MotionEase}"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </MultiTrigger.EnterActions>
+                                    <MultiTrigger.ExitActions>
+                                        <BeginStoryboard x:Name="RowSelectOut">
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetName="SelectedLayer"
+                                                                 Storyboard.TargetProperty="Opacity"
+                                                                 To="0"
+                                                                 Duration="{StaticResource MotionFast}"
+                                                                 EasingFunction="{StaticResource MotionEase}"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </MultiTrigger.ExitActions>
+                                </MultiTrigger>
+                                <MultiTrigger>
+                                    <MultiTrigger.Conditions>
+                                        <Condition Property="IsMouseOver" Value="True"/>
+                                        <Condition Property="views:Motion.IsEnabled" Value="False"/>
+                                    </MultiTrigger.Conditions>
+                                    <Setter TargetName="HoverLayer" Property="Opacity" Value="{StaticResource HoverLayerOpacity}"/>
+                                </MultiTrigger>
+                                <MultiTrigger>
+                                    <MultiTrigger.Conditions>
+                                        <Condition Property="IsSelected" Value="True"/>
+                                        <Condition Property="views:Motion.IsEnabled" Value="False"/>
+                                    </MultiTrigger.Conditions>
+                                    <Setter TargetName="SelectedLayer" Property="Opacity" Value="1"/>
+                                </MultiTrigger>
+                                <Trigger Property="views:Motion.IsEnabled" Value="False">
+                                    <Trigger.EnterActions>
+                                        <RemoveStoryboard BeginStoryboardName="RowHoverIn"/>
+                                        <RemoveStoryboard BeginStoryboardName="RowHoverOut"/>
+                                        <RemoveStoryboard BeginStoryboardName="RowSelectIn"/>
+                                        <RemoveStoryboard BeginStoryboardName="RowSelectOut"/>
+                                    </Trigger.EnterActions>
+                                </Trigger>
+                                <Trigger Property="IsKeyboardFocused" Value="True">
+                                    <Setter TargetName="FocusRing" Property="BorderBrush" Value="{StaticResource TextSecondaryBrush}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- A detail card: caption over a value -->
+            <Style x:Key="DetailCardStyle" TargetType="Border" BasedOn="{StaticResource CardStyle}">
+                <Setter Property="Padding" Value="14,10"/>
+                <Setter Property="Margin" Value="0,0,8,8"/>
+            </Style>
+
+            <!-- A card value wraps instead of trimming: a long build name or domain is
+                 shown whole (the row's cards grow together). -->
+            <Style x:Key="DetailValueStyle" TargetType="TextBlock" BasedOn="{StaticResource RowTitleStyle}">
+                <Setter Property="Margin" Value="0,4,0,0"/>
+                <Setter Property="TextWrapping" Value="Wrap"/>
+            </Style>
+
+            <!-- A requirement chip (Steam / Discord): a small raised pill -->
+            <Style x:Key="RequirementChipStyle" TargetType="views:RoundedBorder">
+                <Setter Property="Background" Value="{StaticResource SurfaceRaisedBrush}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource BorderStrongBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="{StaticResource RadiusPill}"/>
+                <Setter Property="Padding" Value="12,4"/>
+                <Setter Property="Margin" Value="0,0,8,0"/>
+            </Style>
+
+            <!-- The status line's busy dot: shown while busy, pulsing with motion on -->
+            <Style x:Key="BusyDotStyle" TargetType="Ellipse">
+                <Setter Property="Width" Value="8"/>
+                <Setter Property="Height" Value="8"/>
+                <Setter Property="Fill" Value="{StaticResource AccentBrush}"/>
+                <Setter Property="Margin" Value="0,0,8,0"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="Visibility" Value="Collapsed"/>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsBusy}" Value="True">
+                        <Setter Property="Visibility" Value="Visible"/>
+                    </DataTrigger>
+                    <MultiTrigger>
+                        <MultiTrigger.Conditions>
+                            <Condition Property="Visibility" Value="Visible"/>
+                            <Condition Property="views:Motion.IsEnabled" Value="True"/>
+                        </MultiTrigger.Conditions>
+                        <MultiTrigger.EnterActions>
+                            <BeginStoryboard x:Name="BusyPulse">
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                     From="1" To="0.25"
+                                                     Duration="0:0:0.6"
+                                                     AutoReverse="True"
+                                                     RepeatBehavior="Forever"/>
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </MultiTrigger.EnterActions>
+                        <MultiTrigger.ExitActions>
+                            <RemoveStoryboard BeginStoryboardName="BusyPulse"/>
+                        </MultiTrigger.ExitActions>
+                    </MultiTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- The detail content: slides in from code-behind on a selection change
+                 (motion on only) -->
+            <Style x:Key="DetailContentStyle" TargetType="Grid">
+                <Setter Property="RenderTransform">
+                    <Setter.Value>
+                        <TranslateTransform/>
+                    </Setter.Value>
+                </Setter>
+                <Setter Property="Visibility" Value="Visible"/>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding SelectedServer}" Value="{x:Null}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
+        </views:ThemeResources>
+    </UserControl.Resources>
+
+    <Grid Margin="16">
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition x:Name="ListColumn" Width="37*" MinWidth="300" MaxWidth="460"/>
+            <ColumnDefinition Width="16"/>
+            <ColumnDefinition Width="63*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ============================ LIST COLUMN ============================ -->
+
+        <Grid Grid.Column="0">
+
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <DockPanel Grid.Row="0" Margin="4,0,0,0">
+
+                <Button DockPanel.Dock="Right"
+                        Command="{Binding RefreshServersCommand}"
+                        ToolTip="{loc:Loc RefreshTooltip}"
+                        AutomationProperties.Name="{loc:Loc RefreshTooltip}"
+                        Width="34" Height="34" Padding="0"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource IconButtonStyle}">
+                    <TextBlock Text="↻" FontSize="16"/>
+                </Button>
+
+                <Button x:Name="AddServerButton"
+                        DockPanel.Dock="Right"
+                        Command="{Binding OpenAddServerDialogCommand}"
+                        ToolTip="{loc:Loc AddServerTooltip}"
+                        AutomationProperties.Name="{loc:Loc AddServerTooltip}"
+                        Width="34" Height="34" Padding="0"
+                        Margin="0,0,4,0"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource IconButtonStyle}">
+                    <TextBlock Text="+" FontSize="20" Margin="0,-2,0,0"/>
+                </Button>
+
+                <TextBlock Text="{loc:Loc NavServers}"
+                           Style="{StaticResource PageTitleStyle}"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"/>
+
+            </DockPanel>
+
+            <!-- The theme's TextInputStyle applies Padding twice (its content-host margin
+                 and the TextBox's own host padding), so the inputs here pass half the inset
+                 they draw; each placeholder's left margin = 2 × Padding + 3 (border + host). -->
+            <Grid Grid.Row="1" Margin="0,12,0,0">
+
+                <TextBox x:Name="ServerSearchBox"
+                         Text="{Binding ServerSearchText, UpdateSourceTrigger=PropertyChanged}"
+                         Style="{StaticResource PillTextInputStyle}"
+                         Padding="7,4"
+                         AutomationProperties.Name="{loc:Loc SearchServersPlaceholder}"/>
+
+                <TextBlock Text="{loc:Loc SearchServersPlaceholder}"
+                           Style="{StaticResource PlaceholderTextStyle}"
+                           FontSize="{StaticResource FontSizeBody}"
+                           Margin="17,0,0,0"
+                           TextTrimming="CharacterEllipsis"
+                           Visibility="{Binding Text,
+                                                ElementName=ServerSearchBox,
+                                                Converter={StaticResource EmptyStringToVisibility}}"/>
+
+            </Grid>
+
+            <!-- FILTER CHIPS: one radio group; each chip carries its live count -->
+            <StackPanel x:Name="FilterChips"
+                        Grid.Row="2"
+                        Orientation="Horizontal"
+                        Margin="0,10,0,8">
+
+                <RadioButton GroupName="SavedServerFilter"
+                             Style="{StaticResource FilterChipStyle}"
+                             Padding="12,5"
+                             Margin="0,0,6,0"
+                             IsChecked="{Binding ServerFilter,
+                                                 Converter={StaticResource EnumEquality},
+                                                 ConverterParameter={x:Static viewModels:SavedServerFilter.All}}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{loc:Loc ServerFilterAll}"/>
+                        <TextBlock Text="{Binding AllServerCount}" Style="{StaticResource ChipCountStyle}"/>
+                    </StackPanel>
+                </RadioButton>
+
+                <RadioButton GroupName="SavedServerFilter"
+                             Style="{StaticResource FilterChipStyle}"
+                             Padding="12,5"
+                             Margin="0,0,6,0"
+                             IsChecked="{Binding ServerFilter,
+                                                 Converter={StaticResource EnumEquality},
+                                                 ConverterParameter={x:Static viewModels:SavedServerFilter.Online}}">
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse Style="{StaticResource ChipDotStyle}"
+                                 Fill="{Binding Source={x:Static viewModels:ServerDetailState.Listed},
+                                                Converter={StaticResource DetailStateBrush}}"/>
+                        <TextBlock Text="{loc:Loc ServerFilterOnline}"/>
+                        <TextBlock Text="{Binding OnlineServerCount}" Style="{StaticResource ChipCountStyle}"/>
+                    </StackPanel>
+                </RadioButton>
+
+                <RadioButton GroupName="SavedServerFilter"
+                             Style="{StaticResource FilterChipStyle}"
+                             Padding="12,5"
+                             IsChecked="{Binding ServerFilter,
+                                                 Converter={StaticResource EnumEquality},
+                                                 ConverterParameter={x:Static viewModels:SavedServerFilter.Offline}}">
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse Style="{StaticResource ChipDotStyle}"
+                                 Fill="{Binding Source={x:Static viewModels:ServerDetailState.NotListed},
+                                                Converter={StaticResource DetailStateBrush}}"/>
+                        <TextBlock Text="{loc:Loc ServerFilterOffline}"/>
+                        <TextBlock Text="{Binding OfflineServerCount}" Style="{StaticResource ChipCountStyle}"/>
+                    </StackPanel>
+                </RadioButton>
+
+            </StackPanel>
+
+            <!-- THE LIST, with the drag drop line and the two empty states over it -->
+            <Grid Grid.Row="3">
+
+                <ListBox x:Name="SavedServersList"
+                         ItemsSource="{Binding SavedServersView}"
+                         SelectedItem="{Binding SelectedServer}"
+                         ItemContainerStyle="{StaticResource ServerRowStyle}"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         HorizontalContentAlignment="Stretch"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         AutomationProperties.Name="{loc:Loc NavServers}"
+                         PreviewMouseLeftButtonDown="SavedServersList_PreviewMouseLeftButtonDown"
+                         MouseMove="SavedServersList_MouseMove"
+                         PreviewMouseLeftButtonUp="SavedServersList_PreviewMouseLeftButtonUp"
+                         PreviewKeyDown="SavedServersList_PreviewKeyDown"
+                         ScrollViewer.ScrollChanged="SavedServersList_ScrollChanged">
+
+                    <ListBox.InputBindings>
+                        <KeyBinding Key="Return" Command="{Binding ConnectCommand}"/>
+                    </ListBox.InputBindings>
+
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="{x:Type viewModels:SavedServerItem}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <ContentControl Grid.Column="0"
+                                                Style="{StaticResource ServerMarkStyle}"
+                                                Content="{Binding Icon}"
+                                                Tag="{Binding Name}"
+                                                Width="36"
+                                                Height="36"
+                                                Margin="0,0,12,0"
+                                                VerticalAlignment="Center"/>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+
+                                    <TextBlock Text="{Binding Name}"
+                                               Style="{StaticResource RowTitleStyle}"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding Name}"/>
+
+                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+
+                                        <Border Style="{StaticResource GameTagStyle}"
+                                                Background="{Binding Game, Converter={StaticResource GameClientToBrushConverter}}"
+                                                Margin="0,0,8,0"
+                                                Visibility="{Binding HasGame, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Text="{Binding GameTagLabel}"
+                                                       Style="{StaticResource GameTagTextStyle}"/>
+                                        </Border>
+
+                                        <Ellipse Style="{StaticResource ChipDotStyle}"
+                                                 Width="7" Height="7"
+                                                 Fill="{Binding DetailState, Converter={StaticResource DetailStateBrush}}"/>
+
+                                        <TextBlock Text="{Binding ListStatusText}"
+                                                   Style="{StaticResource CaptionTextStyle}"
+                                                   VerticalAlignment="Center"/>
+
+                                    </StackPanel>
+
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+
+                </ListBox>
+
+                <!-- Drop indicator: a line snapped to the insertion slot while a row is
+                     dragged. Never hit (the list keeps every click). -->
+                <Canvas x:Name="DropIndicatorCanvas" IsHitTestVisible="False">
+                    <Border x:Name="DropIndicator"
+                            Height="2"
+                            Width="{Binding ActualWidth, ElementName=DropIndicatorCanvas}"
+                            Background="{StaticResource TextPrimaryBrush}"
+                            CornerRadius="1"
+                            Visibility="Collapsed"/>
+                </Canvas>
+
+                <!-- EMPTY: nothing saved yet -->
+                <StackPanel x:Name="EmptyListState"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            Margin="16"
+                            Visibility="{Binding HasNoSavedServers, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="{loc:Loc EmptyServersTitle}"
+                               Style="{StaticResource RowTitleStyle}"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="{loc:Loc EmptyServersText}"
+                               Style="{StaticResource EmptyStateTextStyle}"
+                               Margin="0,8,0,16"/>
+                    <Button Content="{loc:Loc EmptyServersBrowseButton}"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            HorizontalAlignment="Center"
+                            Command="{Binding NavigateCommand}"
+                            CommandParameter="{x:Static viewModels:AppPage.Browse}"/>
+                </StackPanel>
+
+                <!-- EMPTY: the search / chip matches nothing -->
+                <TextBlock x:Name="NoMatchState"
+                           Text="{loc:Loc NoServerMatchText}"
+                           Style="{StaticResource EmptyStateTextStyle}"
+                           Visibility="{Binding HasNoServerMatch, Converter={StaticResource BoolToVisibility}}"/>
+
+            </Grid>
+
+        </Grid>
+
+        <!-- ============================ DETAIL COLUMN ============================ -->
+
+        <Border x:Name="DetailPane"
+                Grid.Column="2"
+                Style="{StaticResource SettingsGroupStyle}"
+                Padding="20">
+
+            <Grid>
+
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0"
+                           Text="{loc:Loc DetailNoSelection}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource EmptyStateTextStyle}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedServer}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+
+                <Grid x:Name="DetailContent"
+                      Grid.Row="0"
+                      Style="{StaticResource DetailContentStyle}">
+
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- HEADER: mark, name, tag + status, actions menu -->
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <ContentControl Grid.Column="0"
+                                        Style="{StaticResource ServerMarkStyle}"
+                                        Content="{Binding SelectedServer.Icon}"
+                                        Tag="{Binding SelectedServer.Name}"
+                                        Width="56"
+                                        Height="56"
+                                        Margin="0,0,16,0"
+                                        VerticalAlignment="Center"/>
+
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+
+                            <TextBlock x:Name="DetailName"
+                                       Text="{Binding SelectedServer.Name}"
+                                       Style="{StaticResource PageTitleStyle}"
+                                       TextTrimming="CharacterEllipsis"
+                                       ToolTip="{Binding SelectedServer.Name}"/>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+
+                                <Border Margin="0,0,10,0">
+                                    <Border.Style>
+                                        <Style TargetType="Border" BasedOn="{StaticResource GameTagStyle}">
+                                            <Setter Property="Background"
+                                                    Value="{Binding SelectedServer.DetailGame, Converter={StaticResource GameClientToBrushConverter}}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SelectedServer.DetailGame}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock Text="{Binding SelectedServer.DetailGameLabel}"
+                                               Style="{StaticResource GameTagTextStyle}"/>
+                                </Border>
+
+                                <Ellipse Style="{StaticResource ChipDotStyle}"
+                                         Fill="{Binding SelectedServer.DetailState, Converter={StaticResource DetailStateBrush}}"/>
+
+                                <TextBlock x:Name="DetailPresence"
+                                           Text="{Binding SelectedServer.PresenceLabel}"
+                                           Style="{StaticResource CaptionTextStyle}"
+                                           VerticalAlignment="Center"/>
+
+                            </StackPanel>
+
+                        </StackPanel>
+
+                        <Button x:Name="ActionsButton"
+                                Grid.Column="2"
+                                VerticalAlignment="Top"
+                                Width="36" Height="36" Padding="0"
+                                ToolTip="{loc:Loc ServerActionsTooltip}"
+                                AutomationProperties.Name="{loc:Loc ServerActionsTooltip}"
+                                Style="{StaticResource IconButtonStyle}"
+                                IsHitTestVisible="{Binding ContextMenu.IsOpen,
+                                                           RelativeSource={RelativeSource Self},
+                                                           Converter={StaticResource InverseBoolean}}"
+                                Click="ActionsButton_Click">
+
+                            <TextBlock Text="⋮" FontSize="18"/>
+
+                            <!-- The ⋮ menu. While it is open the button is not hit-testable,
+                                 so the click that dismisses the menu cannot reopen it. The menu
+                                 inherits the page's DataContext (the MainViewModel). -->
+                            <Button.ContextMenu>
+                                <ContextMenu x:Name="ActionsMenu">
+                                    <ContextMenu.Resources>
+                                        <Style TargetType="ContextMenu" BasedOn="{StaticResource PopupMenuStyle}"/>
+                                        <Style TargetType="MenuItem" BasedOn="{StaticResource PopupMenuItemStyle}"/>
+                                    </ContextMenu.Resources>
+                                    <MenuItem Header="{loc:Loc MenuEditServer}"
+                                              Command="{Binding OpenEditServerDialogCommand}"
+                                              CommandParameter="{Binding SelectedServer}"/>
+                                    <MenuItem Header="{loc:Loc MenuCreateShortcut}"
+                                              Command="{Binding CreateDesktopShortcutCommand}"
+                                              CommandParameter="{Binding SelectedServer}"/>
+                                    <MenuItem Header="{loc:Loc MenuCopyAddress}"
+                                              Command="{Binding CopyAddressCommand}"
+                                              CommandParameter="{Binding SelectedServer}"/>
+                                    <MenuItem Header="{loc:Loc MenuMoveUp}"
+                                              Command="{Binding MoveServerUpCommand}"
+                                              CommandParameter="{Binding SelectedServer}"
+                                              IsEnabled="{Binding SelectedServer.CanMoveUp}"/>
+                                    <MenuItem Header="{loc:Loc MenuMoveDown}"
+                                              Command="{Binding MoveServerDownCommand}"
+                                              CommandParameter="{Binding SelectedServer}"
+                                              IsEnabled="{Binding SelectedServer.CanMoveDown}"/>
+                                    <MenuItem Header="{loc:Loc MenuDeleteServer}"
+                                              Command="{Binding DeleteServerCommand}"
+                                              CommandParameter="{Binding SelectedServer}"
+                                              Foreground="{StaticResource DangerTextBrush}"/>
+                                </ContextMenu>
+                            </Button.ContextMenu>
+
+                        </Button>
+
+                    </Grid>
+
+                    <!-- CARDS: players, address, game build, pure mode -->
+                    <!-- The columns are capped so the cards stay readable on a maximized
+                         window (the rest of the row stays empty) -->
+                    <Grid x:Name="DetailCards" Grid.Row="1" Margin="0,20,-8,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" MaxWidth="364"/>
+                            <ColumnDefinition Width="*" MaxWidth="364"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource DetailCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="{loc:Loc DetailPlayers}" Style="{StaticResource CaptionTextStyle}"/>
+                                <TextBlock>
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource DetailValueStyle}">
+                                            <Setter Property="Text" Value="{Binding SelectedServer.PlayersText}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SelectedServer.PlayersText}" Value="">
+                                                    <Setter Property="Text" Value="—"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="0" Grid.Column="1" Style="{StaticResource DetailCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="{loc:Loc DetailAddress}" Style="{StaticResource CaptionTextStyle}"/>
+                                <TextBlock Text="{Binding SelectedServer.Address}" Style="{StaticResource DetailValueStyle}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource DetailCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="{loc:Loc DetailGameBuild}" Style="{StaticResource CaptionTextStyle}"/>
+                                <TextBlock x:Name="DetailBuild">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource DetailValueStyle}">
+                                            <Setter Property="Text" Value="{Binding SelectedServer.BuildLabel}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SelectedServer.ShowsDetails}" Value="False">
+                                                    <Setter Property="Text" Value="—"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource DetailCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="{loc:Loc DetailPureMode}" Style="{StaticResource CaptionTextStyle}"/>
+                                <TextBlock>
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource DetailValueStyle}">
+                                            <Setter Property="Text" Value="{Binding SelectedServer.PureModeLabel}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SelectedServer.ShowsDetails}" Value="False">
+                                                    <Setter Property="Text" Value="—"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                    </Grid>
+
+                    <!-- REQUIREMENTS -->
+                    <StackPanel Grid.Row="2" Margin="0,8,0,0">
+                        <TextBlock Text="{loc:Loc DetailRequirements}" Style="{StaticResource CaptionTextStyle}"/>
+                        <WrapPanel x:Name="RequirementChips" Margin="0,8,0,0">
+                            <views:RoundedBorder Style="{StaticResource RequirementChipStyle}"
+                                                 Visibility="{Binding SelectedServer.EffectiveRequiresSteam, Converter={StaticResource BoolToVisibility}}">
+                                <TextBlock Text="Steam" Style="{StaticResource BodyTextStyle}"/>
+                            </views:RoundedBorder>
+                            <views:RoundedBorder Style="{StaticResource RequirementChipStyle}"
+                                                 Visibility="{Binding SelectedServer.EffectiveRequiresDiscord, Converter={StaticResource BoolToVisibility}}">
+                                <TextBlock Text="Discord" Style="{StaticResource BodyTextStyle}"/>
+                            </views:RoundedBorder>
+                            <TextBlock Text="{loc:Loc DetailNoRequirements}"
+                                       Style="{StaticResource BodyTextStyle}"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Visibility="{Binding SelectedServer.HasRequirements, Converter={StaticResource InverseBoolToVisibility}}"/>
+                        </WrapPanel>
+                    </StackPanel>
+
+                </Grid>
+
+                <!-- CONNECT: the address field, the one amber action and the status line -->
+                <StackPanel Grid.Row="1" Margin="0,16,0,0">
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Grid Grid.Column="0">
+                            <TextBox x:Name="ServerAddressBox"
+                                     Text="{Binding ServerAddress, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource PillTextInputStyle}"
+                                     Padding="8,6"
+                                     AutomationProperties.Name="{loc:Loc ConnectAddressPlaceholder}">
+                                <TextBox.InputBindings>
+                                    <KeyBinding Key="Return" Command="{Binding ConnectCommand}"/>
+                                </TextBox.InputBindings>
+                            </TextBox>
+                            <TextBlock Text="{loc:Loc ConnectAddressPlaceholder}"
+                                       Style="{StaticResource PlaceholderTextStyle}"
+                                       FontSize="{StaticResource FontSizeBody}"
+                                       Margin="19,0,12,0"
+                                       TextTrimming="CharacterEllipsis"
+                                       Visibility="{Binding Text,
+                                                            ElementName=ServerAddressBox,
+                                                            Converter={StaticResource EmptyStringToVisibility}}"/>
+                        </Grid>
+
+                        <Button x:Name="ConnectButton"
+                                Grid.Column="1"
+                                Content="{loc:Loc ConnectButton}"
+                                Margin="10,0,0,0"
+                                MinWidth="128"
+                                Padding="28,12"
+                                Style="{StaticResource PrimaryButtonStyle}"
+                                Command="{Binding ConnectCommand}"/>
+                    </Grid>
+
+                    <DockPanel Margin="16,8,0,0">
+                        <Ellipse x:Name="BusyDot" Style="{StaticResource BusyDotStyle}"/>
+                        <TextBlock x:Name="StatusLine"
+                                   Text="{Binding StatusText}"
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </DockPanel>
+
+                </StackPanel>
+
+            </Grid>
+
+        </Border>
+
+    </Grid>
+
+</UserControl>

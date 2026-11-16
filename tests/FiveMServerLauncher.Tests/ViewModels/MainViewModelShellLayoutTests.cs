@@ -275,8 +275,9 @@ public partial class MainViewModelTests
             }
 
             // WPF clamps DesiredSize to the space it was offered, so a cut text is found by
-            // its natural (unconstrained) width instead.
-            if (element is TextBlock text && NaturalWidth(text) > text.RenderSize.Width - text.Padding.Left - text.Padding.Right + 0.5)
+            // its natural (unconstrained) width instead. A wrapping text is not cut by being
+            // narrower than its natural width (its height is checked against the slot above).
+            if (element is TextBlock { TextWrapping: TextWrapping.NoWrap } text && NaturalWidth(text) > text.RenderSize.Width - text.Padding.Left - text.Padding.Right + 0.5)
             {
                 yield return $"{name}: text '{text.Text}' is cut ({NaturalWidth(text):0} > {text.RenderSize.Width:0})";
             }

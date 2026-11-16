@@ -2,6 +2,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -10,28 +11,19 @@ using FiveMServerLauncher.ViewModels;
 
 namespace FiveMServerLauncher.Views
 {
-    public partial class SavedServersPanel : UserControl
+    // Visual glue only: drag-to-reorder (measures which row and which slot, then hands the
+    // move to the view model, whose gate decides), the row slide after a move, the ⋮ menu's
+    // placement and keyboard opening, and the detail's slide-in on a selection change. Every
+    // animation here checks the motion switch and snaps when it is off.
+    public partial class ServersPage : UserControl
     {
-        public SavedServersPanel()
+        public ServersPage()
         {
             InitializeComponent();
-            DataContextChanged += SavedServersPanel_DataContextChanged;
+            DataContextChanged += ServersPage_DataContextChanged;
         }
 
-        // ============================================================
-        // Reorder visuals: a gutter overlay (the move arrows) tracking
-        // the hovered/selected row, and drag-to-reorder with an accent
-        // drop line. All of this is visual glue: it measures the list
-        // (which row, which slot) and delegates to the view model —
-        // the move, its boundaries and its "not while filtering" gate
-        // live and are tested there.
-        // ============================================================
-
-        private SavedServerItem? _hoveredRow;
-        private SavedServerItem? _trackedRow;
-        private bool _overArrows;
-
-        private void SavedServersPanel_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+        private void ServersPage_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
             if (e.OldValue is MainViewModel oldViewModel)
             {
@@ -43,30 +35,92 @@ namespace FiveMServerLauncher.Views
             {
                 viewModel.PropertyChanged += ViewModel_PropertyChanged;
                 ((INotifyCollectionChanged)viewModel.SavedServers).CollectionChanged += SavedServers_CollectionChanged;
-                RefreshMoveArrows();
             }
         }
 
         private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            // A search filter shows a non-contiguous subset, so the reorder affordances
-            // hide for as long as it is active.
-            if (e.PropertyName == nameof(MainViewModel.IsReorderAvailable))
+            if (e.PropertyName == nameof(MainViewModel.SelectedServer))
             {
-                RefreshMoveArrows();
+                SlideInDetail();
             }
         }
 
-        // The overlay tracks rows by reference; after any structural change the
-        // containers re-layout, so the reposition waits for the layout pass.
+        // ------------------------- detail slide-in -------------------------
+
+        private SavedServerItem? _shownServer;
+
+        private void SlideInDetail()
+        {
+            var selected = (DataContext as MainViewModel)?.SelectedServer;
+
+            // The view model re-announces an unchanged selection (a refused deselect):
+            // only a real change slides.
+            if (ReferenceEquals(selected, _shownServer))
+            {
+                return;
+            }
+
+            _shownServer = selected;
+
+            if (selected is null || !Motion.GetIsEnabled(this) || !IsVisible)
+            {
+                return;
+            }
+
+            ((Storyboard)FindResource("MotionSlideIn")).Begin(DetailContent);
+        }
+
+        // ------------------------- the ⋮ actions menu -------------------------
+
+        private void ActionsButton_Click(object sender, RoutedEventArgs e)
+        {
+            OpenActionsMenu();
+        }
+
+        // Apps / Shift+F10 on the list opens the selected server's menu; Esc closes it
+        // (ContextMenu) and focus returns to the list.
+        private void SavedServersList_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Apps || (e.Key == Key.F10 && Keyboard.Modifiers == ModifierKeys.Shift)
+                || (e.Key == Key.System && e.SystemKey == Key.F10 && Keyboard.Modifiers == ModifierKeys.Shift))
+            {
+                OpenActionsMenu();
+                e.Handled = true;
+            }
+        }
+
+        private void OpenActionsMenu()
+        {
+            if ((DataContext as MainViewModel)?.SelectedServer is null)
+            {
+                return;
+            }
+
+            ActionsMenu.PlacementTarget = ActionsButton;
+            ActionsMenu.Placement = PlacementMode.Custom;
+            ActionsMenu.CustomPopupPlacementCallback = BelowRightAligned;
+            ActionsMenu.IsOpen = true;
+        }
+
+        // Under the ⋮ button, right edges aligned: the button sits at the pane's right edge.
+        private static CustomPopupPlacement[] BelowRightAligned(Size popupSize, Size targetSize, Point offset)
+        {
+            return
+            [
+                new CustomPopupPlacement(new Point(targetSize.Width - popupSize.Width, targetSize.Height + 4), PopupPrimaryAxis.Horizontal),
+                new CustomPopupPlacement(new Point(targetSize.Width - popupSize.Width, -popupSize.Height - 4), PopupPrimaryAxis.Horizontal)
+            ];
+        }
+
+        // ------------------- row slide after a move (FLIP) -------------------
+
         private void SavedServers_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
-            // A move slides its rows into their new slots (FLIP): the offsets
-            // are index-derived, so the slide can only start once the layout
-            // pass has placed the containers at their final slots — and it
-            // must land before the next render. Any other structural change
-            // snaps an in-flight slide so no stale transform survives a
-            // container rebuild.
+            // A move slides its rows into their new slots: the offsets are index-derived, so
+            // the slide can only start once the layout pass has placed the containers at
+            // their final slots. Any other structural change snaps an in-flight slide so no
+            // stale transform survives a container rebuild.
             if (e.Action == NotifyCollectionChangedAction.Move
                 && e.OldStartingIndex >= 0
                 && e.NewStartingIndex >= 0)
@@ -79,25 +133,22 @@ namespace FiveMServerLauncher.Views
             {
                 Dispatcher.BeginInvoke(new Action(SnapActiveSlides), DispatcherPriority.Loaded);
             }
-
-            Dispatcher.BeginInvoke(new Action(RefreshMoveArrows), DispatcherPriority.Loaded);
         }
-
-        // ------------------- row slide (FLIP) -------------------
 
         private readonly HashSet<FrameworkElement> _slidingRows = new();
 
         private void BeginRowSlide(int fromIndex, int toIndex)
         {
             if (fromIndex == toIndex
+                || !Motion.GetIsEnabled(this)
                 || DataContext is not MainViewModel viewModel
                 || viewModel.SavedServers.Count <= Math.Max(fromIndex, toIndex))
             {
                 return;
             }
 
-            // A rapid follow-up move snaps the previous slide to its end first,
-            // so the new offsets stay index-derived and transforms never stack.
+            // A rapid follow-up move snaps the previous slide to its end first, so the new
+            // offsets stay index-derived and transforms never stack.
             SnapActiveSlides();
 
             var movedContainer = ContainerForRow(viewModel.SavedServers[toIndex]);
@@ -112,10 +163,9 @@ namespace FiveMServerLauncher.Views
             // The moved row travels |to - from| slots against the move direction.
             SlideRow(movedContainer, (fromIndex - toIndex) * rowHeight);
 
-            // Every row it displaced shifts exactly one slot toward the vacated
-            // position. In the post-move ordering those rows now sit at
-            // to+1..from when the move went up, and at from..to-1 when it went
-            // down — the moved row itself (at `to`) is never in that range.
+            // Every row it displaced shifts exactly one slot toward the vacated position. In
+            // the post-move ordering those rows sit at to+1..from when the move went up, and
+            // at from..to-1 when it went down.
             var (first, last) = fromIndex > toIndex
                 ? (toIndex + 1, fromIndex)
                 : (fromIndex, toIndex - 1);
@@ -136,9 +186,8 @@ namespace FiveMServerLauncher.Views
 
         private void SlideRow(FrameworkElement container, double fromOffset)
         {
-            // Base transform stays at zero: the offset lives only in the
-            // animation's From, so releasing the clock can never revert the
-            // row to a stale position.
+            // Base transform stays at zero: the offset lives only in the animation's From,
+            // so releasing the clock can never revert the row to a stale position.
             var transform = new TranslateTransform();
             container.RenderTransform = transform;
             _slidingRows.Add(container);
@@ -173,118 +222,16 @@ namespace FiveMServerLauncher.Views
             _slidingRows.Clear();
         }
 
-        // The pending slide offset of a row: positioning glue (the arrows
-        // overlay) subtracts it so it targets the row's final slot, never the
-        // mid-slide visual position.
-        private double SlideOffsetOf(FrameworkElement container)
-        {
-            return container.RenderTransform is TranslateTransform transform && _slidingRows.Contains(container)
-                ? transform.Y
-                : 0;
-        }
-
-        private void SavedServerRow_MouseEnter(object sender, MouseEventArgs e)
-        {
-            if (_rowDragging)
-            {
-                return;
-            }
-
-            if (sender is ListBoxItem { DataContext: SavedServerItem row })
-            {
-                _hoveredRow = row;
-                RefreshMoveArrows();
-            }
-        }
-
-        private void SavedServerRow_MouseLeave(object sender, MouseEventArgs e)
-        {
-            if (_rowDragging)
-            {
-                return;
-            }
-
-            if (sender is ListBoxItem { DataContext: SavedServerItem row } && ReferenceEquals(row, _hoveredRow))
-            {
-                _hoveredRow = null;
-                RefreshMoveArrows();
-            }
-        }
-
-        // Leaving a row to reach the arrows crosses the gutter: the overlay keeps the
-        // last tracked row while the pointer is on it, otherwise the arrows would
-        // collapse mid-click before the button could be pressed.
-        private void MoveArrowsCanvas_MouseEnter(object sender, MouseEventArgs e)
-        {
-            _overArrows = true;
-            RefreshMoveArrows();
-        }
-
-        private void MoveArrowsCanvas_MouseLeave(object sender, MouseEventArgs e)
-        {
-            _overArrows = false;
-            RefreshMoveArrows();
-        }
-
-        private void SavedServersList_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            RefreshMoveArrows();
-        }
-
         private void SavedServersList_ScrollChanged(object sender, ScrollChangedEventArgs e)
         {
-            // A scroll invalidates the slide offsets — cancel the motion, the
-            // rows are laid out at their final slots anyway.
+            // A scroll invalidates the slide offsets: cancel the motion, the rows are laid
+            // out at their final slots anyway.
             SnapActiveSlides();
 
             if (_rowDragging)
             {
                 UpdateDropIndicator(_lastPointer);
             }
-            else
-            {
-                RefreshMoveArrows();
-            }
-        }
-
-        private void RefreshMoveArrows()
-        {
-            if (DataContext is not MainViewModel viewModel)
-            {
-                MoveArrowsOverlay.Visibility = Visibility.Collapsed;
-                return;
-            }
-
-            var trackedRow = _hoveredRow ?? (_overArrows ? _trackedRow : null) ?? viewModel.SelectedServer;
-            var trackedIndex = trackedRow is not null ? viewModel.SavedServers.IndexOf(trackedRow) : -1;
-
-            if (!viewModel.IsReorderAvailable || trackedIndex < 0)
-            {
-                MoveArrowsOverlay.Visibility = Visibility.Collapsed;
-                MoveArrowsOverlay.DataContext = null;
-                return;
-            }
-
-            if (SavedServersList.ItemContainerGenerator.ContainerFromIndex(trackedIndex)
-                    is not FrameworkElement container)
-            {
-                // The tracked row has no container right now (filtered away, or being
-                // rebuilt by an edit) — a hidden arrow pair is the honest state.
-                MoveArrowsOverlay.Visibility = Visibility.Collapsed;
-                MoveArrowsOverlay.DataContext = null;
-                return;
-            }
-
-            MoveArrowsOverlay.DataContext = trackedRow;
-            _trackedRow = trackedRow;
-            MoveArrowsOverlay.Visibility = Visibility.Visible;
-            MoveArrowsOverlay.UpdateLayout();
-
-            var topLeft = container.TranslatePoint(new Point(0, 0), MoveArrowsCanvas);
-            topLeft.Y -= SlideOffsetOf(container);
-            Canvas.SetTop(
-                MoveArrowsOverlay,
-                topLeft.Y + (container.ActualHeight - MoveArrowsOverlay.ActualHeight) / 2);
         }
 
         // ------------------------- drag-to-reorder -------------------------
@@ -302,13 +249,6 @@ namespace FiveMServerLauncher.Views
             _draggedRow = null;
             _draggedContainer = null;
             _dropInsertionIndex = null;
-
-            // A press on a button (the move arrows, the edit pencil) must never arm
-            // a drag.
-            if (FindAncestor<Button>(e.OriginalSource as DependencyObject) is not null)
-            {
-                return;
-            }
 
             if (FindAncestor<ListBoxItem>(e.OriginalSource as DependencyObject) is not { DataContext: SavedServerItem item } row
                 || DataContext is not MainViewModel viewModel
@@ -332,7 +272,7 @@ namespace FiveMServerLauncher.Views
             if (e.LeftButton != MouseButtonState.Pressed)
             {
                 // The button came up outside our capture: forget the drag.
-                CancelDrag();
+                EndDragVisuals();
                 return;
             }
 
@@ -340,8 +280,8 @@ namespace FiveMServerLauncher.Views
 
             if (!_rowDragging)
             {
-                // A plain click is selection, not a drag: ignore movement until the
-                // pointer leaves the system drag threshold.
+                // A plain click is selection, not a drag: ignore movement until the pointer
+                // leaves the system drag threshold.
                 if (Math.Abs(position.X - _dragStart.X) < SystemParameters.MinimumHorizontalDragDistance
                     && Math.Abs(position.Y - _dragStart.Y) < SystemParameters.MinimumVerticalDragDistance)
                 {
@@ -357,8 +297,6 @@ namespace FiveMServerLauncher.Views
                 {
                     _draggedContainer.Opacity = 0.55;
                 }
-
-                RefreshMoveArrows();
             }
 
             UpdateDropIndicator(position);
@@ -432,16 +370,11 @@ namespace FiveMServerLauncher.Views
             if (!wasDragging || dragged is null || insertion is null
                 || DataContext is not MainViewModel viewModel)
             {
-                if (!wasDragging)
-                {
-                    RefreshMoveArrows();
-                }
-
                 return;
             }
 
-            // The drop line is an insertion point; the view model's move speaks in
-            // final positions — past the dragged row the target slot shifts by one.
+            // The drop line is an insertion point; the view model's move speaks in final
+            // positions — past the dragged row the target slot shifts by one.
             var currentIndex = viewModel.SavedServers.IndexOf(dragged);
 
             if (currentIndex >= 0)
@@ -449,11 +382,6 @@ namespace FiveMServerLauncher.Views
                 var finalIndex = insertion.Value > currentIndex ? insertion.Value - 1 : insertion.Value;
                 viewModel.MoveServerToIndex(dragged, finalIndex);
             }
-        }
-
-        private void CancelDrag()
-        {
-            EndDragVisuals();
         }
 
         private void EndDragVisuals()
@@ -477,71 +405,6 @@ namespace FiveMServerLauncher.Views
             }
 
             SavedServersList.Cursor = null;
-        }
-
-        // Right-click selects the row it lands on so the context menu's
-        // selection-based commands act on the clicked server; the menu itself
-        // opens natively from the row template. Pure glue: only selection.
-        private void SavedServersList_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            if (FindAncestor<ListBoxItem>(e.OriginalSource as DependencyObject) is { } item)
-            {
-                item.IsSelected = true;
-            }
-        }
-
-        // The kebab opens the same context menu the right-click shows, anchored
-        // under the button (its Tag carries the view model, so the item
-        // bindings' PlacementTarget may be the button). The click that
-        // dismisses the open menu is delivered on to this same button, and its
-        // Click arrives on mouse-up - a full human press - so the guard window
-        // must span the whole press duration, not just the event gap.
-        // ContextMenu.Closed is NOT raised for outside-click dismissals (only
-        // for item clicks and ESC), so the close moment is tracked through an
-        // IsOpen value descriptor instead - it fires on every flip. Loaded
-        // fires once per menu instance and each row owns its own menu, so every
-        // menu gets its own watcher; the handler only stamps a timestamp.
-        private const long RowMenuToggleWindowMs = 400;
-        private readonly HashSet<ContextMenu> _watchedRowMenus = new();
-        private long _rowMenuClosedAt;
-
-        private void RowMenu_Loaded(object sender, RoutedEventArgs e)
-        {
-            if (sender is ContextMenu menu && _watchedRowMenus.Add(menu))
-            {
-                DependencyPropertyDescriptor.FromProperty(
-                    ContextMenu.IsOpenProperty,
-                    typeof(ContextMenu)).AddValueChanged(menu, RowMenuIsOpenChanged);
-            }
-        }
-
-        private void RowMenuIsOpenChanged(object? sender, EventArgs e)
-        {
-            if (sender is ContextMenu { IsOpen: false })
-            {
-                _rowMenuClosedAt = Environment.TickCount64;
-            }
-        }
-
-        private void RowMenuButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is not Button button
-                || button.Tag is null
-                || Environment.TickCount64 - _rowMenuClosedAt < RowMenuToggleWindowMs)
-            {
-                return;
-            }
-
-            var menu = FindAncestor<Grid>(button)?.ContextMenu;
-
-            if (menu is null)
-            {
-                return;
-            }
-
-            menu.PlacementTarget = button;
-            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
-            menu.IsOpen = true;
         }
 
         private static T? FindAncestor<T>(DependencyObject? node) where T : DependencyObject
