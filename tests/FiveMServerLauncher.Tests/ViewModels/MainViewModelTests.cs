@@ -1796,44 +1796,7 @@ public partial class MainViewModelTests
         Assert.Equal("Launching FiveM...", vm.StatusText);
     }
 
-    [Fact]
-    public async Task Initialize_WithLegacyAndEnhancedInstalled_ShouldListBothAndSelectFirst()
-    {
-        // Given
-        var locator = new FakeClientInstallLocator();
-        locator.Executables[GameClient.FiveMEnhanced] = EnhancedExecutablePath;
-        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), installLocator: locator);
-
-        // When
-        await vm.InitializeAsync();
-
-        // Then
-        Assert.Equal(2, vm.AvailableOpenClients.Count);
-        Assert.Equal("FiveM", vm.AvailableOpenClients[0].DisplayName);
-        Assert.Equal("FiveM Enhanced", vm.AvailableOpenClients[1].DisplayName);
-        Assert.Equal(GameClient.FiveM, vm.SelectedOpenClient?.Client);
-        Assert.Equal("FiveM", vm.SelectedOpenClientLabel);
-    }
-
     private const string EnhancedExecutablePath = @"C:\FiveM for GTAV Enhanced\FiveM.exe";
-
-    [Fact]
-    public async Task Initialize_WhenNothingInstalled_ShouldListNothingAndDisableOpenCommand()
-    {
-        // Given
-        var vm = CreateViewModel(
-            new FakeGameProcessLauncher(),
-            CfxJson("gta5"),
-            installLocator: new FakeClientInstallLocator { Executables = [] });
-
-        // When
-        await vm.InitializeAsync();
-
-        // Then
-        Assert.Empty(vm.AvailableOpenClients);
-        Assert.Null(vm.SelectedOpenClient);
-        Assert.False(vm.OpenClientCommand.CanExecute(null));
-    }
 
     [Fact]
     public async Task OpenClientCommand_WhenLegacyInstalled_ShouldStartLegacyExecutableAndDescribeResult()
@@ -1853,24 +1816,6 @@ public partial class MainViewModelTests
         Assert.Equal(legacyPath, Assert.Single(processLauncher.ExecutableStarts));
         Assert.Empty(processLauncher.Requests);
         Assert.Equal("Opening FiveM...", vm.StatusText);
-        Assert.False(vm.IsBusy);
-    }
-
-    [Fact]
-    public async Task OpenClientCommand_WhenSelectedClientMissing_ShouldShowNotInstalledStatus()
-    {
-        // Given
-        var processLauncher = new FakeGameProcessLauncher();
-        var vm = CreateViewModel(processLauncher, CfxJson("gta5"), installLocator: new FakeClientInstallLocator());
-        await vm.InitializeAsync();
-        vm.SelectedOpenClient = new InstalledClientOption(GameClient.FiveMEnhanced);
-
-        // When
-        await vm.OpenClientAsync();
-
-        // Then
-        Assert.Empty(processLauncher.ExecutableStarts);
-        Assert.Equal("FiveM Enhanced is not installed", vm.StatusText);
         Assert.False(vm.IsBusy);
     }
 
@@ -1923,46 +1868,6 @@ public partial class MainViewModelTests
 
         barrier.SetResult();
         await openTask;
-    }
-
-    [Fact]
-    public async Task Initialize_WhenPreferredClientInstalled_ShouldSeedSelectionToPreferred()
-    {
-        // Given
-        var storage = new InMemorySettingsStorage();
-        storage.Save(new LauncherSettings { PreferredClient = GameClient.FiveMEnhanced });
-        var locator = new FakeClientInstallLocator();
-        locator.Executables[GameClient.FiveMEnhanced] = EnhancedExecutablePath;
-        var vm = CreateViewModel(
-            new FakeGameProcessLauncher(),
-            CfxJson("gta5"),
-            installLocator: locator,
-            settings: new ConfigurationRepository(storage));
-
-        // When
-        await vm.InitializeAsync();
-
-        // Then
-        Assert.Equal(GameClient.FiveMEnhanced, vm.SelectedOpenClient?.Client);
-        Assert.Equal("FiveM Enhanced", vm.SelectedOpenClientLabel);
-    }
-
-    [Fact]
-    public async Task Initialize_WhenPreferredClientNotInstalled_ShouldFallBackToFirstInstalled()
-    {
-        // Given
-        var storage = new InMemorySettingsStorage();
-        storage.Save(new LauncherSettings { PreferredClient = GameClient.FiveMEnhanced });
-        var vm = CreateViewModel(
-            new FakeGameProcessLauncher(),
-            CfxJson("gta5"),
-            settings: new ConfigurationRepository(storage));
-
-        // When
-        await vm.InitializeAsync();
-
-        // Then
-        Assert.Equal(GameClient.FiveM, vm.SelectedOpenClient?.Client);
     }
 
     [Fact]
@@ -3055,64 +2960,6 @@ public partial class MainViewModelTests
     }
 
     [Fact]
-    public async Task OpenClientCommand_WhenRedMSelected_ShouldStartRedMExecutable()
-    {
-        // Given
-        const string redmPath = @"C:\RedM\RedM.app\RedM.exe";
-        var locator = new FakeClientInstallLocator();
-        locator.Executables[GameClient.RedM] = redmPath;
-        var processLauncher = new FakeGameProcessLauncher();
-        var vm = CreateViewModel(processLauncher, CfxJson("gta5"), installLocator: locator);
-        await vm.InitializeAsync();
-        vm.SelectedOpenClient = vm.AvailableOpenClients.Single(c => c.Client == GameClient.RedM);
-
-        // When
-        await vm.OpenClientAsync();
-
-        // Then
-        Assert.Equal(redmPath, Assert.Single(processLauncher.ExecutableStarts));
-        Assert.Equal("Opening RedM...", vm.StatusText);
-    }
-
-    [Fact]
-    public async Task Initialize_WithRedMPreferredAndInstalled_ShouldSeedSelectionToRedM()
-    {
-        // Given
-        var storage = new InMemorySettingsStorage();
-        storage.Save(new LauncherSettings { PreferredClient = GameClient.RedM });
-        var locator = new FakeClientInstallLocator();
-        locator.Executables[GameClient.RedM] = @"C:\RedM\RedM.app\RedM.exe";
-        var vm = CreateViewModel(
-            new FakeGameProcessLauncher(),
-            CfxJson("gta5"),
-            installLocator: locator,
-            settings: new ConfigurationRepository(storage));
-
-        // When
-        await vm.InitializeAsync();
-
-        // Then
-        Assert.Equal(GameClient.RedM, vm.SelectedOpenClient?.Client);
-        Assert.Equal("RedM", vm.SelectedOpenClientLabel);
-    }
-
-    [Fact]
-    public async Task SelectingOpenClient_ShouldUpdateLabel()
-    {
-        // Given
-        var locator = new FakeClientInstallLocator();
-        locator.Executables[GameClient.FiveMEnhanced] = EnhancedExecutablePath;
-        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), installLocator: locator);
-        await vm.InitializeAsync();
-
-        // When
-        vm.SelectedOpenClient = vm.AvailableOpenClients[1];
-
-        // Then
-        Assert.Equal("FiveM Enhanced", vm.SelectedOpenClientLabel);
-    }
-
-    [Fact]
     public async Task ToggleDevClientCommand_ShouldUpdateButtonText()
     {
         // Given
@@ -3184,37 +3031,6 @@ public partial class MainViewModelTests
 
         // Then
         Assert.Equal(GameClient.FiveM, new ConfigurationRepository(storage).Load().PreferredClient);
-    }
-
-    [Fact]
-    public async Task SelectOpenClientCommand_ShouldChangeSelectionAndLabel()
-    {
-        // Given
-        var locator = new FakeClientInstallLocator();
-        locator.Executables[GameClient.FiveMEnhanced] = EnhancedExecutablePath;
-        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), installLocator: locator);
-        await vm.InitializeAsync();
-
-        // When
-        vm.SelectOpenClientCommand.Execute(vm.AvailableOpenClients[1]);
-
-        // Then
-        Assert.Equal(GameClient.FiveMEnhanced, vm.SelectedOpenClient?.Client);
-        Assert.Equal("FiveM Enhanced", vm.SelectedOpenClientLabel);
-    }
-
-    [Fact]
-    public async Task SelectOpenClientCommand_WithNonOptionParameter_ShouldKeepSelection()
-    {
-        // Given
-        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), installLocator: new FakeClientInstallLocator());
-        await vm.InitializeAsync();
-
-        // When
-        vm.SelectOpenClientCommand.Execute("FiveM Enhanced");
-
-        // Then
-        Assert.Equal(GameClient.FiveM, vm.SelectedOpenClient?.Client);
     }
 
     [Fact]

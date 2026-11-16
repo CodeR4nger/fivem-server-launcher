@@ -182,10 +182,8 @@ public class BytesToImageSourceConverterTests
     {
         // Given — the reproduced crash: HTML bytes bound to Image.Source through
         // the converter threw NotSupportedException out of SetBinding.
-        Exception? failure = null;
-        object? source = "unset";
-
-        var thread = new Thread(() =>
+        // When
+        var (failure, source) = StaThread.Run<(Exception?, object?)>(() =>
         {
             try
             {
@@ -195,19 +193,14 @@ public class BytesToImageSourceConverterTests
                     Source = new IconHolder(TestIcons.Html),
                     Converter = new BytesToImageSourceConverter()
                 };
-
-                // When
                 image.SetBinding(Image.SourceProperty, binding);
-                source = image.Source;
+                return (null, image.Source);
             }
             catch (Exception exception)
             {
-                failure = exception;
+                return (exception, "unset");
             }
         });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
 
         // Then
         Assert.Null(failure);

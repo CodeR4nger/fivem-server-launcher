@@ -189,13 +189,16 @@ public partial class MainViewModelTests
     }
 
     private static (MainWindow Window, MainViewModel ViewModel) ShowShell(
-        string languageTag, Tests.Configuration.InMemoryServerRepository? repository = null)
+        string languageTag,
+        Tests.Configuration.InMemoryServerRepository? repository = null,
+        FakeClientInstallLocator? installLocator = null)
     {
         var localizer = Localizer.FromEmbeddedResources();
         LocalizationSource.Instance.Attach(localizer);
         var vm = CreateViewModel(
             new FakeGameProcessLauncher(),
             CfxJson("gta5"),
+            installLocator: installLocator,
             localizer: localizer,
             repository: repository,
             releaseFeed: new FakeReleaseFeed { Update = NewerUpdate() },
@@ -300,13 +303,6 @@ public partial class MainViewModelTests
         for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
         {
             if (VisualTreeHelper.GetChild(root, i) is not FrameworkElement { IsVisible: true } child)
-            {
-                continue;
-            }
-
-            // The open-client list lives in a zero-size Canvas on purpose (it unrolls over
-            // the content panel); it is collapsed while closed.
-            if (child is Canvas)
             {
                 continue;
             }

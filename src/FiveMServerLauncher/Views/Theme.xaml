@@ -620,7 +620,7 @@
         </Style.Triggers>
     </Style>
 
-    <!-- A full-width menu row button (the in-layout client list under the OPEN split button) -->
+    <!-- A full-width menu row button (an in-layout list of actions) -->
     <Style x:Key="MenuRowButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource PillButtonBaseStyle}">
         <Setter Property="views:Shape.CornerRadius" Value="{StaticResource RadiusItem}"/>
         <Setter Property="Background" Value="Transparent"/>

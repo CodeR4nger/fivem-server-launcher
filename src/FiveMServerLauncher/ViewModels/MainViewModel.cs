@@ -48,7 +48,6 @@ public class MainViewModel : INotifyPropertyChanged
     private string _statusText = string.Empty;
     private bool _isBusy;
     private SavedServerItem? _selectedServer;
-    private InstalledClientOption? _selectedOpenClient;
     private InstalledClientOption? _preferredClientOption;
 
     public MainViewModel(
@@ -115,7 +114,7 @@ public class MainViewModel : INotifyPropertyChanged
         MoveServerDownCommand = new RelayCommand(p => MoveServerBy(p as SavedServerItem, 1), () => IsReorderAvailable);
         CopyAddressCommand = new RelayCommand(CopyAddress);
         OpenClientCommand = new AsyncRelayCommand(OpenClientAsync, CanOpenClient, OnCommandFailed);
-        SelectOpenClientCommand = new RelayCommand(SelectOpenClient);
+        ChoosePreferredClientCommand = new RelayCommand(ChoosePreferredClient);
         NavigateCommand = new AsyncRelayCommand(
             p => p is AppPage page ? NavigateAsync(page) : Task.CompletedTask, onError: OnCommandFailed);
         OpenAddServerDialogCommand = new RelayCommand(OpenAddServerDialog);
@@ -206,7 +205,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     public ICommand OpenClientCommand { get; }
 
-    public ICommand SelectOpenClientCommand { get; }
+    public ICommand ChoosePreferredClientCommand { get; }
 
     public ICommand OpenAddServerDialogCommand { get; }
 
@@ -734,23 +733,12 @@ public class MainViewModel : INotifyPropertyChanged
 
     public IReadOnlyList<CfxStatusItem> CfxStatuses { get; }
 
-    public InstalledClientOption? SelectedOpenClient
-    {
-        get => _selectedOpenClient;
-        set
-        {
-            if (ReferenceEquals(_selectedOpenClient, value))
-            {
-                return;
-            }
+    public bool HasInstalledClients => AvailableOpenClients.Count > 0;
 
-            _selectedOpenClient = value;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedOpenClient)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedOpenClientLabel)));
-        }
-    }
-
-    public string SelectedOpenClientLabel => SelectedOpenClient?.DisplayName ?? string.Empty;
+    // The open-client button's label: what its main part does.
+    public string OpenClientLabel => PreferredClientOption is { } option
+        ? _localizer.Format("OpenClientButton", option.DisplayName)
+        : _localizer.Get("OpenClientNone");
 
     public IReadOnlyList<LanguageSettingOption> LanguageOptions { get; private set; }
 
@@ -797,6 +785,7 @@ public class MainViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DevGameBuildOptions)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DialogGameBuildOptions)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(UpdateBannerText)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(OpenClientLabel)));
     }
 
     private IReadOnlyList<LanguageSettingOption> BuildLanguageOptions()
@@ -905,6 +894,8 @@ public class MainViewModel : INotifyPropertyChanged
         return _webLinks is not { } registrar || (enabled ? registrar.TryEnable() : registrar.TryDisable());
     }
 
+    // The ONE preferred-client state: the Settings control and the open-client button's
+    // dropdown both edit it, and the button's main part opens it.
     public InstalledClientOption? PreferredClientOption
     {
         get => _preferredClientOption;
@@ -924,7 +915,7 @@ public class MainViewModel : INotifyPropertyChanged
                 _preferredClientOption = previousOption;
                 _settings.PreferredClient = previousClient;
             });
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PreferredClientOption)));
+            RaisePreferredClientChanged();
         }
     }
 
@@ -1824,13 +1815,12 @@ public class MainViewModel : INotifyPropertyChanged
                 }
             }
 
-            if (AvailableOpenClients.Count > 0)
-            {
-                var preferred = AvailableOpenClients.FirstOrDefault(o => o.Client == _settings.PreferredClient);
-                SelectedOpenClient = preferred ?? AvailableOpenClients[0];
-                _preferredClientOption = SelectedOpenClient;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PreferredClientOption)));
-            }
+            // Seeding is not a choice: a stored client that is no longer installed falls back
+            // to the first installed one without rewriting the setting.
+            _preferredClientOption = AvailableOpenClients.FirstOrDefault(o => o.Client == _settings.PreferredClient)
+                                     ?? AvailableOpenClients.FirstOrDefault();
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasInstalledClients)));
+            RaisePreferredClientChanged();
 
             // Startup refresh: a moved exe re-points its own registration. Silent — the
             // setting stays on and the next start retries.
@@ -1865,7 +1855,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     public async Task OpenClientAsync()
     {
-        if (SelectedOpenClient is not { } option)
+        if (PreferredClientOption is not { } option)
         {
             return;
         }
@@ -1879,15 +1869,23 @@ public class MainViewModel : INotifyPropertyChanged
 
     private bool CanOpenClient()
     {
-        return SelectedOpenClient is not null && !IsBusy;
+        return PreferredClientOption is not null && !IsBusy;
     }
 
-    private void SelectOpenClient(object? option)
+    // The dropdown's pick saves the preferred client; it launches nothing.
+    private void ChoosePreferredClient(object? option)
     {
         if (option is InstalledClientOption installed)
         {
-            SelectedOpenClient = installed;
+            PreferredClientOption = installed;
         }
+    }
+
+    private void RaisePreferredClientChanged()
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PreferredClientOption)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(OpenClientLabel)));
+        CommandManager.InvalidateRequerySuggested();
     }
 
     // A locked, read-only or unreadable store surfaces as one of these two; anything else

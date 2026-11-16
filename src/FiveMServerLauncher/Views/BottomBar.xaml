@@ -1,5 +1,5 @@
 <!-- The shell's bottom bar: CFX status (left), the page tabs with one sliding highlight
-     (centre) and the open-client slot (right; ticket 05 replaces the OPEN split button).
+     (centre) and the open-client slot (right: the open-client split button).
      DataContext is inherited (MainViewModel). -->
 <UserControl x:Class="FiveMServerLauncher.Views.BottomBar"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -89,7 +89,7 @@
 
         </views:RoundedBorder>
 
-        <!-- OPEN-CLIENT SLOT (the existing OPEN split button; its client list unrolls
+        <!-- OPEN-CLIENT SLOT (the open-client split button; its client menu opens
              upward over the content panel) -->
 
         <views:OpenClientButton Grid.Column="2"
