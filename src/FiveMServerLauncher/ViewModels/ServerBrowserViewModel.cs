@@ -73,7 +73,11 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShownCountText)));
     }
 
-    public sealed record SortOption(string Label, ServerBrowserSort Sort);
+    public sealed record SortOption(string Label, ServerBrowserSort Sort)
+    {
+        // The item's UI Automation name: WPF falls back to ToString() for a bound item.
+        public override string ToString() => Label;
+    }
 
     // Session-only (like the filters); the first option is the default.
     public IReadOnlyList<SortOption> SortOptions { get; private set; }
@@ -111,7 +115,11 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
         }
     }
 
-    public sealed record GameFilterOption(string Label, GameClient? Game);
+    public sealed record GameFilterOption(string Label, GameClient? Game)
+    {
+        // The item's UI Automation name: WPF falls back to ToString() for a bound item.
+        public override string ToString() => Label;
+    }
 
     public IReadOnlyList<GameFilterOption> GameFilterOptions { get; private set; }
 

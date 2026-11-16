@@ -14,16 +14,16 @@ public class LocalizerTests
 
     private const string EnglishJson = """
         {
-            "SettingsButton": "⚙ SETTINGS",
-            "EnterServerButton": "ENTER SERVER",
+            "NavSettings": "Settings",
+            "ConnectButton": "Connect",
             "StatusStartingApp": "Starting {0}..."
         }
         """;
 
     private const string SpanishJson = """
         {
-            "SettingsButton": "⚙ AJUSTES",
-            "EnterServerButton": "ENTRAR AL SERVIDOR",
+            "NavSettings": "Ajustes",
+            "ConnectButton": "Conectar",
             "StatusStartingApp": "Iniciando {0}..."
         }
         """;
@@ -37,7 +37,7 @@ public class LocalizerTests
             () => "es-ES");
 
         // When / Then
-        Assert.Equal("⚙ AJUSTES", localizer.Get("SettingsButton"));
+        Assert.Equal("Ajustes", localizer.Get("NavSettings"));
     }
 
     [Theory]
@@ -47,7 +47,7 @@ public class LocalizerTests
     public void Get_WhenSystemCultureMapsToShippedTag_ShouldUseThatLanguage(string culture, string expectedTag)
     {
         // Given
-        var json = $$"""{ "SettingsButton": "{{expectedTag}}" }""";
+        var json = $$"""{ "NavSettings": "{{expectedTag}}" }""";
         var localizer = new Localizer(
             Dictionaries(("en", EnglishJson), (expectedTag, json)),
             () => culture);
@@ -67,7 +67,7 @@ public class LocalizerTests
         // Given — only Simplified Chinese ships, so any Traditional Chinese system
         // reads the variant we do ship rather than falling back to English.
         var localizer = new Localizer(
-            Dictionaries(("en", EnglishJson), ("zh-Hans", """{ "SettingsButton": "zh" }""")),
+            Dictionaries(("en", EnglishJson), ("zh-Hans", """{ "NavSettings": "zh" }""")),
             () => culture);
 
         // When / Then
@@ -87,20 +87,20 @@ public class LocalizerTests
 
         // When / Then
         Assert.Equal("en", localizer.Language);
-        Assert.Equal("ENTER SERVER", localizer.Get("EnterServerButton"));
+        Assert.Equal("Connect", localizer.Get("ConnectButton"));
     }
 
     [Fact]
     public void Get_WhenKeyMissingInLanguage_ShouldFallBackToEnglish()
     {
         // Given
-        var partialSpanish = """{ "SettingsButton": "⚙ AJUSTES" }""";
+        var partialSpanish = """{ "NavSettings": "Ajustes" }""";
         var localizer = new Localizer(
             Dictionaries(("en", EnglishJson), ("es", partialSpanish)),
             () => "es-ES");
 
         // When / Then
-        Assert.Equal("ENTER SERVER", localizer.Get("EnterServerButton"));
+        Assert.Equal("Connect", localizer.Get("ConnectButton"));
     }
 
     [Fact]
@@ -140,7 +140,7 @@ public class LocalizerTests
 
         // Then
         Assert.Equal("es", localizer.Language);
-        Assert.Equal("⚙ AJUSTES", localizer.Get("SettingsButton"));
+        Assert.Equal("Ajustes", localizer.Get("NavSettings"));
         Assert.Equal(1, raised);
     }
 
@@ -217,7 +217,7 @@ public class LocalizerTests
             () => "en-US");
 
         // When / Then
-        Assert.Equal("⚙ SETTINGS", localizer.Get("SettingsButton"));
+        Assert.Equal("Settings", localizer.Get("NavSettings"));
         Assert.Contains(localizer.Languages, l => l.Tag == "es");
     }
 
@@ -234,7 +234,7 @@ public class LocalizerTests
 
         // Then — the explicit choice wins over the system language, and English renders
         Assert.Equal("es", localizer.Language);
-        Assert.Equal("ENTER SERVER", localizer.Get("EnterServerButton"));
+        Assert.Equal("Connect", localizer.Get("ConnectButton"));
     }
 
     [Fact]
@@ -340,8 +340,8 @@ public class LocalizerTests
 
         // Then
         Assert.Equal("en", localizer.Language);
-        Assert.Equal("⚙ SETTINGS", localizer.Get("SettingsButton"));
-        Assert.Equal("ENTER SERVER", localizer.Get("EnterServerButton"));
+        Assert.Equal("Settings", localizer.Get("NavSettings"));
+        Assert.Equal("Connect", localizer.Get("ConnectButton"));
         Assert.Contains(localizer.Languages, l => l.Tag == "en");
     }
 
@@ -353,7 +353,7 @@ public class LocalizerTests
 
         // Then
         Assert.Equal("es", localizer.Language);
-        Assert.Equal("⚙ AJUSTES", localizer.Get("SettingsButton"));
+        Assert.Equal("Ajustes", localizer.Get("NavSettings"));
         Assert.Contains(localizer.Languages, l => l.Tag == "es");
     }
 

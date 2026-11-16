@@ -22,7 +22,6 @@
 
     <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
     <views:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility"/>
-    <views:InverseBooleanConverter x:Key="InverseBoolean"/>
     <views:EmptyStringToVisibilityConverter x:Key="EmptyStringToVisibility"/>
     <views:BytesToImageSourceConverter x:Key="BytesToImageSourceConverter"/>
     <views:GameClientToBrushConverter x:Key="GameClientToBrushConverter"/>
@@ -91,14 +90,6 @@
     <CornerRadius x:Key="RadiusItem">8</CornerRadius>
     <CornerRadius x:Key="RadiusTag">3</CornerRadius>
 
-    <!-- Spacing -->
-    <sys:Double x:Key="SpaceXs">4</sys:Double>
-    <sys:Double x:Key="SpaceS">8</sys:Double>
-    <sys:Double x:Key="SpaceM">12</sys:Double>
-    <sys:Double x:Key="SpaceL">16</sys:Double>
-    <sys:Double x:Key="SpaceXl">20</sys:Double>
-    <sys:Double x:Key="SpaceXxl">24</sys:Double>
-
     <!-- Shell: the fixed page-tab width (the sliding highlight moves by whole tabs; the
          shell layout test pins every language's label inside it) and the open-client slot. -->
     <sys:Double x:Key="NavTabWidthValue">128</sys:Double>
@@ -118,7 +109,6 @@
     <!-- Durations 150–350 ms, standard ease-out; nothing waits for them (no input gating). -->
     <Duration x:Key="MotionFast">0:0:0.15</Duration>
     <Duration x:Key="MotionMedium">0:0:0.25</Duration>
-    <Duration x:Key="MotionSlow">0:0:0.35</Duration>
     <CubicEase x:Key="MotionEase" EasingMode="EaseOut"/>
 
     <!-- Fade: target = the styled element -->
@@ -197,48 +187,6 @@
                 <Trigger.EnterActions>
                     <RemoveStoryboard BeginStoryboardName="SurfaceFadeIn"/>
                     <RemoveStoryboard BeginStoryboardName="SurfaceFadeOut"/>
-                </Trigger.EnterActions>
-            </Trigger>
-        </Style.Triggers>
-    </Style>
-
-    <!-- The slide-in variant (side panels): slides in from the right with motion, fades
-         out on hide, snaps with motion off. Same Motion.Shown contract as FadeSurfaceStyle. -->
-    <Style x:Key="SlideSurfaceStyle" TargetType="{x:Type FrameworkElement}">
-        <Setter Property="Opacity" Value="0"/>
-        <Setter Property="IsHitTestVisible" Value="False"/>
-        <Setter Property="RenderTransform">
-            <Setter.Value>
-                <TranslateTransform/>
-            </Setter.Value>
-        </Setter>
-        <Style.Triggers>
-            <Trigger Property="views:Motion.Shown" Value="True">
-                <Setter Property="IsHitTestVisible" Value="True"/>
-            </Trigger>
-            <MultiTrigger>
-                <MultiTrigger.Conditions>
-                    <Condition Property="views:Motion.Shown" Value="True"/>
-                    <Condition Property="views:Motion.IsEnabled" Value="True"/>
-                </MultiTrigger.Conditions>
-                <MultiTrigger.EnterActions>
-                    <BeginStoryboard x:Name="SurfaceSlideIn" Storyboard="{StaticResource MotionSlideIn}"/>
-                </MultiTrigger.EnterActions>
-                <MultiTrigger.ExitActions>
-                    <BeginStoryboard x:Name="SurfaceSlideOut" Storyboard="{StaticResource MotionFadeOut}"/>
-                </MultiTrigger.ExitActions>
-            </MultiTrigger>
-            <MultiTrigger>
-                <MultiTrigger.Conditions>
-                    <Condition Property="views:Motion.Shown" Value="True"/>
-                    <Condition Property="views:Motion.IsEnabled" Value="False"/>
-                </MultiTrigger.Conditions>
-                <Setter Property="Opacity" Value="1"/>
-            </MultiTrigger>
-            <Trigger Property="views:Motion.IsEnabled" Value="False">
-                <Trigger.EnterActions>
-                    <RemoveStoryboard BeginStoryboardName="SurfaceSlideIn"/>
-                    <RemoveStoryboard BeginStoryboardName="SurfaceSlideOut"/>
                 </Trigger.EnterActions>
             </Trigger>
         </Style.Triggers>
@@ -350,15 +298,6 @@
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="{StaticResource RadiusCard}"/>
-    </Style>
-
-    <!-- A sunken list well inside a panel (lists, inputs' family) -->
-    <Style x:Key="ListWellStyle" TargetType="Border">
-        <Setter Property="Background" Value="{StaticResource InputBrush}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="{StaticResource RadiusCard}"/>
-        <Setter Property="Padding" Value="4"/>
     </Style>
 
     <Style x:Key="SettingsGroupStyle" TargetType="Border">
@@ -620,17 +559,6 @@
         </Style.Triggers>
     </Style>
 
-    <!-- A full-width menu row button (an in-layout list of actions) -->
-    <Style x:Key="MenuRowButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource PillButtonBaseStyle}">
-        <Setter Property="views:Shape.CornerRadius" Value="{StaticResource RadiusItem}"/>
-        <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-        <Setter Property="HorizontalContentAlignment" Value="Left"/>
-        <Setter Property="FontSize" Value="{StaticResource FontSizeRowTitle}"/>
-        <Setter Property="Padding" Value="16,0"/>
-    </Style>
-
     <!-- Filter chip (ToggleButton/RadioButton): unselected raised + strong border, selected
          light fill with dark text. Compose an optional dot (ChipDotStyle) and count
          (ChipCountStyle) inside the content. -->
@@ -883,8 +811,11 @@
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="{TemplateBinding views:Shape.CornerRadius}"
                             SnapsToDevicePixels="True">
+                        <!-- No Margin from Padding here: the TextBox already hands its Padding to
+                             the text view inside this host, so binding it again doubled the inset.
+                             Text starts at BorderThickness + Padding + the text view's 2 px gutter;
+                             an overlaid placeholder's left margin is that same sum. -->
                         <ScrollViewer x:Name="PART_ContentHost"
-                                      Margin="{TemplateBinding Padding}"
                                       VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                                       Focusable="False"
                                       HorizontalScrollBarVisibility="Hidden"
@@ -999,43 +930,6 @@
 
         </Setter>
 
-    </Style>
-
-    <!-- LIST ROW (the server list rows): rounded, quiet hover, raised selection -->
-
-    <Style x:Key="ListRowStyle" TargetType="{x:Type ListBoxItem}">
-        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-        <Setter Property="Padding" Value="0"/>
-        <Setter Property="Margin" Value="0,1"/>
-        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="{x:Type ListBoxItem}">
-                    <Border x:Name="Row"
-                            Background="Transparent"
-                            BorderBrush="Transparent"
-                            BorderThickness="1"
-                            CornerRadius="{StaticResource RadiusItem}"
-                            Padding="{TemplateBinding Padding}"
-                            SnapsToDevicePixels="True">
-                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Row" Property="Background" Value="{StaticResource SurfaceRaisedBrush}"/>
-                        </Trigger>
-                        <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="Row" Property="Background" Value="{StaticResource SurfaceHoverBrush}"/>
-                            <Setter TargetName="Row" Property="BorderBrush" Value="{StaticResource BorderStrongBrush}"/>
-                        </Trigger>
-                        <Trigger Property="IsKeyboardFocused" Value="True">
-                            <Setter TargetName="Row" Property="BorderBrush" Value="{StaticResource TextSecondaryBrush}"/>
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
     </Style>
 
     <!-- ============================== DROPDOWN ============================== -->

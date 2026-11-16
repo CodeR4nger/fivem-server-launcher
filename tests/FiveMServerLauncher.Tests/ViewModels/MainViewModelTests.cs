@@ -685,10 +685,10 @@ public partial class MainViewModelTests
         Assert.True(item.Online);
         Assert.Equal(12, item.Players);
         Assert.Equal(64, item.MaxPlayers);
-        Assert.Equal("12/64", item.StatusLabel);
+        Assert.Equal("12/64", item.ListStatusText);
         Assert.Equal(GameClient.FiveM, item.Game);
         Assert.Equal("FiveM", item.GameTagLabel);
-        Assert.True(item.HasIcon);
+        Assert.NotNull(item.Icon);
     }
 
     [Fact]
@@ -781,8 +781,8 @@ public partial class MainViewModelTests
         // Then
         var item = Assert.Single(vm.SavedServers);
         Assert.False(item.Online);
-        Assert.Equal("OFFLINE", item.StatusLabel);
-        Assert.False(item.HasIcon);
+        Assert.Equal("Offline", item.ListStatusText);
+        Assert.Null(item.Icon);
     }
 
     [Fact]
@@ -813,7 +813,7 @@ public partial class MainViewModelTests
 
         // Then
         var item = Assert.Single(vm.SavedServers);
-        Assert.True(item.HasIcon);
+        Assert.NotNull(item.Icon);
         Assert.Equal(1, enrichment.DirectIconCalls);
         Assert.Equal(iconUrl, enrichment.LastRequestedIconUrl);
     }
@@ -845,7 +845,7 @@ public partial class MainViewModelTests
         // Then
         var item = Assert.Single(vm.SavedServers);
         Assert.True(item.Online);
-        Assert.False(item.HasIcon);
+        Assert.Null(item.Icon);
         Assert.Equal(0, enrichment.DirectIconCalls);
     }
 
@@ -871,8 +871,8 @@ public partial class MainViewModelTests
         // Then
         var item = Assert.Single(vm.SavedServers);
         Assert.False(item.Online);
-        Assert.Equal("UNRESOLVED", item.StatusLabel);
-        Assert.False(item.HasIcon);
+        Assert.Equal("Not listed", item.ListStatusText);
+        Assert.Null(item.Icon);
     }
 
     [Fact]
@@ -1028,7 +1028,7 @@ public partial class MainViewModelTests
 
         // Then
         Assert.True(enrichment.RefreshCalls >= 3);
-        Assert.Equal("4/32", Assert.Single(vm.SavedServers).StatusLabel);
+        Assert.Equal("4/32", Assert.Single(vm.SavedServers).ListStatusText);
     }
 
     [Fact]
@@ -2519,7 +2519,7 @@ public partial class MainViewModelTests
         // Then
         Assert.Equal(1, enrichment.ForcedRefreshCalls);
         Assert.True(enrichment.RefreshCalls > refreshCallsBefore);
-        Assert.Equal("12/48", vm.SavedServers[0].StatusLabel);
+        Assert.Equal("12/48", vm.SavedServers[0].ListStatusText);
         Assert.NotNull(vm.SavedServers[0].Icon);
         Assert.Equal("Server saved", vm.StatusText);
     }
@@ -3228,7 +3228,7 @@ public partial class MainViewModelTests
 
         // Then
         Assert.Equal(1, enrichment.ForcedRefreshCalls);
-        Assert.Equal("9/32", vm.SavedServers[0].StatusLabel);
+        Assert.Equal("9/32", vm.SavedServers[0].ListStatusText);
         Assert.Equal("Ready", vm.StatusText);
     }
 
@@ -3248,7 +3248,7 @@ public partial class MainViewModelTests
         vm.RefreshServersCommand.Execute(null);
 
         // Then
-        Assert.Equal("7/32", vm.SavedServers[0].StatusLabel);
+        Assert.Equal("7/32", vm.SavedServers[0].ListStatusText);
     }
 
     [Fact]
@@ -3381,7 +3381,7 @@ public partial class MainViewModelTests
         await vm.RefreshServerInfoAsync();
 
         // Then — hidden row still updates
-        Assert.Equal("4/32", vm.SavedServers[0].StatusLabel);
+        Assert.Equal("4/32", vm.SavedServers[0].ListStatusText);
         Assert.Empty(vm.SavedServersView.Cast<SavedServerItem>());
     }
 

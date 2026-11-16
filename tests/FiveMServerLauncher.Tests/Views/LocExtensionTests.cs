@@ -10,10 +10,10 @@ public class LocExtensionTests
     {
         // Given / When — the key must target the indexer (a plain property path
         // resolves to nothing and the bound text renders empty).
-        var binding = new LocExtension("SettingsButton");
+        var binding = new LocExtension("NavSettings");
 
         // Then
-        Assert.Equal("[SettingsButton]", binding.Path?.Path);
+        Assert.Equal("[NavSettings]", binding.Path?.Path);
         Assert.Same(LocalizationSource.Instance, binding.Source);
         Assert.Equal(BindingMode.OneWay, binding.Mode);
     }

@@ -18,21 +18,6 @@ public class SavedServerItemTests
     }
 
     [Fact]
-    public void StatusLabel_WhenLanguageSwitched_ShouldRefresh()
-    {
-        // Given
-        var localizer = CreateSpanishLocalizer();
-        var item = new SavedServerItem(
-            "My Server", "abc123", null, null, () => { }, localizer, cfxId: "y4lg95");
-
-        // When
-        localizer.SetLanguage("es");
-
-        // Then
-        Assert.Equal("DESCONECTADO", item.StatusLabel);
-    }
-
-    [Fact]
     public void Ctor_ShouldExposeSavedServerValues()
     {
         // Given / When
@@ -48,13 +33,13 @@ public class SavedServerItemTests
     }
 
     [Fact]
-    public void Ctor_WithoutCfxId_ShouldShowUnresolvedStatus()
+    public void Ctor_WithoutCfxId_ShouldShowNotListedWithNoGame()
     {
         // Given / When
         var item = new SavedServerItem("My Server", "not-published.example.com:30120", null, null, () => { }, TestLocalizer.English());
 
         // Then
-        Assert.Equal("UNRESOLVED", item.StatusLabel);
+        Assert.Equal("Not listed", item.ListStatusText);
         Assert.Null(item.Game);
         Assert.False(item.HasGame);
         Assert.Equal(string.Empty, item.GameTagLabel);
@@ -69,7 +54,7 @@ public class SavedServerItemTests
         // Then
         Assert.Equal("y4lg95", item.CfxId);
         Assert.True(item.HasCfxId);
-        Assert.Equal("OFFLINE", item.StatusLabel);
+        Assert.Equal("Offline", item.ListStatusText);
     }
 
     [Fact]
@@ -87,12 +72,12 @@ public class SavedServerItemTests
         Assert.True(item.Online);
         Assert.Equal(12, item.Players);
         Assert.Equal(64, item.MaxPlayers);
-        Assert.Equal("12/64", item.StatusLabel);
+        Assert.Equal("12/64", item.ListStatusText);
         Assert.Equal(GameClient.FiveM, item.Game);
         Assert.True(item.HasGame);
         Assert.Equal("FiveM", item.GameTagLabel);
         Assert.Contains(nameof(SavedServerItem.Online), notifications);
-        Assert.Contains(nameof(SavedServerItem.StatusLabel), notifications);
+        Assert.Contains(nameof(SavedServerItem.ListStatusText), notifications);
         Assert.Contains(nameof(SavedServerItem.Game), notifications);
         Assert.Contains(nameof(SavedServerItem.GameTagLabel), notifications);
     }
@@ -125,7 +110,7 @@ public class SavedServerItemTests
         Assert.False(item.Online);
         Assert.Null(item.Players);
         Assert.Null(item.MaxPlayers);
-        Assert.Equal("OFFLINE", item.StatusLabel);
+        Assert.Equal("Offline", item.ListStatusText);
         Assert.Equal(GameClient.FiveM, item.Game);
     }
 
@@ -157,12 +142,11 @@ public class SavedServerItemTests
 
         // Then
         Assert.Same(icon, item.Icon);
-        Assert.True(item.HasIcon);
         Assert.Contains(nameof(SavedServerItem.Icon), notifications);
     }
 
     [Fact]
-    public void SetCfxId_ShouldFlipStatusFromUnresolvedToOffline()
+    public void SetCfxId_ShouldFlipStatusFromNotListedToOffline()
     {
         // Given
         var notifications = new List<string?>();
@@ -173,8 +157,8 @@ public class SavedServerItemTests
         item.SetCfxId("y4lg95");
 
         // Then
-        Assert.Equal("OFFLINE", item.StatusLabel);
-        Assert.Contains(nameof(SavedServerItem.StatusLabel), notifications);
+        Assert.Equal("Offline", item.ListStatusText);
+        Assert.Contains(nameof(SavedServerItem.ListStatusText), notifications);
     }
 
     [Fact]
@@ -230,59 +214,6 @@ public class SavedServerItemTests
         Assert.Equal(1, handlerRuns);
     }
 
-    [Fact]
-    public void TrimmedName_WhenShort_ShouldReturnUnchanged()
-    {
-        // Given
-        var item = new SavedServerItem("Short Name", "abc123", null, null, () => { }, TestLocalizer.English());
-
-        // When / Then
-        Assert.Equal("Short Name", item.TrimmedName);
-    }
-
-    [Fact]
-    public void TrimmedName_WhenLong_ShouldTruncateWithEllipsis()
-    {
-        // Given
-        var item = new SavedServerItem("NoPixel 4.0 RP Public Green | Visit us @ nopixel.net", "abc123", null, null, () => { }, TestLocalizer.English());
-
-        // When
-        var trimmed = item.TrimmedName;
-
-        // Then
-        Assert.True(trimmed.Length <= 30);
-        Assert.EndsWith("…", trimmed);
-        Assert.StartsWith("NoPixel 4.0 RP Public Gre", trimmed);
-    }
-
-    [Fact]
-    public void TrimmedName_WhenSelected_ShouldUseShorterLimit()
-    {
-        // Given
-        var item = new SavedServerItem("NoPixel 4.0 RP Public Green | Visit us @ nopixel.net", "abc123", null, null, () => { }, TestLocalizer.English());
-
-        // When
-        item.IsSelected = true;
-
-        // Then
-        Assert.True(item.TrimmedName.Length <= 20);
-        Assert.EndsWith("…", item.TrimmedName);
-    }
-
-    [Fact]
-    public void IsSelected_WhenChanged_ShouldNotifyTrimmedName()
-    {
-        // Given
-        var item = new SavedServerItem("Server", "abc123", null, null, () => { }, TestLocalizer.English());
-        var notified = false;
-        item.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(SavedServerItem.TrimmedName)) notified = true; };
-
-        // When
-        item.IsSelected = true;
-
-        // Then
-        Assert.True(notified);
-    }
     [Fact]
     public void Ctor_WhenRowCollected_ShouldNotStayRootedByLocalizerSubscription()
     {

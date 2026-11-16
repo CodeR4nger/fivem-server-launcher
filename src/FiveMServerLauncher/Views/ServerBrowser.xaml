@@ -350,7 +350,7 @@
                 <TextBox x:Name="BrowserSearchBox"
                          Text="{Binding Browser.SearchText, UpdateSourceTrigger=PropertyChanged}"
                          Style="{StaticResource TextInputStyle}"
-                         Padding="18,0,6,0"
+                         Padding="34,0,12,0"
                          AutomationProperties.Name="{loc:Loc SearchByNamePlaceholder}"/>
 
                 <Path Data="M11,4 A7,7 0 1 1 10.99,4 M20,20 L16.5,16.5"
@@ -401,21 +401,15 @@
 
         </Grid>
 
-        <!-- FILTER ROW: game chips | Hide full, Hide empty | sort (docked right). The chips
-             wrap onto a second line rather than clip in a long language. -->
-        <DockPanel x:Name="BrowseFilters" Grid.Row="1" Margin="0,14,0,0" LastChildFill="True">
+        <!-- FILTER ROW: game chips | Hide full, Hide empty | sort (right column, declared last
+             so Tab follows the reading order). The chips wrap onto a second line rather than
+             clip in a long language. -->
+        <Grid x:Name="BrowseFilters" Grid.Row="1" Margin="0,14,0,0">
 
-            <ComboBox x:Name="SortBox"
-                      DockPanel.Dock="Right"
-                      ItemsSource="{Binding Browser.SortOptions}"
-                      SelectedItem="{Binding Browser.SelectedSortOption}"
-                      DisplayMemberPath="Label"
-                      AutomationProperties.Name="{loc:Loc BrowserSortLabel}"
-                      MinWidth="150"
-                      Height="34"
-                      VerticalAlignment="Top"
-                      VerticalContentAlignment="Center"
-                      Margin="12,0,0,0"/>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
 
             <WrapPanel Orientation="Horizontal">
 
@@ -474,7 +468,19 @@
 
             </WrapPanel>
 
-        </DockPanel>
+            <ComboBox x:Name="SortBox"
+                      Grid.Column="1"
+                      ItemsSource="{Binding Browser.SortOptions}"
+                      SelectedItem="{Binding Browser.SelectedSortOption}"
+                      DisplayMemberPath="Label"
+                      AutomationProperties.Name="{loc:Loc BrowserSortLabel}"
+                      MinWidth="150"
+                      Height="34"
+                      VerticalAlignment="Top"
+                      VerticalContentAlignment="Center"
+                      Margin="12,0,0,0"/>
+
+        </Grid>
 
         <!-- LIST + STATES -->
         <Grid Grid.Row="2" Margin="0,6,0,0">

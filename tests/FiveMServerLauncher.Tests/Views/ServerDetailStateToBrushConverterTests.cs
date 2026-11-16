@@ -5,13 +5,14 @@ using FiveMServerLauncher.Views;
 
 namespace FiveMServerLauncher.Tests.Views;
 
-// The Servers page's status dot: the same four colours as the CFX status dots.
+// The Servers page's status dot: listed green, manual amber, offline and not listed grey
+// (red stays for RedM and errors).
 public class ServerDetailStateToBrushConverterTests
 {
     [Theory]
     [InlineData(ServerDetailState.Listed, "#FF3FB950")]
     [InlineData(ServerDetailState.Manual, "#FFD29922")]
-    [InlineData(ServerDetailState.Offline, "#FFE05252")]
+    [InlineData(ServerDetailState.Offline, "#FF7A7A7A")]
     [InlineData(ServerDetailState.NotListed, "#FF7A7A7A")]
     public void Convert_ShouldColourEachState(ServerDetailState state, string expected)
     {

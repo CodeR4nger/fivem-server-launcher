@@ -24,12 +24,11 @@
                 <Setter Property="Margin" Value="0,0,0,6"/>
             </Style>
 
-            <!-- Padding counts twice (TextInputStyle's template applies it as the content
-                 host's margin AND the TextBox passes it to that host again): 5 + 5 + the text
-                 view's own 2 lines the text up with the combo boxes' 12 px inset. -->
+            <!-- Border 1 + Padding 9 + the text view's 2 px gutter = the combo boxes' 12 px
+                 content inset, so field text and combo text line up. -->
             <Style x:Key="FieldInputStyle" TargetType="TextBox" BasedOn="{StaticResource TextInputStyle}">
                 <Setter Property="FontSize" Value="{StaticResource FontSizeRowTitle}"/>
-                <Setter Property="Padding" Value="5,0"/>
+                <Setter Property="Padding" Value="9,0"/>
                 <Setter Property="Height" Value="44"/>
             </Style>
 

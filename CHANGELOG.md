@@ -1,5 +1,19 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- **A redesigned launcher** — the single fixed 860×520 screen with its stacked overlays is replaced by a resizable window (minimum 1000×640, maximizable) with its own title bar, one rounded content panel and a bottom bar with three pages: **Servers**, **Browse** and **Settings**. The launcher remembers its size, position and maximized state, and comes back on screen if the monitor it was on is gone.
+- **Servers page** — your saved servers on the left with search and All / Online / Offline filter chips showing live counts; the selected server's details on the right (players, address, game build with its DLC name, pure mode, Steam/Discord requirements) with one amber **Connect** beside the address. Every server action — edit, desktop shortcut, copy address, move up/down, delete — lives in one ⋮ menu; dragging a row still reorders the list.
+- **Browse page** — the server browser is now a full page instead of a sliding overlay, with game chips, Hide full / Hide empty, sort, a live "N servers" count, and clear empty, loading and failed states (with Try again). Filters, search, sort and scroll position survive switching pages.
+- **Settings page** — grouped rows with switches in two tabs: **General** (preferred client, auto-launch, web links, minimize to tray, language, interface animations, version and **Check for updates**) and **Dev mode** (client, game build, pure mode, launch / launch second client).
+- **Open client button** — the bottom bar's split button opens your preferred client, and its ▾ menu (opening upward) changes which one; it reads "No client installed" instead of an empty box when nothing is detected.
+- **Update notice in the title bar** — a small pill replaces the bottom banner.
+- **Dialogs** — add/edit server and confirmations are centred modals over a dimmed window, with keyboard support (Esc cancels, Enter saves, focus returns where it was); delete confirms in red.
+- **Motion and look** — page fades, a sliding tab highlight, modal and menu pops, gliding switches and hover feedback, all short and eased. A new **Interface animations: Minimal** setting turns them off, and they also follow Windows' "Show animations" setting. The UI now uses the bundled Inter font with higher-contrast text, and offline servers show a grey dot (red stays for RedM and errors).
+- **Keyboard and screen readers** — every page, the tabs (arrow keys), menus and dialogs can be used without a mouse, Tab moves through each row in reading order, and every control and option is announced by name.
+- A web link, desktop shortcut or tray connect now brings up the Servers page, so you see how the connect is going.
+
 ## [1.3.1] (2026-10-26)
 
 ### Fixed

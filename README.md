@@ -20,35 +20,43 @@ Built with C#/.NET 10 + WPF (MVVM), developed strictly with TDD.
 - **Prepares required apps** — if a server requires **Steam** or **Discord**, the launcher
   starts them and waits until they are *actually ready* (Steam fully logged in, not just
   running) before connecting.
-- **Server list / favorites** — save servers, see live status (players online / OFFLINE /
-  UNRESOLVED), per-game tag and server icon.
+- **Servers page** — save servers and see them with live status (players online, Offline,
+  Not listed), per-game tag and server icon; filter by All / Online / Offline, search, and see
+  the selected server's game build, pure mode and Steam/Discord requirements before you
+  connect. Edit, shortcut, copy, reorder and delete from its ⋮ menu.
+- **Browse page** — the full CFX server list with game, full/empty and name filters, sorting,
+  and one-click Connect or Save.
 - **CFX network status** — live FiveM / RedM / Enhanced status from the CFX status page right
   in the launcher.
-- **Dev Mode** — open FiveM directly with a specific game build / pure mode, and launch a
-  second client.
+- **Dev mode** (a Settings tab) — open FiveM or RedM directly with a specific game build / pure
+  mode, and launch a second client.
 - **Auto-launch** — optionally remembers your last server and connects automatically at startup.
-- **Web links** — opt in under Settings ("Open cfxlauncher:// web links in this launcher") and
-  links such as `cfxlauncher://connect/cfx.re/join/<id>` (any address form after `connect/`)
-  open the server in the launcher, through the same validated connect as ENTER SERVER — the
+- **Web links** — turn on the web links switch under Settings and links such as
+  `cfxlauncher://connect/cfx.re/join/<id>` (any address form after `connect/`) open the server
+  in the launcher, through the same validated connect as the Connect button — the
   running launcher picks it up if it is already open. The registration is per user
   (`HKCU\Software\Classes\cfxlauncher`, no admin), is re-pointed at startup if you moved the
-  exe, and unticking removes it. With several copies of the exe, the last one started with the
+  exe, and turning it off removes it. With several copies of the exe, the last one started with the
   option on owns the links.
 - **Tray icon** — the launcher icon stays in the notification area while the app runs. Its
   right-click menu lists your saved servers (first 15, in your order; "All servers..." opens
-  the window) for a one-click connect, plus Show and Exit; a left click shows the window. Tick
-  "Minimize to the system tray" under Settings and minimizing hides the window from the
+  the window) for a one-click connect, plus Show and Exit; a left click shows the window. Turn on
+  minimize to tray under Settings and minimizing hides the window from the
   taskbar until you bring it back from the icon, a shortcut, a web link or a second launch.
   Closing the window always exits.
-- **Portable** — a single self-contained executable (~63 MB); settings are stored next to the exe.
+- **Resizable, animated, keyboard-friendly UI** — a resizable window (minimum 1000×640) that
+  remembers its size and position, three pages in a bottom bar, an update pill in the title
+  bar, and short animations you can switch to Minimal under Settings.
+- **Portable** — a single self-contained executable (~64 MB); settings are stored next to the exe.
 
 ## Usage
 
 1. Download the published `CFXLauncher.exe` (a single file — no DLLs; the native WPF libraries
    are baked in and self-extract to a temp folder at startup).
 2. Double-click it. No installation, no admin rights.
-3. Paste a server address and press **ENTER SERVER**, or open a client directly with the
-   **OPEN** button.
+3. Pick a saved server (or paste an address) on the **Servers** page and press **Connect**, find
+   one on the **Browse** page, or open a client directly with the **Open client** button in the
+   bottom bar.
 
 ## Requirements
 
