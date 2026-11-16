@@ -86,6 +86,7 @@
   "DialogGameField": "游戏",
   "GameClientNone": "无",
   "DialogLocalDevHeader": "本地开发",
+  "DialogClose": "关闭对话框",
   "LanguageHeader": "语言",
   "LanguageSystemDefault": "跟随系统",
   "StatusStartupFailed": "启动错误",

@@ -86,6 +86,7 @@
   "DialogGameField": "ゲーム",
   "GameClientNone": "なし",
   "DialogLocalDevHeader": "ローカル開発",
+  "DialogClose": "ダイアログを閉じる",
   "LanguageHeader": "言語",
   "LanguageSystemDefault": "システム既定",
   "StatusStartupFailed": "起動エラー",

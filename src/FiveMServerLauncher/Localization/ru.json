@@ -86,6 +86,7 @@
   "DialogGameField": "ИГРА",
   "GameClientNone": "Нет",
   "DialogLocalDevHeader": "ЛОКАЛЬНАЯ РАЗРАБОТКА",
+  "DialogClose": "Закрыть диалог",
   "LanguageHeader": "ЯЗЫК",
   "LanguageSystemDefault": "Как в системе",
   "StatusStartupFailed": "Ошибка запуска",

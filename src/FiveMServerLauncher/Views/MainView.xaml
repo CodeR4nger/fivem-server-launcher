@@ -54,14 +54,16 @@
         <views:BottomBar x:Name="BottomBar"
                          Grid.Row="1"/>
 
-        <!-- ADD/EDIT SERVER DIALOG (overlay above the pages and the bottom bar) -->
+        <!-- ADD/EDIT SERVER DIALOG (modal over the pages and the bottom bar) -->
 
-        <views:ServerDialog Grid.RowSpan="2"/>
+        <views:ServerDialog x:Name="ServerDialog"
+                            Grid.RowSpan="2"/>
 
         <!-- CONFIRM DIALOG (overlay; a root-grid sibling declared last so it paints
              above every other overlay — never nest it inside another overlay) -->
 
-        <views:ConfirmDialog Grid.RowSpan="2"/>
+        <views:ConfirmDialog x:Name="ConfirmDialog"
+                             Grid.RowSpan="2"/>
 
     </Grid>
 

@@ -36,6 +36,7 @@ public class ThemeTokenTests
         { "FooterTextBrush", "FooterBrush" },
         { "OnAccentBrush", "AccentBrush" },
         { "OnSelectedBrush", "TextPrimaryBrush" },
+        { "OnSelectedBrush", "DangerTextBrush" },
     };
 
     [Theory]
