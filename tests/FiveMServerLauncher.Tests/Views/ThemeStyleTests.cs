@@ -360,6 +360,40 @@ public class ThemeStyleTests
         Assert.False(animated);
     }
 
+    [Theory]
+    [InlineData("TextInputStyle")]
+    [InlineData("PillTextInputStyle")]
+    public void TextInput_ShouldInsetItsTextByThePaddingOnce(string key)
+    {
+        // Given the text view's own gutter (the box with no padding and no border) and a
+        // box with a 1 px border and a 12 px padding
+        var (gutter, padded) = StaThread.Run(() =>
+            (TextLeft(key, new Thickness(0), new Thickness(0)),
+             TextLeft(key, new Thickness(12, 8, 12, 8), new Thickness(1))));
+
+        // Then the padding counts exactly once: border + padding + the gutter
+        Assert.Equal(gutter + 1 + 12, padded, 1);
+    }
+
+    // The left edge of the first character, relative to the TextBox, laid out offscreen.
+    private static double TextLeft(string key, Thickness padding, Thickness border)
+    {
+        var box = new TextBox
+        {
+            Style = (Style)new ThemeResources()[key],
+            Padding = padding,
+            BorderThickness = border,
+            Text = "Wide",
+            Width = 180
+        };
+
+        using (new OffscreenHost(box))
+        {
+            box.UpdateLayout();
+            return box.GetRectFromCharacterIndex(0).Left;
+        }
+    }
+
     // Clock control operations (RemoveStoryboard) are applied by the ticking clock of an
     // element that renders, so the motion-switch tests host it in an offscreen window.
     private sealed class OffscreenHost : IDisposable

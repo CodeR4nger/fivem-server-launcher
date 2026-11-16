@@ -811,8 +811,11 @@
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="{TemplateBinding views:Shape.CornerRadius}"
                             SnapsToDevicePixels="True">
+                        <!-- No Margin from Padding here: the TextBox already hands its Padding to
+                             the text view inside this host, so binding it again doubled the inset.
+                             Text starts at BorderThickness + Padding + the text view's 2 px gutter;
+                             an overlaid placeholder's left margin is that same sum. -->
                         <ScrollViewer x:Name="PART_ContentHost"
-                                      Margin="{TemplateBinding Padding}"
                                       VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                                       Focusable="False"
                                       HorizontalScrollBarVisibility="Hidden"

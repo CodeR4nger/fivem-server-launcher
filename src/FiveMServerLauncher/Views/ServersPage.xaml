@@ -261,15 +261,14 @@
 
             </DockPanel>
 
-            <!-- The theme's TextInputStyle applies Padding twice (its content-host margin
-                 and the TextBox's own host padding), so the inputs here pass half the inset
-                 they draw; each placeholder's left margin = 2 × Padding + 3 (border + host). -->
+            <!-- Each placeholder's left margin = the box's border (1) + Padding + the text
+                 view's 2 px gutter, so it sits exactly where typed text starts. -->
             <Grid Grid.Row="1" Margin="0,12,0,0">
 
                 <TextBox x:Name="ServerSearchBox"
                          Text="{Binding ServerSearchText, UpdateSourceTrigger=PropertyChanged}"
                          Style="{StaticResource PillTextInputStyle}"
-                         Padding="7,4"
+                         Padding="14,8"
                          AutomationProperties.Name="{loc:Loc SearchServersPlaceholder}"/>
 
                 <TextBlock Text="{loc:Loc SearchServersPlaceholder}"
@@ -703,7 +702,7 @@
                             <TextBox x:Name="ServerAddressBox"
                                      Text="{Binding ServerAddress, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{StaticResource PillTextInputStyle}"
-                                     Padding="8,6"
+                                     Padding="16,12"
                                      AutomationProperties.Name="{loc:Loc ConnectAddressPlaceholder}">
                                 <TextBox.InputBindings>
                                     <KeyBinding Key="Return" Command="{Binding ConnectCommand}"/>

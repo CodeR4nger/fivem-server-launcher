@@ -350,7 +350,7 @@
                 <TextBox x:Name="BrowserSearchBox"
                          Text="{Binding Browser.SearchText, UpdateSourceTrigger=PropertyChanged}"
                          Style="{StaticResource TextInputStyle}"
-                         Padding="18,0,6,0"
+                         Padding="34,0,12,0"
                          AutomationProperties.Name="{loc:Loc SearchByNamePlaceholder}"/>
 
                 <Path Data="M11,4 A7,7 0 1 1 10.99,4 M20,20 L16.5,16.5"
