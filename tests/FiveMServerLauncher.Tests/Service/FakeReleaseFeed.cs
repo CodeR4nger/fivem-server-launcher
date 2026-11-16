@@ -10,6 +10,9 @@ internal sealed class FakeReleaseFeed : IReleaseFeed
 
     public int ThrowOnCheckCount { get; set; }
 
+    // Holds the check open until the test completes it (in-flight pins).
+    public TaskCompletionSource<LauncherUpdate?>? PendingCheck { get; set; }
+
     public Task<LauncherUpdate?> CheckForUpdateAsync()
     {
         CheckCalls++;
@@ -20,6 +23,6 @@ internal sealed class FakeReleaseFeed : IReleaseFeed
             throw new InvalidOperationException("feed corrupt");
         }
 
-        return Task.FromResult(Update);
+        return PendingCheck?.Task ?? Task.FromResult(Update);
     }
 }
