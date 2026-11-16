@@ -92,3 +92,43 @@ was not focused, maximized or given keyboard input, and its menu was not opened 
 ContextMenu captures the mouse). Live keyboard behaviour (Enter/Space/Alt+Down to open,
 arrows, Enter to pick, Esc returning focus to ▾) and a native maximize screenshot are still
 to be checked by hand.
+
+### Test-run fix (2026-11-16, after review)
+
+The review found the branch silently executed only ~1282 of ~1442 listed tests while
+reporting "Passed". Two causes, both in shared test infrastructure (`StaThread`), now fixed
+there (commit `fix(tests): stop STA test threads from killing or corrupting the test run`):
+
+1. **Test host crash.** The first menu tests opened a real `ContextMenu` on a throwaway STA
+   thread. `StaThread.Run` never shut that thread's dispatcher down, so the popup's HWND
+   outlived the thread. Windows destroyed it during thread teardown and called its managed
+   window procedure after the CLR had torn the thread down: `CLR: Assert failure ... Attempt
+   to execute managed code after the .NET runtime thread state has been destroyed`. The
+   testhost died, and every `MainViewModelTests` test still queued never ran, yet vstest
+   reported the run as passed. Fix: `StaThread.Run` calls `InvokeShutdown()` in a `finally`
+   before the thread exits, which destroys every HWND the dispatcher owns.
+2. **BAML race.** WPF's pack:// resource package is process-global and not thread-safe.
+   Parallel test classes loading markup at once corrupted its requested-streams list
+   (`NullReferenceException` in `PackagePart.CleanUpRequestedStreamsList`), and every later
+   load in that process failed: one run had 156 failures. Fix: `StaThread.Run` serializes
+   WPF work process-wide.
+
+Also:
+- `StaThread.Run` fails a stuck STA test with a `TimeoutException` (1 min) and marks the
+  thread background, so a hang fails by name instead of stalling the run.
+- The layout helpers' `RunOnSta` and `BytesToImageSourceConverterTests`' hand-rolled thread
+  now go through it. Every markup-loading test is gated, including tickets 01–08's.
+- The menu tests no longer open a real popup on the desktop (menu mode, mouse capture, UI
+  Automation events). They lay the real `ClientMenu` out with Measure/Arrange and run the
+  item's bound command. `OpenClientMenu_PickingAClient_ShouldSaveItAsPreferredAndClose` was
+  rewritten as `..._ShouldSaveItAsPreferredAndRelabelTheButton`, because closing is no
+  longer asserted.
+- A duplicate RedM-listing test was dropped.
+
+`StaThreadTests` pins the contract. Each new test was seen failing first: the dispatcher is
+shut down even when the work throws, concurrent callers never overlap, and a stuck run times
+out and releases the gate.
+
+An intermittent run stall under machine load, also seen once on `main`, could not be
+reproduced on demand: none in 16 lone runs, none in 12 runs of two concurrent suites. The
+timeout makes any recurrence fail a named test instead of hanging the run.
