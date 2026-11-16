@@ -8,6 +8,9 @@ public sealed class InstalledClientOption(GameClient client)
 
     public string DisplayName { get; } = DisplayNameOf(client);
 
+    // The item's UI Automation name: WPF falls back to ToString() for a bound item.
+    public override string ToString() => DisplayName;
+
     public static string DisplayNameOf(GameClient client)
     {
         return client switch

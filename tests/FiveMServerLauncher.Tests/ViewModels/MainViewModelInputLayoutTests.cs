@@ -89,4 +89,58 @@ public partial class MainViewModelTests
         // Then both start the same distance in from their box's edge
         Assert.Equal(comboInset, fieldInset, 1);
     }
+
+    [Fact]
+    public void HeaderAndFilterRows_ShouldTabLeftToRight()
+    {
+        // Given the Servers list header and the Browse filter row, where some controls
+        // are docked right
+        var (servers, browse) = RunOnSta(() =>
+        {
+            var (window, _) = ShowServersPage("en");
+            var (browseWindow, _) = ShowBrowse("en");
+
+            try
+            {
+                var page = (FrameworkElement)((MainView)window.FindName("ShellContent")).FindName("ServersPage");
+                var header = Ancestor<DockPanel>((FrameworkElement)page.FindName("AddServerButton"));
+                var filters = (FrameworkElement)BrowsePage(browseWindow).FindName("BrowseFilters");
+
+                // When their tab stops are listed in tab (tree) order
+                return (TabStopLefts(header), TabStopLefts(filters));
+            }
+            finally
+            {
+                window.Close();
+                browseWindow.Close();
+            }
+        });
+
+        // Then Tab moves left to right, as the row reads
+        Assert.True(servers.Length >= 2 && servers.SequenceEqual(servers.Order()), string.Join(", ", servers));
+        Assert.True(browse.Length >= 4 && browse.SequenceEqual(browse.Order()), string.Join(", ", browse));
+    }
+
+    // The left edges of a region's keyboard tab stops, in tree order (= Tab order: no
+    // TabIndex is set anywhere in these rows).
+    private static double[] TabStopLefts(FrameworkElement region) =>
+        Descendants<Control>(region)
+            .Where(c => c.IsVisible && c.Focusable && c.IsTabStop && c is not ItemsControl || c is ComboBox)
+            .Where(c => c.IsVisible)
+            .Select(c => Math.Round(c.TranslatePoint(new Point(0, 0), region).X))
+            .ToArray();
+
+    private static T Ancestor<T>(DependencyObject element) where T : DependencyObject
+    {
+        for (var node = System.Windows.Media.VisualTreeHelper.GetParent(element); node is not null;
+             node = System.Windows.Media.VisualTreeHelper.GetParent(node))
+        {
+            if (node is T match)
+            {
+                return match;
+            }
+        }
+
+        throw new InvalidOperationException($"no {typeof(T).Name} above {element}");
+    }
 }

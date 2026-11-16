@@ -232,27 +232,30 @@
 
             <DockPanel Grid.Row="0" Margin="4,0,0,0">
 
-                <Button DockPanel.Dock="Right"
-                        Command="{Binding RefreshServersCommand}"
-                        ToolTip="{loc:Loc RefreshTooltip}"
-                        AutomationProperties.Name="{loc:Loc RefreshTooltip}"
-                        Width="34" Height="34" Padding="0"
-                        VerticalAlignment="Center"
-                        Style="{StaticResource IconButtonStyle}">
-                    <TextBlock Text="↻" FontSize="16"/>
-                </Button>
+                <!-- + then ↻ in one right-docked row, so Tab follows the reading order -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
 
-                <Button x:Name="AddServerButton"
-                        DockPanel.Dock="Right"
-                        Command="{Binding OpenAddServerDialogCommand}"
-                        ToolTip="{loc:Loc AddServerTooltip}"
-                        AutomationProperties.Name="{loc:Loc AddServerTooltip}"
-                        Width="34" Height="34" Padding="0"
-                        Margin="0,0,4,0"
-                        VerticalAlignment="Center"
-                        Style="{StaticResource IconButtonStyle}">
-                    <TextBlock Text="+" FontSize="20" Margin="0,-2,0,0"/>
-                </Button>
+                    <Button x:Name="AddServerButton"
+                            Command="{Binding OpenAddServerDialogCommand}"
+                            ToolTip="{loc:Loc AddServerTooltip}"
+                            AutomationProperties.Name="{loc:Loc AddServerTooltip}"
+                            Width="34" Height="34" Padding="0"
+                            Margin="0,0,4,0"
+                            VerticalAlignment="Center"
+                            Style="{StaticResource IconButtonStyle}">
+                        <TextBlock Text="+" FontSize="20" Margin="0,-2,0,0"/>
+                    </Button>
+
+                    <Button Command="{Binding RefreshServersCommand}"
+                            ToolTip="{loc:Loc RefreshTooltip}"
+                            AutomationProperties.Name="{loc:Loc RefreshTooltip}"
+                            Width="34" Height="34" Padding="0"
+                            VerticalAlignment="Center"
+                            Style="{StaticResource IconButtonStyle}">
+                        <TextBlock Text="↻" FontSize="16"/>
+                    </Button>
+
+                </StackPanel>
 
                 <TextBlock Text="{loc:Loc NavServers}"
                            Style="{StaticResource PageTitleStyle}"
@@ -292,6 +295,7 @@
                              Style="{StaticResource FilterChipStyle}"
                              Padding="12,5"
                              Margin="0,0,6,0"
+                             AutomationProperties.Name="{loc:Loc ServerFilterAll}"
                              IsChecked="{Binding ServerFilter,
                                                  Converter={StaticResource EnumEquality},
                                                  ConverterParameter={x:Static viewModels:SavedServerFilter.All}}">
@@ -305,6 +309,7 @@
                              Style="{StaticResource FilterChipStyle}"
                              Padding="12,5"
                              Margin="0,0,6,0"
+                             AutomationProperties.Name="{loc:Loc ServerFilterOnline}"
                              IsChecked="{Binding ServerFilter,
                                                  Converter={StaticResource EnumEquality},
                                                  ConverterParameter={x:Static viewModels:SavedServerFilter.Online}}">
@@ -320,6 +325,7 @@
                 <RadioButton GroupName="SavedServerFilter"
                              Style="{StaticResource FilterChipStyle}"
                              Padding="12,5"
+                             AutomationProperties.Name="{loc:Loc ServerFilterOffline}"
                              IsChecked="{Binding ServerFilter,
                                                  Converter={StaticResource EnumEquality},
                                                  ConverterParameter={x:Static viewModels:SavedServerFilter.Offline}}">
@@ -558,6 +564,7 @@
                                  The press that dismisses it is not allowed to reopen it (code-behind). -->
                             <Button.ContextMenu>
                                 <ContextMenu x:Name="ActionsMenu"
+                                             AutomationProperties.Name="{loc:Loc ServerActionsTooltip}"
                                              Opened="ActionsMenu_Opened"
                                              Closed="ActionsMenu_Closed">
                                     <ContextMenu.Resources>

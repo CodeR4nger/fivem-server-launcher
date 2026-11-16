@@ -102,6 +102,37 @@ public partial class MainViewModelTests
         Assert.True(large.Item1 <= 460.5);
     }
 
+    [Fact]
+    public void ServersPage_ChipsAndActionsMenu_ShouldHaveAccessibleNames()
+    {
+        // Given the real Servers page
+        var (chips, menu) = RunOnSta(() =>
+        {
+            var (window, _) = ShowServersPage("en");
+
+            try
+            {
+                var page = (FrameworkElement)((MainView)window.FindName("ShellContent")).FindName("ServersPage");
+
+                // When the names screen readers announce are read
+                var names = ((Panel)page.FindName("FilterChips")).Children.OfType<RadioButton>()
+                    .Select(System.Windows.Automation.AutomationProperties.GetName)
+                    .ToArray();
+                var actions = ((Button)page.FindName("ActionsButton")).ContextMenu;
+
+                return (names, System.Windows.Automation.AutomationProperties.GetName(actions));
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+
+        // Then each chip says its filter and the menu says what it holds
+        Assert.Equal(["All", "Online", "Offline"], chips);
+        Assert.Equal("Server actions", menu);
+    }
+
     private static (MainWindow Window, MainViewModel ViewModel) ShowServersPage(string languageTag)
     {
         var localizer = Localizer.FromEmbeddedResources();
