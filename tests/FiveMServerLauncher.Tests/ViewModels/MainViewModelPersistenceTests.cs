@@ -59,7 +59,7 @@ public partial class MainViewModelTests
         var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
         repository.WriteFailure = failure;
 
-        // When — both the gutter arrow and the drag entry point
+        // When — both the menu's move item and the drag entry point
         vm.MoveServerUpCommand.Execute(vm.SavedServers[1]);
         vm.MoveServerToIndex(vm.SavedServers[1], 0);
 

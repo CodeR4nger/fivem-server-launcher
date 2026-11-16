@@ -1624,19 +1624,18 @@ public partial class MainViewModelTests
     }
 
     [Fact]
-    public void DeleteServerCommand_WithoutSelectionOrParameter_ShouldDoNothing()
+    public void DeleteServerCommand_WithNoSavedServers_ShouldDoNothing()
     {
-        // Given — no row handed over, nothing selected: the command is a no-op.
-        var repository = new InMemoryServerRepository();
-        repository.Add(SavedServer.Create("My Server", "cfx.re/join/abc123"));
-        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository: repository);
+        // Given — no row handed over and, with an empty list, nothing selected (a
+        // non-empty list always has a selection): the command is a no-op.
+        var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"));
 
         // When
         vm.DeleteServerCommand.Execute(null);
 
         // Then
         Assert.False(vm.IsConfirmOpen);
-        Assert.Single(vm.SavedServers);
+        Assert.Empty(vm.SavedServers);
     }
 
     [Fact]
@@ -4135,7 +4134,7 @@ public partial class MainViewModelTests
         var vm = CreateViewModel(new FakeGameProcessLauncher(), CfxJson("gta5"), repository);
 
         // Then — the top row can only move down, the bottom one only up, the middle
-        // row both ways; the XAML arrows bind to these.
+        // row both ways; the Move up / Move down menu items bind to these.
         Assert.False(vm.SavedServers[0].CanMoveUp);
         Assert.True(vm.SavedServers[0].CanMoveDown);
         Assert.True(vm.SavedServers[1].CanMoveUp);
@@ -4147,7 +4146,7 @@ public partial class MainViewModelTests
     [Fact]
     public void MoveServerCommands_WhenSearchFilterActive_ShouldReportUnavailable()
     {
-        // Given — the command gate is what the arrows' IsEnabled binds to.
+        // Given — the command gate behind the Move up / Move down menu items.
         var repository = new InMemoryServerRepository();
         repository.Add(SavedServer.Create("Alpha Zone", "cfx.re/join/aaaaaa"));
         repository.Add(SavedServer.Create("Alpha Two", "cfx.re/join/cccccc"));
@@ -4192,7 +4191,7 @@ public partial class MainViewModelTests
     [Fact]
     public void MoveServerToIndex_WhenSearchFilterActive_ShouldLeaveListAndStoreUntouched()
     {
-        // Given — the drag entry point obeys the same gate as the arrows.
+        // Given — the drag entry point obeys the same gate as the menu's move items.
         var repository = new InMemoryServerRepository();
         repository.Add(SavedServer.Create("Alpha Zone", "cfx.re/join/aaaaaa"));
         repository.Add(SavedServer.Create("Alpha Two", "cfx.re/join/cccccc"));
@@ -4549,7 +4548,8 @@ public partial class MainViewModelTests
         Func<string?>? targetExePathProvider = null,
         ShortcutIconWriter? iconWriter = null,
         LauncherSchemeRegistrar? webLinks = null,
-        ISystemAnimationSetting? systemAnimations = null)
+        ISystemAnimationSetting? systemAnimations = null,
+        IClipboardService? clipboard = null)
     {
         var resolver = new ServerResolver(
             new CfxService(
@@ -4596,6 +4596,7 @@ public partial class MainViewModelTests
                     targetExePathProvider ?? (() => @"C:\Games\CFXLauncher.exe"),
                     iconWriter),
             webLinks: webLinks,
-            systemAnimations: systemAnimations);
+            systemAnimations: systemAnimations,
+            clipboard: clipboard);
     }
 }

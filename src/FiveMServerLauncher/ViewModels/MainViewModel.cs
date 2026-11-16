@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -37,6 +38,7 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly ShortcutDependencies? _shortcuts;
     private readonly LauncherSchemeRegistrar? _webLinks;
     private readonly ISystemAnimationSetting? _systemAnimations;
+    private readonly IClipboardService? _clipboard;
     private LauncherUpdate? _latestUpdate;
     private bool _isUpdateAvailable;
     private bool _isUpdateInProgress;
@@ -66,7 +68,8 @@ public class MainViewModel : INotifyPropertyChanged
         IUpdateApplier? updateApplier = null,
         ShortcutDependencies? shortcuts = null,
         LauncherSchemeRegistrar? webLinks = null,
-        ISystemAnimationSetting? systemAnimations = null)
+        ISystemAnimationSetting? systemAnimations = null,
+        IClipboardService? clipboard = null)
     {
         _resolver = resolver;
         _launcher = launcher;
@@ -85,6 +88,7 @@ public class MainViewModel : INotifyPropertyChanged
         _shortcuts = shortcuts;
         _webLinks = webLinks;
         _systemAnimations = systemAnimations;
+        _clipboard = clipboard;
         if (_systemAnimations is not null)
         {
             _systemAnimations.Changed += (_, _) =>
@@ -109,6 +113,7 @@ public class MainViewModel : INotifyPropertyChanged
         CreateDesktopShortcutCommand = new RelayCommand(CreateDesktopShortcut);
         MoveServerUpCommand = new RelayCommand(p => MoveServerBy(p as SavedServerItem, -1), () => IsReorderAvailable);
         MoveServerDownCommand = new RelayCommand(p => MoveServerBy(p as SavedServerItem, 1), () => IsReorderAvailable);
+        CopyAddressCommand = new RelayCommand(CopyAddress);
         OpenClientCommand = new AsyncRelayCommand(OpenClientAsync, CanOpenClient, OnCommandFailed);
         SelectOpenClientCommand = new RelayCommand(SelectOpenClient);
         NavigateCommand = new AsyncRelayCommand(
@@ -138,8 +143,15 @@ public class MainViewModel : INotifyPropertyChanged
             serverRepository.GetAll().Select(ToItem));
         SavedServersView = CollectionViewSource.GetDefaultView(SavedServers);
         SavedServersView.Filter = MatchesServerSearch;
+        foreach (var row in SavedServers)
+        {
+            row.PropertyChanged += SavedServerRow_PropertyChanged;
+        }
+
+        SavedServers.CollectionChanged += SavedServers_CollectionChanged;
         AvailableOpenClients = new ObservableCollection<InstalledClientOption>();
         UpdateRowMoveStates();
+        EnsureSelection();
 
         CfxStatuses = [FiveMStatus, FiveMEnhancedStatus, RedMStatus];
     }
@@ -154,12 +166,43 @@ public class MainViewModel : INotifyPropertyChanged
 
     public ICommand MoveServerDownCommand { get; }
 
+    public ICommand CopyAddressCommand { get; }
+
+    private SavedServerFilter _serverFilter;
+
+    // The Servers page's All / Online / Offline chips; composes with the search text in
+    // the one collection view.
+    public SavedServerFilter ServerFilter
+    {
+        get => _serverFilter;
+        set
+        {
+            if (SetProperty(ref _serverFilter, value))
+            {
+                RefreshSavedServersView();
+            }
+        }
+    }
+
+    // The chip counts are over the whole saved list (the search does not change them);
+    // Offline is every row that is not online, including the never-listed ones.
+    public int AllServerCount => SavedServers.Count;
+
+    public int OnlineServerCount => SavedServers.Count(server => server.Online);
+
+    public int OfflineServerCount => AllServerCount - OnlineServerCount;
+
+    public bool HasNoSavedServers => SavedServers.Count == 0;
+
+    public bool HasNoServerMatch => SavedServers.Count > 0 && SavedServersView.IsEmpty;
+
     // Reordering is a whole-list operation, so it is only available when the visible
-    // order is the real order: no search filter (a filtered view is a non-contiguous
-    // subset, where "move down one" would mean two real positions) and more than one
-    // row to swap.
+    // order is the real order: no search text and the All chip (a filtered view is a
+    // non-contiguous subset, where "move down one" would mean two real positions) and
+    // more than one row to swap.
     public bool IsReorderAvailable => SavedServers.Count > 1
-                                      && string.IsNullOrWhiteSpace(_serverSearchText);
+                                      && string.IsNullOrWhiteSpace(_serverSearchText)
+                                      && _serverFilter == SavedServerFilter.All;
 
     public ICommand OpenClientCommand { get; }
 
@@ -559,25 +602,110 @@ public class MainViewModel : INotifyPropertyChanged
         {
             if (SetProperty(ref _serverSearchText, value))
             {
-                SavedServersView.Refresh();
-                // The reorder gates reopen (or close) once the hidden rows are
-                // visible again.
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsReorderAvailable)));
-                UpdateRowMoveStates();
+                RefreshSavedServersView();
             }
         }
     }
 
     private bool MatchesServerSearch(object item)
     {
-        if (string.IsNullOrWhiteSpace(_serverSearchText))
+        var server = (SavedServerItem)item;
+
+        var matchesChip = _serverFilter switch
         {
-            return true;
+            SavedServerFilter.Online => server.Online,
+            SavedServerFilter.Offline => !server.Online,
+            _ => true
+        };
+
+        return matchesChip
+               && (string.IsNullOrWhiteSpace(_serverSearchText)
+                   || server.Name.Contains(_serverSearchText, StringComparison.OrdinalIgnoreCase)
+                   || server.Address.Contains(_serverSearchText, StringComparison.OrdinalIgnoreCase));
+    }
+
+    // The search text or the chip changed: re-filter, then the reorder gates reopen (or
+    // close) and the selection moves only if it was filtered away.
+    private void RefreshSavedServersView()
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsReorderAvailable)));
+        UpdateRowMoveStates();
+        RefilterSavedServers();
+    }
+
+    private void RefilterSavedServers()
+    {
+        SavedServersView.Refresh();
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasNoServerMatch)));
+        EnsureSelection();
+    }
+
+    private void SavedServers_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        foreach (var row in e.OldItems?.OfType<SavedServerItem>() ?? [])
+        {
+            row.PropertyChanged -= SavedServerRow_PropertyChanged;
         }
 
-        var server = (SavedServerItem)item;
-        return server.Name.Contains(_serverSearchText, StringComparison.OrdinalIgnoreCase)
-               || server.Address.Contains(_serverSearchText, StringComparison.OrdinalIgnoreCase);
+        foreach (var row in e.NewItems?.OfType<SavedServerItem>() ?? [])
+        {
+            row.PropertyChanged += SavedServerRow_PropertyChanged;
+        }
+
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasNoSavedServers)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasNoServerMatch)));
+        RaiseServerCounts();
+    }
+
+    // Presence moves a row between Online and Offline: the counts follow, and so does
+    // the view when a chip other than All is showing.
+    private void SavedServerRow_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(SavedServerItem.Online))
+        {
+            return;
+        }
+
+        RaiseServerCounts();
+
+        if (_serverFilter != SavedServerFilter.All)
+        {
+            RefilterSavedServers();
+        }
+    }
+
+    private void RaiseServerCounts()
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AllServerCount)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(OnlineServerCount)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(OfflineServerCount)));
+    }
+
+    private List<SavedServerItem> VisibleServers() => SavedServersView.Cast<SavedServerItem>().ToList();
+
+    // The page always has a selected server while it shows rows: a selection that is
+    // still visible stays, otherwise the visible row at preferredIndex (clamped) — the
+    // first on start, the neighbour after a delete — and none only when nothing shows.
+    private void EnsureSelection(int preferredIndex = 0)
+    {
+        var visible = VisibleServers();
+
+        if (_selectedServer is not null && visible.Contains(_selectedServer))
+        {
+            return;
+        }
+
+        SelectServer(visible.Count == 0 ? null : visible[Math.Clamp(preferredIndex, 0, visible.Count - 1)]);
+    }
+
+    private void CopyAddress(object? parameter)
+    {
+        if (_clipboard is null || (parameter as SavedServerItem ?? SelectedServer) is not { } server)
+        {
+            return;
+        }
+
+        StatusText = _localizer.Get(_clipboard.TrySetText(server.Address) ? "StatusAddressCopied" : "StatusCopyFailed");
     }
 
     public ObservableCollection<InstalledClientOption> AvailableOpenClients { get; }
@@ -789,23 +917,37 @@ public class MainViewModel : INotifyPropertyChanged
         get => _selectedServer;
         set
         {
-            if (ReferenceEquals(_selectedServer, value))
+            // A list deselect (Ctrl+click) never leaves the page without a server: the
+            // still-visible selection stays and is re-announced so the list re-selects it.
+            // A null for a row that left the view (deleted, filtered) is accepted.
+            if (value is null && _selectedServer is not null && SavedServersView.Contains(_selectedServer))
             {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedServer)));
                 return;
             }
 
-            _selectedServer = value;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedServer)));
+            SelectServer(value);
+        }
+    }
 
-            foreach (var item in SavedServers)
-            {
-                item.IsSelected = ReferenceEquals(item, value);
-            }
+    private void SelectServer(SavedServerItem? value)
+    {
+        if (ReferenceEquals(_selectedServer, value))
+        {
+            return;
+        }
 
-            if (value is not null)
-            {
-                ServerAddress = value.Address;
-            }
+        _selectedServer = value;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedServer)));
+
+        foreach (var item in SavedServers)
+        {
+            item.IsSelected = ReferenceEquals(item, value);
+        }
+
+        if (value is not null)
+        {
+            ServerAddress = value.Address;
         }
     }
 
@@ -856,24 +998,26 @@ public class MainViewModel : INotifyPropertyChanged
             return;
         }
 
-        if (AddSavedServerRow(savedServer))
+        if (AddSavedServerRow(savedServer) is not null)
         {
             item.SetSaved(true);
         }
     }
 
-    private bool AddSavedServerRow(SavedServer savedServer)
+    // The added row, or null when the store refused it.
+    private SavedServerItem? AddSavedServerRow(SavedServer savedServer)
     {
         if (!PersistOrReport(() => _serverRepository.Add(savedServer)))
         {
-            return false;
+            return null;
         }
 
         var row = ToItem(savedServer);
         SavedServers.Add(row);
         UpdateRowMoveStates();
+        EnsureSelection();
         TryCaptureCfxId(row);
-        return true;
+        return row;
     }
 
     private void OpenEditServerDialog(object? row)
@@ -955,10 +1099,15 @@ public class MainViewModel : INotifyPropertyChanged
                 return;
             }
 
-            if (!AddSavedServerRow(savedServer))
+            if (AddSavedServerRow(savedServer) is not { } added)
             {
                 DialogError = _localizer.Get("StatusSaveFailed");
                 return;
+            }
+
+            if (SavedServersView.Contains(added))
+            {
+                SelectServer(added);
             }
         }
         else
@@ -989,11 +1138,21 @@ public class MainViewModel : INotifyPropertyChanged
 
             if (oldRow is not null)
             {
+                var wasSelected = ReferenceEquals(_selectedServer, oldRow);
+                var visibleIndex = VisibleServers().IndexOf(oldRow);
                 var index = SavedServers.IndexOf(oldRow);
                 SavedServers.RemoveAt(index);
                 var item = ToItem(savedServer);
                 SavedServers.Insert(index, item);
                 UpdateRowMoveStates();
+
+                // The edited server stays the selected one (unless the edit filtered it away).
+                if (wasSelected && SavedServersView.Contains(item))
+                {
+                    SelectServer(item);
+                }
+
+                EnsureSelection(Math.Max(visibleIndex, 0));
                 TryCaptureCfxId(item);
             }
         }
@@ -1389,14 +1548,10 @@ public class MainViewModel : INotifyPropertyChanged
             return;
         }
 
+        var visibleIndex = VisibleServers().IndexOf(server);
         SavedServers.Remove(server);
-
-        if (ReferenceEquals(SelectedServer, server))
-        {
-            SelectedServer = null;
-        }
-
         UpdateRowMoveStates();
+        EnsureSelection(Math.Max(visibleIndex, 0));
     }
 
     private void CreateDesktopShortcut(object? parameter)

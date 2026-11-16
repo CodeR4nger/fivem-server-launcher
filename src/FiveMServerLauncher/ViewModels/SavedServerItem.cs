@@ -143,6 +143,7 @@ public class SavedServerItem : INotifyPropertyChanged
             if (SetProperty(ref _requiresSteam, value))
             {
                 Raise(nameof(EffectiveRequiresSteam));
+                Raise(nameof(HasRequirements));
                 _changeHandler();
             }
         }
@@ -156,6 +157,7 @@ public class SavedServerItem : INotifyPropertyChanged
             if (SetProperty(ref _requiresDiscord, value))
             {
                 Raise(nameof(EffectiveRequiresDiscord));
+                Raise(nameof(HasRequirements));
                 _changeHandler();
             }
         }
@@ -168,6 +170,8 @@ public class SavedServerItem : INotifyPropertyChanged
         ServerRequirements.SteamRequiredFor(Online ? _publishedSteamRequired : null, RequiresSteam) == true;
 
     public bool EffectiveRequiresDiscord => RequiresDiscord;
+
+    public bool HasRequirements => EffectiveRequiresSteam || EffectiveRequiresDiscord;
 
     public bool Online
     {
@@ -226,6 +230,14 @@ public class SavedServerItem : INotifyPropertyChanged
         : HasCfxId ? ServerDetailState.Offline
         : ServerDetailState.NotListed;
 
+    // The list row's status: the players while listed, else the plain state word.
+    public string ListStatusText => DetailState == ServerDetailState.Listed ? PlayersText : DetailStateLabel;
+
+    // The detail's status line: "Online" while listed, else the plain state word.
+    public string PresenceLabel => DetailState == ServerDetailState.Listed
+        ? _localizer.Get("DetailStateOnline")
+        : DetailStateLabel;
+
     public bool ShowsDetails => DetailState is ServerDetailState.Listed or ServerDetailState.Manual;
 
     public string DetailStateLabel => DetailState switch
@@ -275,6 +287,9 @@ public class SavedServerItem : INotifyPropertyChanged
         Raise(nameof(DetailGameLabel));
         Raise(nameof(EffectiveRequiresSteam));
         Raise(nameof(EffectiveRequiresDiscord));
+        Raise(nameof(HasRequirements));
+        Raise(nameof(ListStatusText));
+        Raise(nameof(PresenceLabel));
     }
 
     public GameClient? Game

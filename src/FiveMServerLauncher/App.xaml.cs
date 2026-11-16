@@ -136,7 +136,8 @@ public partial class App : Application
             webLinks: new LauncherSchemeRegistrar(
                 new UriSchemeRegistration(),
                 () => Environment.ProcessPath),
-            systemAnimations: new SystemAnimationSetting());
+            systemAnimations: new SystemAnimationSetting(),
+            clipboard: new WpfClipboardService());
         window.DataContext = viewModel;
         // Before the tray controller (it remembers a maximized start as the state to restore
         // to) and before Show (a maximized window maximizes on its stored monitor).
