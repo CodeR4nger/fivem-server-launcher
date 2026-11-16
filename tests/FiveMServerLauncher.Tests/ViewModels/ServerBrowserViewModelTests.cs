@@ -610,4 +610,176 @@ public class ServerBrowserViewModelTests
             }
         };
     }
+
+    [Fact]
+    public async Task ShownCount_ShouldFollowTheFiltersAndTheDebouncedSearch()
+    {
+        // Given three loaded servers
+        var vm = CreateViewModel(CatalogBytes(
+            Entry("aaaaaa", "Alpha", game: "gta5", players: 3, max: 32),
+            Entry("bbbbbb", "Beta", game: "rdr3", players: 0, max: 64),
+            Entry("cccccc", "Gamma", game: "gta5", players: 32, max: 32)));
+        await vm.LoadAsync();
+        var shownBefore = vm.ShownCount;
+
+        // When a discrete filter applies
+        vm.GameFilter = GameClient.FiveM;
+        var shownByGame = vm.ShownCount;
+
+        // And the (zero-debounce) search narrows further
+        vm.SearchText = "gam";
+        await Task.Yield();
+
+        // Then the header count is the number of rows the list shows
+        Assert.Equal(3, shownBefore);
+        Assert.Equal(2, shownByGame);
+        Assert.Equal(1, vm.ShownCount);
+    }
+
+    [Fact]
+    public async Task ShownCountText_ShouldGroupThousandsAndUseTheSingularForOne()
+    {
+        // Given one loaded server
+        var vm = CreateViewModel(CatalogBytes(Entry("aaaaaa", "Alpha", game: "gta5", players: 3, max: 32)));
+        await vm.LoadAsync();
+        var one = vm.ShownCountText;
+
+        // When / Then the count reads "1 server", and many read with a group separator
+        Assert.Equal("1 server", one);
+        Assert.Equal("32,914 servers", ServerBrowserViewModel.FormatCount(TestLocalizer.English(), 32914, System.Globalization.CultureInfo.InvariantCulture));
+        Assert.Equal("0 servers", ServerBrowserViewModel.FormatCount(TestLocalizer.English(), 0, System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    [Fact]
+    public async Task ShownCount_WhenItChanges_ShouldRaiseTheCountTextAndNoMatch()
+    {
+        // Given loaded rows and a listener
+        var vm = CreateViewModel(CatalogBytes(Entry("aaaaaa", "Alpha", game: "gta5", players: 3, max: 32)));
+        await vm.LoadAsync();
+        var raised = new List<string?>();
+        vm.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+        // When a filter hides the only row
+        vm.GameFilter = GameClient.RedM;
+
+        // Then the header count and the no-match state are re-read
+        Assert.Contains(nameof(ServerBrowserViewModel.ShownCount), raised);
+        Assert.Contains(nameof(ServerBrowserViewModel.ShownCountText), raised);
+        Assert.Contains(nameof(ServerBrowserViewModel.IsNoMatch), raised);
+    }
+
+    [Fact]
+    public async Task IsNoMatch_ShouldOnlyShowWhenLoadedRowsAreAllFilteredOut()
+    {
+        // Given a browser not loaded yet
+        var vm = CreateViewModel(CatalogBytes(Entry("aaaaaa", "Alpha", game: "gta5", players: 0, max: 32)));
+        var beforeLoad = vm.IsNoMatch;
+        await vm.LoadAsync();
+        var loaded = vm.IsNoMatch;
+
+        // When the filters exclude every row
+        vm.HideEmpty = true;
+
+        // Then only that state is "no match": never before the first load, never with rows shown
+        Assert.False(beforeLoad);
+        Assert.False(loaded);
+        Assert.True(vm.IsNoMatch);
+    }
+
+    [Fact]
+    public async Task IsNoMatch_WhenTheLoadFailed_ShouldStayHidden()
+    {
+        // Given a failing catalog
+        var vm = CreateViewModel(new HttpClient(new FakeHttpMessageHandler(true)));
+
+        // When the browser opens
+        await vm.LoadAsync();
+
+        // Then only the failure state shows (the three states never overlap)
+        Assert.True(vm.LoadFailed);
+        Assert.False(vm.IsLoadingOverlay);
+        Assert.False(vm.IsNoMatch);
+    }
+
+    [Fact]
+    public async Task ClearFiltersCommand_ShouldResetEveryFilterAndTheSearchAtOnce()
+    {
+        // Given filters and a search that exclude every row, with a debounce that never elapses
+        var delay = new ManualSearchDelay();
+        var vm = CreateViewModel(
+            CatalogBytes(
+                Entry("aaaaaa", "Alpha", game: "gta5", players: 0, max: 32),
+                Entry("bbbbbb", "Beta", game: "rdr3", players: 64, max: 64)),
+            searchDelay: delay.Invoke);
+        await vm.LoadAsync();
+        vm.SelectedGameFilterOption = vm.GameFilterOptions[3];
+        vm.HideFull = true;
+        vm.HideEmpty = true;
+        vm.SearchText = "zzz";
+
+        // When the no-match state's clear action runs
+        vm.ClearFiltersCommand.Execute(null);
+
+        // Then every filter is back to its default and every row shows immediately
+        Assert.Same(vm.GameFilterOptions[0], vm.SelectedGameFilterOption);
+        Assert.Null(vm.GameFilter);
+        Assert.False(vm.HideFull);
+        Assert.False(vm.HideEmpty);
+        Assert.Equal(string.Empty, vm.SearchText);
+        Assert.Equal(2, vm.ShownCount);
+        Assert.False(vm.IsNoMatch);
+    }
+
+    [Fact]
+    public async Task ShowsLoadFailure_WhenAReloadFailsOverLoadedRows_ShouldKeepTheRowsInstead()
+    {
+        // Given rows from a first load and a catalog that fails from then on (no cache)
+        var handler = new FirstCallOnlyHandler(CatalogBytes(Entry("aaaaaa", "Alpha", game: "gta5", players: 3, max: 32)));
+        var vm = new ServerBrowserViewModel(
+            new ServerCatalog(new HttpClient(handler), cacheTtl: TimeSpan.Zero),
+            new FakeServerEnrichmentService(),
+            new InMemoryServerRepository(),
+            TestLocalizer.English());
+        await vm.LoadAsync();
+
+        // When the reload fails
+        await vm.LoadAsync();
+
+        // Then the rows stay usable and the full failure state is not drawn over them
+        Assert.True(vm.LoadFailed);
+        Assert.Single(vm.Servers);
+        Assert.False(vm.ShowsLoadFailure);
+    }
+
+    [Fact]
+    public async Task ShowsLoadFailure_WhenTheFirstLoadFails_ShouldShow()
+    {
+        // Given a failing catalog
+        var vm = CreateViewModel(new HttpClient(new FakeHttpMessageHandler(true)));
+
+        // When the browser opens
+        await vm.LoadAsync();
+
+        // Then the failure state shows
+        Assert.True(vm.ShowsLoadFailure);
+    }
+
+    private sealed class FirstCallOnlyHandler(byte[] response) : HttpMessageHandler
+    {
+        private int _calls;
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (Interlocked.Increment(ref _calls) > 1)
+            {
+                throw new HttpRequestException("outage");
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(response)
+            });
+        }
+    }
 }

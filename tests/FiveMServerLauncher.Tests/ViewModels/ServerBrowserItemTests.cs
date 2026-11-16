@@ -136,4 +136,41 @@ public class ServerBrowserItemTests
         // Then
         Assert.Equal("cfx.re/join/r8q73g", item.Address);
     }
+
+    [Fact]
+    public void PlayersText_ShouldShowPlayersOverMaxPlayers()
+    {
+        // Given a server with 12 of 48 players
+        var item = ServerBrowserItem.FromServer(new Master.Server
+        {
+            EndPoint = "y4lg95",
+            Data = new Master.ServerData { Clients = 12, SvMaxclients = 48 }
+        });
+
+        // When / Then the row's count reads players/max (computed once, no per-row converter)
+        Assert.Equal("12/48", item.PlayersText);
+    }
+
+    [Theory]
+    [InlineData("gta5", "FiveM", true)]
+    [InlineData("gta5enhanced", "FiveM Enhanced", true)]
+    [InlineData("rdr3", "RedM", true)]
+    [InlineData(null, "", false)]
+    public void GameTagLabel_ShouldNameTheGameOrStayEmptyWhenUnknown(string? gameName, string expected, bool hasGame)
+    {
+        // Given a server publishing the game name (or none)
+        var data = new Master.ServerData();
+
+        if (gameName is not null)
+        {
+            data.Vars["gamename"] = gameName;
+        }
+
+        // When
+        var item = ServerBrowserItem.FromServer(new Master.Server { EndPoint = "y4lg95", Data = data });
+
+        // Then the filled tag shows the game's display name, and only when the game is known
+        Assert.Equal(expected, item.GameTagLabel);
+        Assert.Equal(hasGame, item.HasGame);
+    }
 }

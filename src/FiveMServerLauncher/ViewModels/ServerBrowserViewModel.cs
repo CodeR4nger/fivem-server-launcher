@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -46,6 +47,7 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
         _cancellationToken = cancellationToken ?? CancellationToken.None;
         Servers = new ObservableCollection<ServerBrowserItem>();
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => !IsRefreshing);
+        ClearFiltersCommand = new RelayCommand(ClearFilters);
         GameFilterOptions = BuildGameFilterOptions();
         _selectedGameFilterOption = GameFilterOptions[0];
         SortOptions = BuildSortOptions();
@@ -68,6 +70,7 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
 
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SortOptions)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedSortOption)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShownCountText)));
     }
 
     public sealed record SortOption(string Label, ServerBrowserSort Sort);
@@ -141,12 +144,83 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
             ServersView.Filter = MatchesFilters;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ServersView)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsLoadingOverlay)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowsLoadFailure)));
+            UpdateShownCount();
         }
     }
 
     public ICollectionView ServersView { get; private set; } = CollectionViewSource.GetDefaultView(new List<ServerBrowserItem>());
 
     public ICommand RefreshCommand { get; }
+
+    public ICommand ClearFiltersCommand { get; }
+
+    private int _shownCount;
+
+    // The rows the list shows right now (after filters and search): the page header count.
+    public int ShownCount
+    {
+        get => _shownCount;
+        private set
+        {
+            if (SetProperty(ref _shownCount, value))
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShownCountText)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsNoMatch)));
+            }
+        }
+    }
+
+    public string ShownCountText => FormatCount(_localizer, ShownCount, CultureInfo.CurrentCulture);
+
+    public static string FormatCount(ILocalizer localizer, int count, CultureInfo culture) =>
+        count == 1
+            ? localizer.Get("BrowserServerCountOne")
+            : localizer.Format("BrowserServerCount", count.ToString("N0", culture));
+
+    private bool _hasLoaded;
+
+    // A loaded catalog whose rows the filters and search all exclude (never before the first
+    // load, never during a failure): the page's "no match" state with its clear action.
+    public bool IsNoMatch => _hasLoaded && !LoadFailed && ShownCount == 0;
+
+    // The full failure state only when there is nothing to show: a reload that fails over
+    // loaded rows keeps them usable instead of drawing the failure over them.
+    public bool ShowsLoadFailure => LoadFailed && Servers.Count == 0;
+
+    // A ListCollectionView keeps its filtered list, so Count is O(1) after a Refresh.
+    private void UpdateShownCount()
+    {
+        ShownCount = ((CollectionView)ServersView).Count;
+    }
+
+    private void RefreshView()
+    {
+        ServersView.Refresh();
+        UpdateShownCount();
+    }
+
+    private void ClearFilters()
+    {
+        // Set the fields directly so the view refreshes once, and the search is not debounced.
+        _searchRefreshDebounce?.Cancel();
+        _selectedGameFilterOption = GameFilterOptions[0];
+        _gameFilter = null;
+        _hideFull = false;
+        _hideEmpty = false;
+        _searchText = string.Empty;
+
+        foreach (var name in new[]
+                 {
+                     nameof(SelectedGameFilterOption), nameof(GameFilter), nameof(HideFull),
+                     nameof(HideEmpty), nameof(SearchText)
+                 })
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
+
+        RefreshView();
+    }
 
     private GameFilterOption _selectedGameFilterOption = null!;
 
@@ -273,7 +347,7 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
 
         try
         {
-            ServersView.Refresh();
+            RefreshView();
         }
         catch (Exception)
         {
@@ -286,7 +360,7 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
     {
         if (SetProperty(ref field, value, name))
         {
-            ServersView.Refresh();
+            RefreshView();
         }
     }
 
@@ -300,6 +374,8 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
             if (SetProperty(ref _loadFailed, value))
             {
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsLoadingOverlay)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsNoMatch)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowsLoadFailure)));
             }
         }
     }
@@ -357,6 +433,7 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
                 item.SetIconLoader(() => LoadIconAsync(item));
             }
 
+            _hasLoaded = true;
             Servers = new ObservableCollection<ServerBrowserItem>(items);
             MarkSavedRows();
         }
