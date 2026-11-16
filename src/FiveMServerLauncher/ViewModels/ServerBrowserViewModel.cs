@@ -145,6 +145,7 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ServersView)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsLoadingOverlay)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowsLoadFailure)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowsCount)));
             UpdateShownCount();
         }
     }
@@ -171,7 +172,21 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
         }
     }
 
-    public string ShownCountText => FormatCount(_localizer, ShownCount, CultureInfo.CurrentCulture);
+    // Digits group the way the UI language does, not the system culture (an English UI on a
+    // Spanish system reads "34,249 servers", not "34.249 servers").
+    public string ShownCountText => FormatCount(_localizer, ShownCount, UiCulture(_localizer.Language));
+
+    private static CultureInfo UiCulture(string languageTag)
+    {
+        try
+        {
+            return CultureInfo.GetCultureInfo(languageTag);
+        }
+        catch (CultureNotFoundException)
+        {
+            return CultureInfo.InvariantCulture;
+        }
+    }
 
     public static string FormatCount(ILocalizer localizer, int count, CultureInfo culture) =>
         count == 1
@@ -187,6 +202,10 @@ public sealed class ServerBrowserViewModel : INotifyPropertyChanged
     // The full failure state only when there is nothing to show: a reload that fails over
     // loaded rows keeps them usable instead of drawing the failure over them.
     public bool ShowsLoadFailure => LoadFailed && Servers.Count == 0;
+
+    // The header count reads only for a loaded list (a filtered-empty one says "0 servers");
+    // while loading or after a failed first load there is nothing to count.
+    public bool ShowsCount => Servers.Count > 0;
 
     // A ListCollectionView keeps its filtered list, so Count is O(1) after a Refresh.
     private void UpdateShownCount()

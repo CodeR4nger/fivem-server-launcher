@@ -764,6 +764,50 @@ public class ServerBrowserViewModelTests
         Assert.True(vm.ShowsLoadFailure);
     }
 
+    [Fact]
+    public async Task ShowsCount_ShouldShowOnlyOnceThereAreRows()
+    {
+        // Given a browser whose first load fails, then one that loads rows
+        var failing = CreateViewModel(new HttpClient(new FakeHttpMessageHandler(true)));
+        var loading = CreateViewModel(CatalogBytes(Entry("aaaaaa", "Alpha", game: "gta5", players: 0, max: 32)));
+        var beforeLoad = loading.ShowsCount;
+
+        // When they load (and the filters then hide every row)
+        await failing.LoadAsync();
+        await loading.LoadAsync();
+        loading.HideEmpty = true;
+
+        // Then the header count never reads "0 servers" for a list that has none to filter,
+        // but does for a loaded list the filters empty
+        Assert.False(beforeLoad);
+        Assert.False(failing.ShowsCount);
+        Assert.True(loading.ShowsCount);
+    }
+
+    [Theory]
+    [InlineData("en", "1,200 servers")]
+    [InlineData("es", "1.200 servidores")]
+    public async Task ShownCountText_ShouldGroupDigitsTheWayTheUiLanguageDoes(string language, string expected)
+    {
+        // Given 1,200 loaded servers and the UI in the given language (whatever the system culture)
+        var localizer = Localizer.FromEmbeddedResources(() => "en-US");
+        localizer.SetLanguage(language);
+        var entries = Enumerable.Range(0, 1200)
+            .Select(i => Entry($"s{i:D5}", $"Server {i}", game: "gta5", players: 1, max: 32, endpoint: $"10.0.{i / 256}.{i % 256}:30120"))
+            .ToArray();
+        var vm = new ServerBrowserViewModel(
+            new ServerCatalog(new HttpClient(new FakeHttpMessageHandler(HttpStatusCode.OK, CatalogBytes(entries)))),
+            new FakeServerEnrichmentService(),
+            new InMemoryServerRepository(),
+            localizer);
+
+        // When the catalog loads
+        await vm.LoadAsync();
+
+        // Then the header count reads in that language, digits grouped as it groups them
+        Assert.Equal(expected, vm.ShownCountText);
+    }
+
     private sealed class FirstCallOnlyHandler(byte[] response) : HttpMessageHandler
     {
         private int _calls;
