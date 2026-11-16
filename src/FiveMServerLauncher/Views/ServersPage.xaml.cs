@@ -21,6 +21,35 @@ namespace FiveMServerLauncher.Views
         {
             InitializeComponent();
             DataContextChanged += ServersPage_DataContextChanged;
+            Loaded += ServersPage_Loaded;
+            Unloaded += ServersPage_Unloaded;
+
+            // While a row is dragged the PAGE holds the mouse capture, not the list: a list
+            // with capture drag-selects every row the pointer enters. Captured input targets
+            // the page only, so these forward it to the drag handlers.
+            PreviewMouseMove += (sender, e) =>
+            {
+                if (IsMouseCaptured)
+                {
+                    SavedServersList_MouseMove(sender, e);
+                }
+            };
+            PreviewMouseLeftButtonUp += (sender, e) =>
+            {
+                if (IsMouseCaptured)
+                {
+                    SavedServersList_PreviewMouseLeftButtonUp(sender, e);
+                }
+            };
+            // LostMouseCapture bubbles: the list losing its own capture to the page at drag
+            // start arrives here too. Only the page's own loss (Alt+Tab, ...) ends a drag.
+            LostMouseCapture += (_, e) =>
+            {
+                if (_rowDragging && ReferenceEquals(e.OriginalSource, this))
+                {
+                    EndDragVisuals();
+                }
+            };
         }
 
         private void ServersPage_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -78,15 +107,67 @@ namespace FiveMServerLauncher.Views
             OpenActionsMenu();
         }
 
-        // Apps / Shift+F10 on the list opens the selected server's menu; Esc closes it
-        // (ContextMenu) and focus returns to the list.
-        private void SavedServersList_PreviewKeyDown(object sender, KeyEventArgs e)
+        // A press outside the open menu closes it (capture loss) before the press reaches
+        // any element, so a press on ⋮ would reopen it at once. While the menu is open, the
+        // window's next press is the one that dismisses it: on ⋮ it is swallowed (a toggle,
+        // not a flicker). Esc and item clicks raise Closed; deactivation covers clicks into
+        // other apps. Event-ordered — no time window.
+        private bool _actionsMenuOpen;
+        private Window? _window;
+
+        private void ActionsMenu_Opened(object sender, RoutedEventArgs e) => _actionsMenuOpen = true;
+
+        private void ActionsMenu_Closed(object sender, RoutedEventArgs e) => _actionsMenuOpen = false;
+
+        private void ServersPage_Loaded(object sender, RoutedEventArgs e)
         {
-            if (e.Key == Key.Apps || (e.Key == Key.F10 && Keyboard.Modifiers == ModifierKeys.Shift)
-                || (e.Key == Key.System && e.SystemKey == Key.F10 && Keyboard.Modifiers == ModifierKeys.Shift))
+            _window = Window.GetWindow(this);
+
+            if (_window is not null)
             {
-                OpenActionsMenu();
+                _window.PreviewMouseDown += Window_PreviewMouseDown;
+                _window.Deactivated += Window_Deactivated;
+            }
+        }
+
+        private void ServersPage_Unloaded(object sender, RoutedEventArgs e)
+        {
+            if (_window is not null)
+            {
+                _window.PreviewMouseDown -= Window_PreviewMouseDown;
+                _window.Deactivated -= Window_Deactivated;
+                _window = null;
+            }
+        }
+
+        private void Window_Deactivated(object? sender, EventArgs e) => _actionsMenuOpen = false;
+
+        private void Window_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (!_actionsMenuOpen)
+            {
+                return;
+            }
+
+            _actionsMenuOpen = false;
+            var point = e.GetPosition(ActionsButton);
+
+            if (point.X >= 0 && point.Y >= 0 && point.X <= ActionsButton.ActualWidth && point.Y <= ActionsButton.ActualHeight)
+            {
                 e.Handled = true;
+            }
+        }
+
+        // The keyboard context-menu gesture (Apps / Shift+F10) on the list opens the selected
+        // server's ⋮ menu; Esc closes it (ContextMenu) and focus returns to the list. A
+        // right-click (cursor position known) opens nothing: rows have no menu of their own.
+        private void SavedServersList_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+        {
+            e.Handled = true;
+
+            if (e.CursorLeft < 0 && e.CursorTop < 0)
+            {
+                Dispatcher.BeginInvoke(new Action(OpenActionsMenu), DispatcherPriority.Input);
             }
         }
 
@@ -290,8 +371,8 @@ namespace FiveMServerLauncher.Views
 
                 _rowDragging = true;
                 SnapActiveSlides();
-                SavedServersList.CaptureMouse();
-                SavedServersList.Cursor = Cursors.SizeAll;
+                CaptureMouse();
+                Cursor = Cursors.SizeAll;
 
                 if (_draggedContainer is not null)
                 {
@@ -300,6 +381,7 @@ namespace FiveMServerLauncher.Views
             }
 
             UpdateDropIndicator(position);
+
         }
 
         private void UpdateDropIndicator(Point listPoint)
@@ -398,13 +480,12 @@ namespace FiveMServerLauncher.Views
             _dropInsertionIndex = null;
 
             DropIndicator.Visibility = Visibility.Collapsed;
+            Cursor = null;
 
-            if (SavedServersList.IsMouseCaptured)
+            if (IsMouseCaptured)
             {
-                SavedServersList.ReleaseMouseCapture();
+                ReleaseMouseCapture();
             }
-
-            SavedServersList.Cursor = null;
         }
 
         private static T? FindAncestor<T>(DependencyObject? node) where T : DependencyObject

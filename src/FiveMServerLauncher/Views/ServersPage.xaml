@@ -24,6 +24,7 @@
                 <Setter Property="Padding" Value="8,7"/>
                 <Setter Property="Margin" Value="0,1"/>
                 <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                <Setter Property="AutomationProperties.Name" Value="{Binding Name}"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="{x:Type ListBoxItem}">
@@ -349,7 +350,7 @@
                          PreviewMouseLeftButtonDown="SavedServersList_PreviewMouseLeftButtonDown"
                          MouseMove="SavedServersList_MouseMove"
                          PreviewMouseLeftButtonUp="SavedServersList_PreviewMouseLeftButtonUp"
-                         PreviewKeyDown="SavedServersList_PreviewKeyDown"
+                         ContextMenuOpening="SavedServersList_ContextMenuOpening"
                          ScrollViewer.ScrollChanged="SavedServersList_ScrollChanged">
 
                     <ListBox.InputBindings>
@@ -550,18 +551,16 @@
                                 ToolTip="{loc:Loc ServerActionsTooltip}"
                                 AutomationProperties.Name="{loc:Loc ServerActionsTooltip}"
                                 Style="{StaticResource IconButtonStyle}"
-                                IsHitTestVisible="{Binding ContextMenu.IsOpen,
-                                                           RelativeSource={RelativeSource Self},
-                                                           Converter={StaticResource InverseBoolean}}"
                                 Click="ActionsButton_Click">
 
                             <TextBlock Text="⋮" FontSize="18"/>
 
-                            <!-- The ⋮ menu. While it is open the button is not hit-testable,
-                                 so the click that dismisses the menu cannot reopen it. The menu
-                                 inherits the page's DataContext (the MainViewModel). -->
+                            <!-- The ⋮ menu; it inherits the page's DataContext (the MainViewModel).
+                                 The press that dismisses it is not allowed to reopen it (code-behind). -->
                             <Button.ContextMenu>
-                                <ContextMenu x:Name="ActionsMenu">
+                                <ContextMenu x:Name="ActionsMenu"
+                                             Opened="ActionsMenu_Opened"
+                                             Closed="ActionsMenu_Closed">
                                     <ContextMenu.Resources>
                                         <Style TargetType="ContextMenu" BasedOn="{StaticResource PopupMenuStyle}"/>
                                         <Style TargetType="MenuItem" BasedOn="{StaticResource PopupMenuItemStyle}"/>
